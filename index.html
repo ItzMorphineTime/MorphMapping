@@ -212,6 +212,267 @@
             color: var(--text-muted);
             margin-top: 6px;
         }
+        
+        /* Modal styles */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(4px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.2s ease, visibility 0.2s ease;
+        }
+        .modal-overlay.active {
+            opacity: 1;
+            visibility: visible;
+        }
+        .modal {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            width: 480px;
+            max-width: 90vw;
+            max-height: 80vh;
+            overflow: hidden;
+            transform: scale(0.95);
+            transition: transform 0.2s ease;
+        }
+        .modal-overlay.active .modal {
+            transform: scale(1);
+        }
+        .modal-header {
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .modal-title {
+            font-size: 16px;
+            font-weight: 600;
+        }
+        .modal-close {
+            width: 28px;
+            height: 28px;
+            border-radius: 6px;
+            border: none;
+            background: transparent;
+            color: var(--text-secondary);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.15s ease;
+        }
+        .modal-close:hover {
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+        }
+        .modal-close svg {
+            width: 18px;
+            height: 18px;
+            fill: currentColor;
+        }
+        .modal-body {
+            padding: 20px;
+            overflow-y: auto;
+            max-height: 50vh;
+        }
+        .modal-footer {
+            padding: 16px 20px;
+            border-top: 1px solid var(--border-color);
+            display: flex;
+            justify-content: flex-end;
+            gap: 8px;
+        }
+        .export-option {
+            display: flex;
+            align-items: center;
+            padding: 12px;
+            background: var(--bg-tertiary);
+            border-radius: 8px;
+            margin-bottom: 8px;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            border: 1px solid transparent;
+        }
+        .export-option:hover {
+            background: var(--bg-panel);
+            border-color: var(--border-hover);
+        }
+        .export-option.selected {
+            border-color: var(--accent-primary);
+            background: var(--accent-glow);
+        }
+        .export-option-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 8px;
+            background: var(--bg-secondary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 12px;
+        }
+        .export-option-icon svg {
+            width: 20px;
+            height: 20px;
+            fill: var(--accent-primary);
+        }
+        .export-option-info h4 {
+            font-size: 13px;
+            font-weight: 500;
+            margin-bottom: 2px;
+        }
+        .export-option-info p {
+            font-size: 11px;
+            color: var(--text-muted);
+            margin: 0;
+        }
+        .export-checkbox {
+            margin-left: auto;
+        }
+        .checkbox {
+            width: 18px;
+            height: 18px;
+            border-radius: 4px;
+            border: 1px solid var(--border-color);
+            background: var(--bg-tertiary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+        .checkbox.checked {
+            background: var(--accent-primary);
+            border-color: var(--accent-primary);
+        }
+        .checkbox svg {
+            width: 12px;
+            height: 12px;
+            fill: var(--bg-primary);
+            opacity: 0;
+        }
+        .checkbox.checked svg {
+            opacity: 1;
+        }
+        .import-preview {
+            background: var(--bg-primary);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 16px;
+            margin-bottom: 16px;
+        }
+        .import-preview h4 {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            margin-bottom: 12px;
+        }
+        .import-stat {
+            display: flex;
+            justify-content: space-between;
+            padding: 6px 0;
+            font-size: 12px;
+            border-bottom: 1px solid var(--border-color);
+        }
+        .import-stat:last-child {
+            border-bottom: none;
+        }
+        .import-stat span:first-child {
+            color: var(--text-muted);
+        }
+        .import-stat span:last-child {
+            color: var(--text-primary);
+            font-family: 'JetBrains Mono', monospace;
+        }
+        .import-warning {
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            padding: 12px;
+            background: rgba(255, 170, 0, 0.1);
+            border: 1px solid rgba(255, 170, 0, 0.3);
+            border-radius: 6px;
+            margin-top: 12px;
+        }
+        .import-warning svg {
+            width: 16px;
+            height: 16px;
+            fill: var(--warning);
+            flex-shrink: 0;
+            margin-top: 1px;
+        }
+        .import-warning p {
+            font-size: 11px;
+            color: var(--text-secondary);
+            margin: 0;
+            line-height: 1.4;
+        }
+        .filename-input {
+            width: 100%;
+            padding: 10px 12px;
+            border-radius: 6px;
+            border: 1px solid var(--border-color);
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 12px;
+            margin-bottom: 16px;
+        }
+        .filename-input:focus {
+            outline: none;
+            border-color: var(--accent-primary);
+        }
+        .toast {
+            position: fixed;
+            bottom: 80px;
+            left: 50%;
+            transform: translateX(-50%) translateY(20px);
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            padding: 12px 20px;
+            border-radius: 8px;
+            font-size: 13px;
+            color: var(--text-primary);
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+            z-index: 1001;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .toast.active {
+            opacity: 1;
+            visibility: visible;
+            transform: translateX(-50%) translateY(0);
+        }
+        .toast.success {
+            border-color: var(--accent-primary);
+        }
+        .toast.error {
+            border-color: var(--danger);
+        }
+        .toast svg {
+            width: 18px;
+            height: 18px;
+        }
+        .toast.success svg {
+            fill: var(--accent-primary);
+        }
+        .toast.error svg {
+            fill: var(--danger);
+        }
     </style>
 </head>
 <body>
@@ -222,9 +483,11 @@
                 <span class="logo-text">Projection Studio <span>v2.3</span></span>
             </div>
             <div class="header-actions">
-                <button class="btn" onclick="resetScene()"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg>Reset</button>
-                <button class="btn" onclick="exportConfig()"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>Export</button>
-                <button class="btn btn-primary" onclick="saveProject()"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M17 3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V7l-4-4zm-5 16c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3zm3-10H5V5h10v4z"/></svg>Save</button>
+                <button class="btn" onclick="confirmNewProject()"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>New</button>
+                <button class="btn" onclick="document.getElementById('import-file').click()"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M9 16h6v-6h4l-7-7-7 7h4v6zm-4 2h14v2H5v-2z"/></svg>Import</button>
+                <input type="file" id="import-file" accept=".json" style="display:none" onchange="importConfig(this.files[0])">
+                <button class="btn" onclick="showExportModal()"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>Export</button>
+                <button class="btn btn-primary" onclick="quickSave()"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M17 3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V7l-4-4zm-5 16c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3zm3-10H5V5h10v4z"/></svg>Save</button>
             </div>
         </header>
         
@@ -354,6 +617,178 @@
             </div>
             <div class="status-right"><div class="status-item"><span id="fps-counter">60 FPS</span></div></div>
         </footer>
+    </div>
+    
+    <!-- Export Modal -->
+    <div class="modal-overlay" id="export-modal">
+        <div class="modal">
+            <div class="modal-header">
+                <span class="modal-title">Export Project</span>
+                <button class="modal-close" onclick="closeModal('export-modal')">
+                    <svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12 19 6.41z"/></svg>
+                </button>
+            </div>
+            <div class="modal-body">
+                <label style="font-size: 11px; color: var(--text-muted); display: block; margin-bottom: 6px;">Filename</label>
+                <input type="text" class="filename-input" id="export-filename" value="projection-config" placeholder="Enter filename">
+                
+                <label style="font-size: 11px; color: var(--text-muted); display: block; margin-bottom: 10px;">Include in export:</label>
+                
+                <div class="export-option" onclick="toggleExportOption('projectors')">
+                    <div class="export-option-icon">
+                        <svg viewBox="0 0 24 24"><path d="M21 3H3c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h5v2h8v-2h5c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 14H3V5h18v12z"/></svg>
+                    </div>
+                    <div class="export-option-info">
+                        <h4>Projectors</h4>
+                        <p id="export-projector-count">0 projectors with settings</p>
+                    </div>
+                    <div class="export-checkbox">
+                        <div class="checkbox checked" id="export-check-projectors">
+                            <svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"/></svg>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="export-option" onclick="toggleExportOption('surfaces')">
+                    <div class="export-option-icon">
+                        <svg viewBox="0 0 24 24"><path d="M20 6H4c-1.1 0-2 .9-2 2v8c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2z"/></svg>
+                    </div>
+                    <div class="export-option-info">
+                        <h4>Surfaces</h4>
+                        <p id="export-surface-count">0 surfaces with settings</p>
+                    </div>
+                    <div class="export-checkbox">
+                        <div class="checkbox checked" id="export-check-surfaces">
+                            <svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"/></svg>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="export-option" onclick="toggleExportOption('settings')">
+                    <div class="export-option-icon">
+                        <svg viewBox="0 0 24 24"><path d="M19.14 12.94c.04-.31.06-.63.06-.94 0-.31-.02-.63-.06-.94l2.03-1.58a.49.49 0 0 0 .12-.61l-1.92-3.32a.49.49 0 0 0-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54a.484.484 0 0 0-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96a.49.49 0 0 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.04.31-.06.63-.06.94s.02.63.06.94l-2.03 1.58a.49.49 0 0 0-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/></svg>
+                    </div>
+                    <div class="export-option-info">
+                        <h4>Display Settings</h4>
+                        <p>Pattern, heatmap, view options</p>
+                    </div>
+                    <div class="export-checkbox">
+                        <div class="checkbox checked" id="export-check-settings">
+                            <svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"/></svg>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="export-option" onclick="toggleExportOption('textures')">
+                    <div class="export-option-icon">
+                        <svg viewBox="0 0 24 24"><path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/></svg>
+                    </div>
+                    <div class="export-option-info">
+                        <h4>Custom Textures</h4>
+                        <p id="export-texture-count">Embed texture images (increases file size)</p>
+                    </div>
+                    <div class="export-checkbox">
+                        <div class="checkbox" id="export-check-textures">
+                            <svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"/></svg>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn" onclick="closeModal('export-modal')">Cancel</button>
+                <button class="btn btn-primary" onclick="doExport()">
+                    <svg viewBox="0 0 24 24" fill="currentColor" style="width:14px;height:14px;margin-right:4px;"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
+                    Export
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Import Modal -->
+    <div class="modal-overlay" id="import-modal">
+        <div class="modal">
+            <div class="modal-header">
+                <span class="modal-title">Import Project</span>
+                <button class="modal-close" onclick="closeModal('import-modal')">
+                    <svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12 19 6.41z"/></svg>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="import-preview">
+                    <h4>File Contents</h4>
+                    <div class="import-stat">
+                        <span>Version</span>
+                        <span id="import-version">-</span>
+                    </div>
+                    <div class="import-stat">
+                        <span>Projectors</span>
+                        <span id="import-projectors">-</span>
+                    </div>
+                    <div class="import-stat">
+                        <span>Surfaces</span>
+                        <span id="import-surfaces">-</span>
+                    </div>
+                    <div class="import-stat">
+                        <span>Custom Textures</span>
+                        <span id="import-textures">-</span>
+                    </div>
+                    <div class="import-stat">
+                        <span>Settings</span>
+                        <span id="import-settings">-</span>
+                    </div>
+                </div>
+                
+                <label style="font-size: 11px; color: var(--text-muted); display: block; margin-bottom: 10px;">Import options:</label>
+                
+                <div class="export-option" onclick="toggleImportOption('replace')">
+                    <div class="export-option-icon">
+                        <svg viewBox="0 0 24 24"><path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg>
+                    </div>
+                    <div class="export-option-info">
+                        <h4>Replace Current Scene</h4>
+                        <p>Clear existing objects before importing</p>
+                    </div>
+                    <div class="export-checkbox">
+                        <div class="checkbox checked" id="import-check-replace">
+                            <svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"/></svg>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="export-option" onclick="toggleImportOption('merge')">
+                    <div class="export-option-icon">
+                        <svg viewBox="0 0 24 24"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
+                    </div>
+                    <div class="export-option-info">
+                        <h4>Merge with Current</h4>
+                        <p>Add imported objects to existing scene</p>
+                    </div>
+                    <div class="export-checkbox">
+                        <div class="checkbox" id="import-check-merge">
+                            <svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"/></svg>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="import-warning">
+                    <svg viewBox="0 0 24 24"><path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2v2zm0-4h-2v-4h2v4z"/></svg>
+                    <p>This will modify your current scene. Make sure to export your work first if you want to keep it.</p>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn" onclick="closeModal('import-modal')">Cancel</button>
+                <button class="btn btn-primary" onclick="doImport()">
+                    <svg viewBox="0 0 24 24" fill="currentColor" style="width:14px;height:14px;margin-right:4px;"><path d="M9 16h6v-6h4l-7-7-7 7h4v6zm-4 2h14v2H5v-2z"/></svg>
+                    Import
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Toast Notification -->
+    <div class="toast" id="toast">
+        <svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"/></svg>
+        <span id="toast-message">Success!</span>
     </div>
     
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -1597,15 +2032,356 @@
             updateCoverageDisplay(0, 0, 0, 0);
         }
         
-        function exportConfig() {
-            const config = { version: '2.3', projectors: state.projectors.map(p => ({...p, customTextureUrl: null})), surfaces: state.surfaces };
-            const a = document.createElement('a');
-            a.href = URL.createObjectURL(new Blob([JSON.stringify(config, null, 2)], { type: 'application/json' }));
-            a.download = 'projection-config.json';
-            a.click();
+        // ==========================================
+        // IMPORT / EXPORT
+        // ==========================================
+        
+        const exportOptions = {
+            projectors: true,
+            surfaces: true,
+            settings: true,
+            textures: false
+        };
+        
+        const importOptions = {
+            replace: true,
+            merge: false
+        };
+        
+        let pendingImportData = null;
+        
+        function showExportModal() {
+            // Update counts
+            document.getElementById('export-projector-count').textContent = 
+                `${state.projectors.length} projector${state.projectors.length !== 1 ? 's' : ''} with settings`;
+            document.getElementById('export-surface-count').textContent = 
+                `${state.surfaces.length} surface${state.surfaces.length !== 1 ? 's' : ''} with settings`;
+            
+            const textureCount = state.projectors.filter(p => p.customTextureUrl).length;
+            document.getElementById('export-texture-count').textContent = 
+                textureCount > 0 ? `${textureCount} custom texture${textureCount !== 1 ? 's' : ''} (increases file size)` : 'No custom textures';
+            
+            // Set default filename with timestamp
+            const date = new Date();
+            const timestamp = `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}`;
+            document.getElementById('export-filename').value = `projection-config-${timestamp}`;
+            
+            document.getElementById('export-modal').classList.add('active');
         }
         
-        function saveProject() { exportConfig(); }
+        function toggleExportOption(option) {
+            exportOptions[option] = !exportOptions[option];
+            const checkbox = document.getElementById(`export-check-${option}`);
+            checkbox.classList.toggle('checked', exportOptions[option]);
+        }
+        
+        function toggleImportOption(option) {
+            // Radio-button behavior for replace/merge
+            if (option === 'replace') {
+                importOptions.replace = true;
+                importOptions.merge = false;
+            } else if (option === 'merge') {
+                importOptions.replace = false;
+                importOptions.merge = true;
+            }
+            
+            document.getElementById('import-check-replace').classList.toggle('checked', importOptions.replace);
+            document.getElementById('import-check-merge').classList.toggle('checked', importOptions.merge);
+        }
+        
+        function closeModal(id) {
+            document.getElementById(id).classList.remove('active');
+            if (id === 'import-modal') {
+                pendingImportData = null;
+            }
+        }
+        
+        function showToast(message, type = 'success') {
+            const toast = document.getElementById('toast');
+            const toastMessage = document.getElementById('toast-message');
+            
+            toastMessage.textContent = message;
+            toast.className = `toast ${type} active`;
+            
+            // Update icon based on type
+            const svg = toast.querySelector('svg');
+            if (type === 'success') {
+                svg.innerHTML = '<path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"/>';
+            } else if (type === 'error') {
+                svg.innerHTML = '<path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12 19 6.41z"/>';
+            }
+            
+            setTimeout(() => {
+                toast.classList.remove('active');
+            }, 3000);
+        }
+        
+        function doExport() {
+            const filename = document.getElementById('export-filename').value.trim() || 'projection-config';
+            
+            const config = {
+                version: '2.3',
+                exportDate: new Date().toISOString(),
+                metadata: {
+                    projectorCount: state.projectors.length,
+                    surfaceCount: state.surfaces.length
+                }
+            };
+            
+            if (exportOptions.projectors) {
+                config.projectors = state.projectors.map(p => {
+                    const proj = { ...p };
+                    if (!exportOptions.textures) {
+                        proj.customTextureUrl = null;
+                    }
+                    return proj;
+                });
+            }
+            
+            if (exportOptions.surfaces) {
+                config.surfaces = [...state.surfaces];
+            }
+            
+            if (exportOptions.settings) {
+                config.settings = {
+                    currentPattern: state.currentPattern,
+                    displayOptions: { ...state.displayOptions },
+                    heatmapMax: state.heatmapMax,
+                    currentView: state.currentView
+                };
+            }
+            
+            const blob = new Blob([JSON.stringify(config, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `${filename}.json`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            
+            closeModal('export-modal');
+            showToast(`Exported "${filename}.json" successfully`);
+        }
+        
+        function importConfig(file) {
+            if (!file) return;
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const data = JSON.parse(e.target.result);
+                    pendingImportData = data;
+                    
+                    // Update preview
+                    document.getElementById('import-version').textContent = data.version || 'Unknown';
+                    document.getElementById('import-projectors').textContent = 
+                        data.projectors ? `${data.projectors.length} projector${data.projectors.length !== 1 ? 's' : ''}` : 'None';
+                    document.getElementById('import-surfaces').textContent = 
+                        data.surfaces ? `${data.surfaces.length} surface${data.surfaces.length !== 1 ? 's' : ''}` : 'None';
+                    
+                    const textureCount = data.projectors ? data.projectors.filter(p => p.customTextureUrl).length : 0;
+                    document.getElementById('import-textures').textContent = 
+                        textureCount > 0 ? `${textureCount} embedded` : 'None';
+                    
+                    document.getElementById('import-settings').textContent = 
+                        data.settings ? 'Included' : 'Not included';
+                    
+                    // Show modal
+                    document.getElementById('import-modal').classList.add('active');
+                    
+                    // Clear file input so same file can be selected again
+                    document.getElementById('import-file').value = '';
+                    
+                } catch (err) {
+                    showToast('Error parsing file: Invalid JSON format', 'error');
+                    console.error('Import error:', err);
+                }
+            };
+            reader.onerror = function() {
+                showToast('Error reading file', 'error');
+            };
+            reader.readAsText(file);
+        }
+        
+        function doImport() {
+            if (!pendingImportData) {
+                showToast('No import data available', 'error');
+                return;
+            }
+            
+            const data = pendingImportData;
+            
+            // Clear scene if replacing
+            if (importOptions.replace) {
+                resetScene();
+            }
+            
+            let importedProjectors = 0;
+            let importedSurfaces = 0;
+            
+            // Import projectors
+            if (data.projectors && Array.isArray(data.projectors)) {
+                data.projectors.forEach(projData => {
+                    const id = Date.now() + Math.random() * 1000;
+                    const projector = {
+                        id,
+                        name: projData.name || `Projector ${state.projectors.length + 1}`,
+                        preset: projData.preset || 'custom',
+                        position: projData.position || { x: 0, y: 4, z: -8 },
+                        rotation: projData.rotation || { x: -10, y: 0, z: 0 },
+                        lumens: projData.lumens || 10000,
+                        throwRatio: projData.throwRatio || 1.5,
+                        aspectRatio: projData.aspectRatio || 16/9,
+                        resolution: projData.resolution || '1920×1080',
+                        zoom: projData.zoom || 1.0,
+                        enabled: projData.enabled !== false,
+                        customTextureUrl: projData.customTextureUrl || null
+                    };
+                    
+                    state.projectors.push(projector);
+                    createProjectorMesh(projector);
+                    
+                    // Load custom texture if present
+                    if (projector.customTextureUrl) {
+                        const img = new Image();
+                        img.onload = function() {
+                            const texture = new THREE.Texture(img);
+                            texture.needsUpdate = true;
+                            customTextureData.set(projector.id, texture);
+                            projectionTextures.set(projector.id, texture);
+                            updateAllSurfaceMaterials();
+                        };
+                        img.src = projector.customTextureUrl;
+                    }
+                    
+                    updateProjectorMatrix(projector);
+                    importedProjectors++;
+                });
+            }
+            
+            // Import surfaces
+            if (data.surfaces && Array.isArray(data.surfaces)) {
+                data.surfaces.forEach(surfData => {
+                    const id = Date.now() + Math.random() * 1000;
+                    const surface = {
+                        id,
+                        name: surfData.name || `Surface ${state.surfaces.length + 1}`,
+                        type: surfData.type || 'flat',
+                        position: surfData.position || { x: 0, y: 3, z: 5 },
+                        rotation: surfData.rotation || { x: 0, y: 180, z: 0 },
+                        dimensions: surfData.dimensions || { width: 8, height: 4.5 },
+                        curvature: surfData.curvature || 30,
+                        color: surfData.color || '#555555',
+                        gain: surfData.gain || 1.0
+                    };
+                    
+                    state.surfaces.push(surface);
+                    createSurfaceMesh(surface);
+                    importedSurfaces++;
+                });
+            }
+            
+            // Import settings
+            if (data.settings) {
+                if (data.settings.currentPattern) {
+                    state.currentPattern = data.settings.currentPattern;
+                    document.querySelectorAll('.pattern-btn').forEach(b => b.classList.remove('active'));
+                    // Try to activate the right pattern button
+                    const patternBtns = document.querySelectorAll('.pattern-btn');
+                    const patterns = ['none', 'grid', 'checker', 'gradient', 'colorbars', 'cross', 'white', 'blend'];
+                    const idx = patterns.indexOf(data.settings.currentPattern);
+                    if (idx >= 0 && patternBtns[idx]) patternBtns[idx].classList.add('active');
+                }
+                
+                if (data.settings.displayOptions) {
+                    Object.keys(data.settings.displayOptions).forEach(key => {
+                        if (state.displayOptions.hasOwnProperty(key)) {
+                            state.displayOptions[key] = data.settings.displayOptions[key];
+                            const toggle = document.getElementById(`toggle-${key}`);
+                            if (toggle) toggle.classList.toggle('active', state.displayOptions[key]);
+                        }
+                    });
+                    
+                    // Apply display options
+                    projectorGroup.traverse(c => { if (c.userData.isFrustum) c.visible = state.displayOptions.frustums; });
+                    gridHelper.visible = state.displayOptions.grid;
+                    document.getElementById('heatmap-panel').style.display = state.displayOptions.heatmap ? 'block' : 'none';
+                }
+                
+                if (data.settings.heatmapMax) {
+                    state.heatmapMax = data.settings.heatmapMax;
+                    document.getElementById('heatmap-max-slider').value = data.settings.heatmapMax;
+                    document.getElementById('heatmap-max-value').textContent = data.settings.heatmapMax;
+                    document.getElementById('legend-mid').textContent = Math.round(data.settings.heatmapMax / 2);
+                    document.getElementById('legend-max').textContent = data.settings.heatmapMax + '+';
+                }
+            }
+            
+            // Update UI
+            updateAllSurfaceMaterials();
+            updateProjectorList();
+            updateSurfaceList();
+            updateStatus();
+            calculateCoverage();
+            
+            closeModal('import-modal');
+            
+            const message = `Imported ${importedProjectors} projector${importedProjectors !== 1 ? 's' : ''} and ${importedSurfaces} surface${importedSurfaces !== 1 ? 's' : ''}`;
+            showToast(message);
+        }
+        
+        function quickSave() {
+            // Quick save with current timestamp
+            const date = new Date();
+            const timestamp = `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}_${String(date.getHours()).padStart(2,'0')}-${String(date.getMinutes()).padStart(2,'0')}`;
+            
+            const config = {
+                version: '2.3',
+                exportDate: date.toISOString(),
+                metadata: {
+                    projectorCount: state.projectors.length,
+                    surfaceCount: state.surfaces.length
+                },
+                projectors: state.projectors.map(p => ({ ...p })),
+                surfaces: [...state.surfaces],
+                settings: {
+                    currentPattern: state.currentPattern,
+                    displayOptions: { ...state.displayOptions },
+                    heatmapMax: state.heatmapMax,
+                    currentView: state.currentView
+                }
+            };
+            
+            const blob = new Blob([JSON.stringify(config, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `projection-autosave-${timestamp}.json`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            
+            showToast('Project saved successfully');
+        }
+        
+        function confirmNewProject() {
+            if (state.projectors.length === 0 && state.surfaces.length === 0) {
+                // Nothing to lose, just reset
+                resetScene();
+                showToast('New project created');
+                return;
+            }
+            
+            if (confirm('Start a new project? All unsaved changes will be lost.')) {
+                resetScene();
+                showToast('New project created');
+            }
+        }
         
         // ==========================================
         // ANIMATION
