@@ -1,0 +1,2436 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta author="Joe Loe">
+    <title>Projection Study Configurator</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600&family=Outfit:wght@300;400;500;600;700&display=swap');
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        :root {
+            --bg-primary: #0a0a0c;
+            --bg-secondary: #111114;
+            --bg-tertiary: #18181c;
+            --bg-panel: #141418;
+            --border-color: #2a2a32;
+            --border-hover: #3a3a44;
+            --text-primary: #e8e8ec;
+            --text-secondary: #9898a4;
+            --text-muted: #5c5c68;
+            --accent-primary: #00d4aa;
+            --accent-secondary: #00a888;
+            --accent-glow: rgba(0, 212, 170, 0.15);
+            --warning: #ffaa00;
+            --danger: #ff4466;
+            --projector-color: #00aaff;
+            --surface-color: #8844ff;
+        }
+        
+        body {
+            font-family: 'Outfit', sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            height: 100vh;
+            overflow: hidden;
+        }
+        
+        .app-container {
+            display: grid;
+            grid-template-columns: 320px 1fr 360px;
+            grid-template-rows: 56px 1fr 48px;
+            height: 100vh;
+        }
+        
+        /* Header */
+        .header {
+            grid-column: 1 / -1;
+            background: var(--bg-secondary);
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 20px;
+        }
+        
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        
+        .logo-icon {
+            width: 32px;
+            height: 32px;
+            background: linear-gradient(135deg, var(--accent-primary), var(--projector-color));
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .logo-icon svg {
+            width: 18px;
+            height: 18px;
+            fill: var(--bg-primary);
+        }
+        
+        .logo-text {
+            font-weight: 600;
+            font-size: 16px;
+            letter-spacing: -0.02em;
+        }
+        
+        .logo-text span {
+            color: var(--text-secondary);
+            font-weight: 400;
+        }
+        
+        .header-actions {
+            display: flex;
+            gap: 8px;
+        }
+        
+        .btn {
+            font-family: 'Outfit', sans-serif;
+            padding: 8px 16px;
+            border-radius: 6px;
+            border: 1px solid var(--border-color);
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .btn:hover {
+            background: var(--bg-panel);
+            border-color: var(--border-hover);
+        }
+        
+        .btn-primary {
+            background: var(--accent-primary);
+            border-color: var(--accent-primary);
+            color: var(--bg-primary);
+        }
+        
+        .btn-primary:hover {
+            background: var(--accent-secondary);
+            border-color: var(--accent-secondary);
+        }
+        
+        .btn svg {
+            width: 14px;
+            height: 14px;
+        }
+        
+        /* Sidebar */
+        .sidebar-left {
+            background: var(--bg-secondary);
+            border-right: 1px solid var(--border-color);
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .sidebar-right {
+            background: var(--bg-secondary);
+            border-left: 1px solid var(--border-color);
+            overflow-y: auto;
+        }
+        
+        .panel-section {
+            border-bottom: 1px solid var(--border-color);
+        }
+        
+        .panel-header {
+            padding: 14px 16px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            cursor: pointer;
+            user-select: none;
+        }
+        
+        .panel-header:hover {
+            background: var(--bg-tertiary);
+        }
+        
+        .panel-title {
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: var(--text-secondary);
+        }
+        
+        .panel-content {
+            padding: 0 16px 16px;
+        }
+        
+        .panel-badge {
+            background: var(--bg-tertiary);
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 10px;
+            font-weight: 500;
+            color: var(--text-muted);
+        }
+        
+        /* Object List */
+        .object-list {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+        
+        .object-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 12px;
+            background: var(--bg-tertiary);
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            border: 1px solid transparent;
+        }
+        
+        .object-item:hover {
+            background: var(--bg-panel);
+        }
+        
+        .object-item.selected {
+            border-color: var(--accent-primary);
+            background: var(--accent-glow);
+        }
+        
+        .object-icon {
+            width: 28px;
+            height: 28px;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .object-icon.projector {
+            background: rgba(0, 170, 255, 0.15);
+        }
+        
+        .object-icon.projector svg {
+            fill: var(--projector-color);
+        }
+        
+        .object-icon.surface {
+            background: rgba(136, 68, 255, 0.15);
+        }
+        
+        .object-icon.surface svg {
+            fill: var(--surface-color);
+        }
+        
+        .object-icon svg {
+            width: 14px;
+            height: 14px;
+        }
+        
+        .object-info {
+            flex: 1;
+            min-width: 0;
+        }
+        
+        .object-name {
+            font-size: 13px;
+            font-weight: 500;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        
+        .object-type {
+            font-size: 11px;
+            color: var(--text-muted);
+        }
+        
+        .object-actions {
+            display: flex;
+            gap: 4px;
+            opacity: 0;
+            transition: opacity 0.15s ease;
+        }
+        
+        .object-item:hover .object-actions {
+            opacity: 1;
+        }
+        
+        .icon-btn {
+            width: 24px;
+            height: 24px;
+            border-radius: 4px;
+            border: none;
+            background: var(--bg-secondary);
+            color: var(--text-secondary);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.15s ease;
+        }
+        
+        .icon-btn:hover {
+            background: var(--border-color);
+            color: var(--text-primary);
+        }
+        
+        .icon-btn.danger:hover {
+            background: rgba(255, 68, 102, 0.2);
+            color: var(--danger);
+        }
+        
+        .icon-btn svg {
+            width: 12px;
+            height: 12px;
+            fill: currentColor;
+        }
+        
+        /* Add Buttons */
+        .add-buttons {
+            display: flex;
+            gap: 8px;
+            padding: 16px;
+            border-top: 1px solid var(--border-color);
+            margin-top: auto;
+        }
+        
+        .add-btn {
+            flex: 1;
+            padding: 10px;
+            border-radius: 6px;
+            border: 1px dashed var(--border-color);
+            background: transparent;
+            color: var(--text-secondary);
+            font-family: 'Outfit', sans-serif;
+            font-size: 12px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .add-btn:hover {
+            border-color: var(--accent-primary);
+            color: var(--accent-primary);
+            background: var(--accent-glow);
+        }
+        
+        .add-btn svg {
+            width: 18px;
+            height: 18px;
+            fill: currentColor;
+        }
+        
+        /* Properties Panel */
+        .property-group {
+            margin-bottom: 16px;
+        }
+        
+        .property-group-title {
+            font-size: 10px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: var(--text-muted);
+            margin-bottom: 10px;
+        }
+        
+        .property-row {
+            display: flex;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+        
+        .property-label {
+            width: 80px;
+            font-size: 12px;
+            color: var(--text-secondary);
+            flex-shrink: 0;
+        }
+        
+        .property-inputs {
+            display: flex;
+            gap: 4px;
+            flex: 1;
+        }
+        
+        .input-group {
+            flex: 1;
+            position: relative;
+        }
+        
+        .input-group label {
+            position: absolute;
+            left: 8px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 10px;
+            font-weight: 600;
+            color: var(--text-muted);
+            pointer-events: none;
+        }
+        
+        .input-group input {
+            width: 100%;
+            padding: 8px 8px 8px 22px;
+            border-radius: 4px;
+            border: 1px solid var(--border-color);
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 11px;
+            transition: all 0.15s ease;
+        }
+        
+        .input-group input:focus {
+            outline: none;
+            border-color: var(--accent-primary);
+            background: var(--bg-panel);
+        }
+        
+        .single-input {
+            flex: 1;
+        }
+        
+        .single-input input, .single-input select {
+            width: 100%;
+            padding: 8px 10px;
+            border-radius: 4px;
+            border: 1px solid var(--border-color);
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 11px;
+            transition: all 0.15s ease;
+        }
+        
+        .single-input select {
+            font-family: 'Outfit', sans-serif;
+            cursor: pointer;
+        }
+        
+        .single-input input:focus, .single-input select:focus {
+            outline: none;
+            border-color: var(--accent-primary);
+            background: var(--bg-panel);
+        }
+        
+        /* Slider */
+        .slider-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 8px;
+        }
+        
+        .slider-label {
+            width: 80px;
+            font-size: 12px;
+            color: var(--text-secondary);
+            flex-shrink: 0;
+        }
+        
+        .slider-container {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .slider {
+            flex: 1;
+            -webkit-appearance: none;
+            height: 4px;
+            border-radius: 2px;
+            background: var(--border-color);
+            outline: none;
+        }
+        
+        .slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            background: var(--accent-primary);
+            cursor: pointer;
+            transition: transform 0.15s ease;
+        }
+        
+        .slider::-webkit-slider-thumb:hover {
+            transform: scale(1.2);
+        }
+        
+        .slider-value {
+            width: 50px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 11px;
+            color: var(--text-secondary);
+            text-align: right;
+        }
+        
+        /* Toggle */
+        .toggle-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 8px;
+        }
+        
+        .toggle-label {
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+        
+        .toggle {
+            width: 36px;
+            height: 20px;
+            border-radius: 10px;
+            background: var(--border-color);
+            cursor: pointer;
+            position: relative;
+            transition: background 0.2s ease;
+        }
+        
+        .toggle.active {
+            background: var(--accent-primary);
+        }
+        
+        .toggle::after {
+            content: '';
+            position: absolute;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: white;
+            top: 2px;
+            left: 2px;
+            transition: transform 0.2s ease;
+        }
+        
+        .toggle.active::after {
+            transform: translateX(16px);
+        }
+        
+        /* Viewport */
+        .viewport {
+            background: var(--bg-primary);
+            position: relative;
+            overflow: hidden;
+        }
+        
+        #canvas-container {
+            width: 100%;
+            height: 100%;
+        }
+        
+        #canvas-container canvas {
+            display: block;
+        }
+        
+        .viewport-overlay {
+            position: absolute;
+            top: 12px;
+            left: 12px;
+            display: flex;
+            gap: 8px;
+        }
+        
+        .view-btn {
+            padding: 6px 12px;
+            border-radius: 4px;
+            border: 1px solid var(--border-color);
+            background: rgba(17, 17, 20, 0.85);
+            backdrop-filter: blur(8px);
+            color: var(--text-secondary);
+            font-family: 'Outfit', sans-serif;
+            font-size: 11px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+        
+        .view-btn:hover, .view-btn.active {
+            border-color: var(--accent-primary);
+            color: var(--accent-primary);
+        }
+        
+        .viewport-info {
+            position: absolute;
+            bottom: 12px;
+            left: 12px;
+            background: rgba(17, 17, 20, 0.85);
+            backdrop-filter: blur(8px);
+            padding: 10px 14px;
+            border-radius: 6px;
+            border: 1px solid var(--border-color);
+        }
+        
+        .viewport-info-row {
+            display: flex;
+            gap: 16px;
+            font-size: 11px;
+        }
+        
+        .viewport-info-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .viewport-info-item span:first-child {
+            color: var(--text-muted);
+        }
+        
+        .viewport-info-item span:last-child {
+            font-family: 'JetBrains Mono', monospace;
+            color: var(--text-secondary);
+        }
+        
+        /* Test Patterns */
+        .pattern-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 8px;
+        }
+        
+        .pattern-btn {
+            aspect-ratio: 1;
+            border-radius: 6px;
+            border: 1px solid var(--border-color);
+            background: var(--bg-tertiary);
+            cursor: pointer;
+            transition: all 0.15s ease;
+            overflow: hidden;
+            position: relative;
+        }
+        
+        .pattern-btn:hover {
+            border-color: var(--border-hover);
+        }
+        
+        .pattern-btn.active {
+            border-color: var(--accent-primary);
+            box-shadow: 0 0 0 1px var(--accent-primary);
+        }
+        
+        .pattern-preview {
+            width: 100%;
+            height: 100%;
+        }
+        
+        /* Grid pattern */
+        .pattern-grid-lines {
+            background: 
+                linear-gradient(var(--text-muted) 1px, transparent 1px),
+                linear-gradient(90deg, var(--text-muted) 1px, transparent 1px);
+            background-size: 8px 8px;
+        }
+        
+        /* Checkerboard */
+        .pattern-checker {
+            background: repeating-conic-gradient(var(--text-muted) 0% 25%, var(--bg-tertiary) 0% 50%) 50% / 12px 12px;
+        }
+        
+        /* Gradient */
+        .pattern-gradient {
+            background: linear-gradient(90deg, #000, #fff);
+        }
+        
+        /* Color bars */
+        .pattern-colorbars {
+            background: linear-gradient(90deg, 
+                #fff 0% 14.28%, 
+                #ff0 14.28% 28.56%, 
+                #0ff 28.56% 42.84%, 
+                #0f0 42.84% 57.12%, 
+                #f0f 57.12% 71.4%, 
+                #f00 71.4% 85.68%, 
+                #00f 85.68% 100%);
+        }
+        
+        /* Focus cross */
+        .pattern-cross {
+            background: var(--bg-tertiary);
+            position: relative;
+        }
+        
+        .pattern-cross::before, .pattern-cross::after {
+            content: '';
+            position: absolute;
+            background: var(--text-muted);
+        }
+        
+        .pattern-cross::before {
+            width: 1px;
+            height: 100%;
+            left: 50%;
+        }
+        
+        .pattern-cross::after {
+            height: 1px;
+            width: 100%;
+            top: 50%;
+        }
+        
+        /* White */
+        .pattern-white {
+            background: #fff;
+        }
+        
+        /* None */
+        .pattern-none {
+            background: var(--bg-tertiary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 10px;
+            color: var(--text-muted);
+        }
+        
+        /* Blend zones */
+        .pattern-blend {
+            background: linear-gradient(90deg, 
+                rgba(255,0,0,0.5) 0% 20%, 
+                transparent 20% 80%, 
+                rgba(0,255,0,0.5) 80% 100%);
+        }
+        
+        /* Status Bar */
+        .status-bar {
+            grid-column: 1 / -1;
+            background: var(--bg-tertiary);
+            border-top: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 16px;
+            font-size: 11px;
+        }
+        
+        .status-left, .status-right {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+        }
+        
+        .status-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            color: var(--text-muted);
+        }
+        
+        .status-item svg {
+            width: 12px;
+            height: 12px;
+            fill: currentColor;
+        }
+        
+        .status-dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: var(--accent-primary);
+        }
+        
+        /* Empty state */
+        .empty-state {
+            padding: 24px 16px;
+            text-align: center;
+        }
+        
+        .empty-state p {
+            font-size: 12px;
+            color: var(--text-muted);
+            line-height: 1.5;
+        }
+        
+        /* Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        
+        ::-webkit-scrollbar-thumb {
+            background: var(--border-color);
+            border-radius: 4px;
+        }
+        
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--border-hover);
+        }
+        
+        /* No selection state */
+        .no-selection {
+            padding: 40px 20px;
+            text-align: center;
+        }
+        
+        .no-selection-icon {
+            width: 48px;
+            height: 48px;
+            margin: 0 auto 16px;
+            background: var(--bg-tertiary);
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .no-selection-icon svg {
+            width: 24px;
+            height: 24px;
+            fill: var(--text-muted);
+        }
+        
+        .no-selection h3 {
+            font-size: 14px;
+            font-weight: 500;
+            margin-bottom: 8px;
+            color: var(--text-secondary);
+        }
+        
+        .no-selection p {
+            font-size: 12px;
+            color: var(--text-muted);
+            line-height: 1.5;
+        }
+        
+        /* Color input */
+        .color-input-wrapper {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex: 1;
+        }
+        
+        .color-preview {
+            width: 28px;
+            height: 28px;
+            border-radius: 4px;
+            border: 1px solid var(--border-color);
+            cursor: pointer;
+        }
+        
+        input[type="color"] {
+            opacity: 0;
+            position: absolute;
+            width: 28px;
+            height: 28px;
+            cursor: pointer;
+        }
+        
+        /* Coverage indicator */
+        .coverage-display {
+            margin-top: 16px;
+            padding: 12px;
+            background: var(--bg-tertiary);
+            border-radius: 6px;
+            border: 1px solid var(--border-color);
+        }
+        
+        .coverage-bar {
+            height: 6px;
+            background: var(--border-color);
+            border-radius: 3px;
+            overflow: hidden;
+            margin-top: 8px;
+        }
+        
+        .coverage-fill {
+            height: 100%;
+            background: var(--accent-primary);
+            border-radius: 3px;
+            transition: width 0.3s ease;
+        }
+        
+        .coverage-stats {
+            display: flex;
+            justify-content: space-between;
+            font-size: 11px;
+            margin-top: 8px;
+        }
+        
+        .coverage-stat {
+            color: var(--text-muted);
+        }
+        
+        .coverage-stat span {
+            color: var(--text-secondary);
+            font-family: 'JetBrains Mono', monospace;
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <!-- Header -->
+        <header class="header">
+            <div class="logo">
+                <div class="logo-icon">
+                    <svg viewBox="0 0 24 24"><path d="M21 3H3c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h5v2h8v-2h5c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 14H3V5h18v12z"/></svg>
+                </div>
+                <span class="logo-text">Projection Studio <span>v1.0</span></span>
+            </div>
+            <div class="header-actions">
+                <button class="btn" onclick="resetScene()">
+                    <svg viewBox="0 0 24 24" fill="currentColor"><path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg>
+                    Reset
+                </button>
+                <button class="btn" onclick="exportConfig()">
+                    <svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
+                    Export
+                </button>
+                <button class="btn btn-primary" onclick="saveProject()">
+                    <svg viewBox="0 0 24 24" fill="currentColor"><path d="M17 3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V7l-4-4zm-5 16c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3zm3-10H5V5h10v4z"/></svg>
+                    Save Project
+                </button>
+            </div>
+        </header>
+        
+        <!-- Left Sidebar - Scene Objects -->
+        <aside class="sidebar-left">
+            <div class="panel-section">
+                <div class="panel-header">
+                    <span class="panel-title">Projectors</span>
+                    <span class="panel-badge" id="projector-count">0</span>
+                </div>
+                <div class="panel-content">
+                    <div class="object-list" id="projector-list">
+                        <div class="empty-state">
+                            <p>No projectors added yet.<br>Click the button below to add one.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="panel-section">
+                <div class="panel-header">
+                    <span class="panel-title">Surfaces</span>
+                    <span class="panel-badge" id="surface-count">0</span>
+                </div>
+                <div class="panel-content">
+                    <div class="object-list" id="surface-list">
+                        <div class="empty-state">
+                            <p>No surfaces added yet.<br>Click the button below to add one.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="add-buttons">
+                <button class="add-btn" onclick="addProjector()">
+                    <svg viewBox="0 0 24 24"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
+                    Projector
+                </button>
+                <button class="add-btn" onclick="addSurface()">
+                    <svg viewBox="0 0 24 24"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>
+                    Surface
+                </button>
+            </div>
+        </aside>
+        
+        <!-- Viewport -->
+        <main class="viewport">
+            <div id="canvas-container"></div>
+            <div class="viewport-overlay">
+                <button class="view-btn active" onclick="setView('perspective')">Perspective</button>
+                <button class="view-btn" onclick="setView('top')">Top</button>
+                <button class="view-btn" onclick="setView('front')">Front</button>
+                <button class="view-btn" onclick="setView('side')">Side</button>
+                <button class="view-btn" onclick="setView('projector')">Projector View</button>
+            </div>
+            <div class="viewport-info">
+                <div class="viewport-info-row">
+                    <div class="viewport-info-item">
+                        <span>Camera:</span>
+                        <span id="camera-info">Perspective</span>
+                    </div>
+                    <div class="viewport-info-item">
+                        <span>Scale:</span>
+                        <span id="scale-info">1:100</span>
+                    </div>
+                    <div class="viewport-info-item">
+                        <span>Units:</span>
+                        <span>Meters</span>
+                    </div>
+                </div>
+            </div>
+        </main>
+        
+        <!-- Right Sidebar - Properties -->
+        <aside class="sidebar-right">
+            <div id="properties-panel">
+                <div class="no-selection">
+                    <div class="no-selection-icon">
+                        <svg viewBox="0 0 24 24"><path d="M3 17v2h6v-2H3zM3 5v2h10V5H3zm10 16v-2h8v-2h-8v-2h-2v6h2zM7 9v2H3v2h4v2h2V9H7zm14 4v-2H11v2h10zm-6-4h2V7h4V5h-4V3h-2v6z"/></svg>
+                    </div>
+                    <h3>No Selection</h3>
+                    <p>Select a projector or surface from the left panel to edit its properties.</p>
+                </div>
+            </div>
+            
+            <div class="panel-section">
+                <div class="panel-header">
+                    <span class="panel-title">Test Patterns</span>
+                </div>
+                <div class="panel-content">
+                    <div class="pattern-grid">
+                        <button class="pattern-btn active" onclick="setPattern('none')" title="None">
+                            <div class="pattern-preview pattern-none">OFF</div>
+                        </button>
+                        <button class="pattern-btn" onclick="setPattern('grid')" title="Grid">
+                            <div class="pattern-preview pattern-grid-lines"></div>
+                        </button>
+                        <button class="pattern-btn" onclick="setPattern('checker')" title="Checkerboard">
+                            <div class="pattern-preview pattern-checker"></div>
+                        </button>
+                        <button class="pattern-btn" onclick="setPattern('gradient')" title="Gradient">
+                            <div class="pattern-preview pattern-gradient"></div>
+                        </button>
+                        <button class="pattern-btn" onclick="setPattern('colorbars')" title="Color Bars">
+                            <div class="pattern-preview pattern-colorbars"></div>
+                        </button>
+                        <button class="pattern-btn" onclick="setPattern('cross')" title="Focus Cross">
+                            <div class="pattern-preview pattern-cross"></div>
+                        </button>
+                        <button class="pattern-btn" onclick="setPattern('white')" title="White">
+                            <div class="pattern-preview pattern-white"></div>
+                        </button>
+                        <button class="pattern-btn" onclick="setPattern('blend')" title="Blend Zones">
+                            <div class="pattern-preview pattern-blend"></div>
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="panel-section">
+                <div class="panel-header">
+                    <span class="panel-title">Display Options</span>
+                </div>
+                <div class="panel-content">
+                    <div class="toggle-row">
+                        <span class="toggle-label">Show Frustums</span>
+                        <div class="toggle active" id="toggle-frustums" onclick="toggleOption('frustums')"></div>
+                    </div>
+                    <div class="toggle-row">
+                        <span class="toggle-label">Show Grid</span>
+                        <div class="toggle active" id="toggle-grid" onclick="toggleOption('grid')"></div>
+                    </div>
+                    <div class="toggle-row">
+                        <span class="toggle-label">Show Coverage</span>
+                        <div class="toggle active" id="toggle-coverage" onclick="toggleOption('coverage')"></div>
+                    </div>
+                    <div class="toggle-row">
+                        <span class="toggle-label">Show Overlap</span>
+                        <div class="toggle" id="toggle-overlap" onclick="toggleOption('overlap')"></div>
+                    </div>
+                    <div class="toggle-row">
+                        <span class="toggle-label">Wireframe Mode</span>
+                        <div class="toggle" id="toggle-wireframe" onclick="toggleOption('wireframe')"></div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="panel-section">
+                <div class="panel-header">
+                    <span class="panel-title">Coverage Analysis</span>
+                </div>
+                <div class="panel-content">
+                    <div class="coverage-display">
+                        <div class="property-group-title">Surface Coverage</div>
+                        <div class="coverage-bar">
+                            <div class="coverage-fill" id="coverage-fill" style="width: 0%"></div>
+                        </div>
+                        <div class="coverage-stats">
+                            <div class="coverage-stat">Covered: <span id="coverage-percent">0%</span></div>
+                            <div class="coverage-stat">Lumens/m²: <span id="lux-value">0</span></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </aside>
+        
+        <!-- Status Bar -->
+        <footer class="status-bar">
+            <div class="status-left">
+                <div class="status-item">
+                    <div class="status-dot"></div>
+                    Ready
+                </div>
+                <div class="status-item">
+                    <svg viewBox="0 0 24 24"><path d="M21 3H3c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h5v2h8v-2h5c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 14H3V5h18v12z"/></svg>
+                    <span id="projector-status">0 Projectors</span>
+                </div>
+                <div class="status-item">
+                    <svg viewBox="0 0 24 24"><path d="M20 6H4c-1.1 0-2 .9-2 2v8c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2z"/></svg>
+                    <span id="surface-status">0 Surfaces</span>
+                </div>
+            </div>
+            <div class="status-right">
+                <div class="status-item">
+                    <span id="fps-counter">60 FPS</span>
+                </div>
+            </div>
+        </footer>
+    </div>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+        // ==========================================
+        // PROJECTION STUDY CONFIGURATOR
+        // ==========================================
+        
+        // State Management
+        const state = {
+            projectors: [],
+            surfaces: [],
+            selectedObject: null,
+            selectedType: null,
+            currentPattern: 'none',
+            displayOptions: {
+                frustums: true,
+                grid: true,
+                coverage: true,
+                overlap: false,
+                wireframe: false
+            },
+            currentView: 'perspective'
+        };
+        
+        // Three.js Setup
+        let scene, camera, renderer, controls;
+        let gridHelper, ambientLight, directionalLight;
+        let projectorGroup, surfaceGroup;
+        let raycaster, mouse;
+        
+        // Projector presets
+        const projectorPresets = {
+            'custom': { lumens: 10000, throwRatio: 1.5, aspectRatio: 16/9, resolution: '1920x1080' },
+            'barco-udx': { lumens: 30000, throwRatio: 1.7, aspectRatio: 16/9, resolution: '3840x2160' },
+            'panasonic-pt-rz120': { lumens: 12000, throwRatio: 1.7, aspectRatio: 16/10, resolution: '1920x1200' },
+            'christie-d4k40': { lumens: 40000, throwRatio: 1.8, aspectRatio: 1.9, resolution: '4096x2160' },
+            'epson-pro-l30000': { lumens: 30000, throwRatio: 1.57, aspectRatio: 16/10, resolution: '1920x1200' }
+        };
+        
+        // Initialize
+        function init() {
+            initThreeJS();
+            initControls();
+            initEventListeners();
+            animate();
+            updateStatus();
+        }
+        
+        function initThreeJS() {
+            const container = document.getElementById('canvas-container');
+            const width = container.clientWidth;
+            const height = container.clientHeight;
+            
+            // Scene
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x0a0a0c);
+            
+            // Camera
+            camera = new THREE.PerspectiveCamera(50, width / height, 0.1, 1000);
+            camera.position.set(15, 12, 15);
+            camera.lookAt(0, 0, 0);
+            
+            // Renderer
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(width, height);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+            container.appendChild(renderer.domElement);
+            
+            // Lights
+            ambientLight = new THREE.AmbientLight(0xffffff, 0.4);
+            scene.add(ambientLight);
+            
+            directionalLight = new THREE.DirectionalLight(0xffffff, 0.6);
+            directionalLight.position.set(10, 20, 10);
+            directionalLight.castShadow = true;
+            scene.add(directionalLight);
+            
+            // Grid
+            gridHelper = new THREE.GridHelper(50, 50, 0x2a2a32, 0x1a1a20);
+            scene.add(gridHelper);
+            
+            // Groups
+            projectorGroup = new THREE.Group();
+            surfaceGroup = new THREE.Group();
+            scene.add(projectorGroup);
+            scene.add(surfaceGroup);
+            
+            // Raycaster for selection
+            raycaster = new THREE.Raycaster();
+            mouse = new THREE.Vector2();
+            
+            // Handle resize
+            window.addEventListener('resize', onWindowResize);
+        }
+        
+        function initControls() {
+            // Simple orbit controls implementation
+            let isMouseDown = false;
+            let prevMouseX = 0, prevMouseY = 0;
+            let theta = Math.PI / 4, phi = Math.PI / 4;
+            let radius = 25;
+            const target = new THREE.Vector3(0, 0, 0);
+            
+            const canvas = renderer.domElement;
+            
+            canvas.addEventListener('mousedown', (e) => {
+                isMouseDown = true;
+                prevMouseX = e.clientX;
+                prevMouseY = e.clientY;
+            });
+            
+            canvas.addEventListener('mouseup', () => {
+                isMouseDown = false;
+            });
+            
+            canvas.addEventListener('mouseleave', () => {
+                isMouseDown = false;
+            });
+            
+            canvas.addEventListener('mousemove', (e) => {
+                if (!isMouseDown || state.currentView !== 'perspective') return;
+                
+                const deltaX = e.clientX - prevMouseX;
+                const deltaY = e.clientY - prevMouseY;
+                
+                theta -= deltaX * 0.005;
+                phi -= deltaY * 0.005;
+                phi = Math.max(0.1, Math.min(Math.PI - 0.1, phi));
+                
+                updateCameraPosition();
+                
+                prevMouseX = e.clientX;
+                prevMouseY = e.clientY;
+            });
+            
+            canvas.addEventListener('wheel', (e) => {
+                e.preventDefault();
+                radius += e.deltaY * 0.01;
+                radius = Math.max(5, Math.min(100, radius));
+                updateCameraPosition();
+            });
+            
+            function updateCameraPosition() {
+                if (state.currentView !== 'perspective') return;
+                camera.position.x = target.x + radius * Math.sin(phi) * Math.cos(theta);
+                camera.position.y = target.y + radius * Math.cos(phi);
+                camera.position.z = target.z + radius * Math.sin(phi) * Math.sin(theta);
+                camera.lookAt(target);
+            }
+            
+            // Store for external access
+            window.orbitControls = { updateCameraPosition, setRadius: (r) => { radius = r; }, setTarget: (t) => { target.copy(t); } };
+        }
+        
+        function initEventListeners() {
+            renderer.domElement.addEventListener('click', onCanvasClick);
+        }
+        
+        function onWindowResize() {
+            const container = document.getElementById('canvas-container');
+            const width = container.clientWidth;
+            const height = container.clientHeight;
+            
+            camera.aspect = width / height;
+            camera.updateProjectionMatrix();
+            renderer.setSize(width, height);
+        }
+        
+        function onCanvasClick(event) {
+            const rect = renderer.domElement.getBoundingClientRect();
+            mouse.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
+            mouse.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
+            
+            raycaster.setFromCamera(mouse, camera);
+            
+            // Check projectors
+            const projectorMeshes = [];
+            projectorGroup.traverse((child) => {
+                if (child.isMesh && child.userData.isProjector) {
+                    projectorMeshes.push(child);
+                }
+            });
+            
+            const surfaceMeshes = [];
+            surfaceGroup.traverse((child) => {
+                if (child.isMesh && child.userData.isSurface) {
+                    surfaceMeshes.push(child);
+                }
+            });
+            
+            let intersects = raycaster.intersectObjects(projectorMeshes);
+            if (intersects.length > 0) {
+                const projectorId = intersects[0].object.userData.projectorId;
+                selectObject('projector', projectorId);
+                return;
+            }
+            
+            intersects = raycaster.intersectObjects(surfaceMeshes);
+            if (intersects.length > 0) {
+                const surfaceId = intersects[0].object.userData.surfaceId;
+                selectObject('surface', surfaceId);
+                return;
+            }
+        }
+        
+        // ==========================================
+        // PROJECTOR MANAGEMENT
+        // ==========================================
+        
+        function addProjector() {
+            const id = Date.now();
+            const projector = {
+                id,
+                name: `Projector ${state.projectors.length + 1}`,
+                preset: 'custom',
+                position: { x: 0, y: 5, z: -8 },
+                rotation: { x: -20, y: 0, z: 0 },
+                lumens: 10000,
+                throwRatio: 1.5,
+                aspectRatio: 16/9,
+                resolution: '1920x1080',
+                lensShift: { h: 0, v: 0 },
+                zoom: 1.0,
+                color: '#00aaff',
+                enabled: true
+            };
+            
+            state.projectors.push(projector);
+            createProjectorMesh(projector);
+            updateProjectorList();
+            updateStatus();
+            selectObject('projector', id);
+            calculateCoverage();
+        }
+        
+        function createProjectorMesh(projector) {
+            const group = new THREE.Group();
+            group.userData.projectorId = projector.id;
+            
+            // Projector body
+            const bodyGeometry = new THREE.BoxGeometry(0.6, 0.3, 0.8);
+            const bodyMaterial = new THREE.MeshStandardMaterial({ 
+                color: 0x2a2a32,
+                metalness: 0.5,
+                roughness: 0.7
+            });
+            const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
+            body.userData.isProjector = true;
+            body.userData.projectorId = projector.id;
+            group.add(body);
+            
+            // Lens
+            const lensGeometry = new THREE.CylinderGeometry(0.1, 0.12, 0.15, 16);
+            const lensMaterial = new THREE.MeshStandardMaterial({
+                color: 0x111111,
+                metalness: 0.8,
+                roughness: 0.2
+            });
+            const lens = new THREE.Mesh(lensGeometry, lensMaterial);
+            lens.rotation.x = Math.PI / 2;
+            lens.position.z = 0.45;
+            group.add(lens);
+            
+            // Frustum
+            const frustum = createFrustum(projector);
+            frustum.userData.isFrustum = true;
+            group.add(frustum);
+            
+            // Position and rotation
+            group.position.set(projector.position.x, projector.position.y, projector.position.z);
+            group.rotation.set(
+                THREE.MathUtils.degToRad(projector.rotation.x),
+                THREE.MathUtils.degToRad(projector.rotation.y),
+                THREE.MathUtils.degToRad(projector.rotation.z)
+            );
+            
+            projectorGroup.add(group);
+        }
+        
+        function createFrustum(projector) {
+            const group = new THREE.Group();
+            
+            // Calculate frustum dimensions
+            const throwDistance = 10; // Reference distance for visualization
+            const width = throwDistance / projector.throwRatio;
+            const height = width / projector.aspectRatio;
+            
+            // Frustum lines
+            const color = new THREE.Color(projector.color);
+            const material = new THREE.LineBasicMaterial({ 
+                color: color,
+                transparent: true,
+                opacity: 0.6
+            });
+            
+            const points = [
+                new THREE.Vector3(0, 0, 0),
+                new THREE.Vector3(-width/2, -height/2, throwDistance),
+                new THREE.Vector3(0, 0, 0),
+                new THREE.Vector3(width/2, -height/2, throwDistance),
+                new THREE.Vector3(0, 0, 0),
+                new THREE.Vector3(width/2, height/2, throwDistance),
+                new THREE.Vector3(0, 0, 0),
+                new THREE.Vector3(-width/2, height/2, throwDistance),
+            ];
+            
+            const geometry = new THREE.BufferGeometry().setFromPoints(points);
+            const lines = new THREE.LineSegments(geometry, material);
+            group.add(lines);
+            
+            // Projection rectangle at throw distance
+            const rectPoints = [
+                new THREE.Vector3(-width/2, -height/2, throwDistance),
+                new THREE.Vector3(width/2, -height/2, throwDistance),
+                new THREE.Vector3(width/2, height/2, throwDistance),
+                new THREE.Vector3(-width/2, height/2, throwDistance),
+                new THREE.Vector3(-width/2, -height/2, throwDistance),
+            ];
+            
+            const rectGeometry = new THREE.BufferGeometry().setFromPoints(rectPoints);
+            const rectLine = new THREE.Line(rectGeometry, material);
+            group.add(rectLine);
+            
+            // Semi-transparent projection plane
+            const planeGeometry = new THREE.PlaneGeometry(width, height);
+            const planeMaterial = new THREE.MeshBasicMaterial({
+                color: color,
+                transparent: true,
+                opacity: 0.1,
+                side: THREE.DoubleSide
+            });
+            const plane = new THREE.Mesh(planeGeometry, planeMaterial);
+            plane.position.z = throwDistance;
+            group.add(plane);
+            
+            group.visible = state.displayOptions.frustums;
+            
+            return group;
+        }
+        
+        function updateProjectorMesh(projector) {
+            // Find the projector group directly from projectorGroup's children
+            const projectorMesh = projectorGroup.children.find(
+                child => child.userData.projectorId === projector.id
+            );
+            
+            if (projectorMesh) {
+                projectorMesh.position.set(projector.position.x, projector.position.y, projector.position.z);
+                projectorMesh.rotation.set(
+                    THREE.MathUtils.degToRad(projector.rotation.x),
+                    THREE.MathUtils.degToRad(projector.rotation.y),
+                    THREE.MathUtils.degToRad(projector.rotation.z)
+                );
+                
+                // Update frustum - find and remove old one first
+                const oldFrustum = projectorMesh.children.find(child => child.userData.isFrustum);
+                if (oldFrustum) {
+                    projectorMesh.remove(oldFrustum);
+                }
+                
+                const newFrustum = createFrustum(projector);
+                newFrustum.userData.isFrustum = true;
+                projectorMesh.add(newFrustum);
+            }
+            
+            calculateCoverage();
+        }
+        
+        function removeProjector(id) {
+            state.projectors = state.projectors.filter(p => p.id !== id);
+            
+            // Find the projector group directly from projectorGroup's children
+            const toRemove = projectorGroup.children.find(
+                child => child.userData.projectorId === id
+            );
+            
+            if (toRemove) {
+                projectorGroup.remove(toRemove);
+            }
+            
+            if (state.selectedType === 'projector' && state.selectedObject === id) {
+                state.selectedObject = null;
+                state.selectedType = null;
+                updatePropertiesPanel();
+            }
+            
+            updateProjectorList();
+            updateStatus();
+            calculateCoverage();
+        }
+        
+        function updateProjectorList() {
+            const list = document.getElementById('projector-list');
+            document.getElementById('projector-count').textContent = state.projectors.length;
+            
+            if (state.projectors.length === 0) {
+                list.innerHTML = '<div class="empty-state"><p>No projectors added yet.<br>Click the button below to add one.</p></div>';
+                return;
+            }
+            
+            list.innerHTML = state.projectors.map(p => `
+                <div class="object-item ${state.selectedType === 'projector' && state.selectedObject === p.id ? 'selected' : ''}" 
+                     onclick="selectObject('projector', ${p.id})">
+                    <div class="object-icon projector">
+                        <svg viewBox="0 0 24 24"><path d="M21 3H3c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h5v2h8v-2h5c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 14H3V5h18v12z"/></svg>
+                    </div>
+                    <div class="object-info">
+                        <div class="object-name">${p.name}</div>
+                        <div class="object-type">${p.lumens.toLocaleString()} lm • ${p.resolution}</div>
+                    </div>
+                    <div class="object-actions">
+                        <button class="icon-btn" onclick="event.stopPropagation(); duplicateProjector(${p.id})" title="Duplicate">
+                            <svg viewBox="0 0 24 24"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
+                        </button>
+                        <button class="icon-btn danger" onclick="event.stopPropagation(); removeProjector(${p.id})" title="Delete">
+                            <svg viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+        }
+        
+        function duplicateProjector(id) {
+            const original = state.projectors.find(p => p.id === id);
+            if (!original) return;
+            
+            const newId = Date.now();
+            const duplicate = {
+                ...JSON.parse(JSON.stringify(original)),
+                id: newId,
+                name: `${original.name} (Copy)`,
+                position: {
+                    x: original.position.x + 2,
+                    y: original.position.y,
+                    z: original.position.z
+                }
+            };
+            
+            state.projectors.push(duplicate);
+            createProjectorMesh(duplicate);
+            updateProjectorList();
+            updateStatus();
+            selectObject('projector', newId);
+        }
+        
+        // ==========================================
+        // SURFACE MANAGEMENT
+        // ==========================================
+        
+        function addSurface() {
+            const id = Date.now();
+            const surface = {
+                id,
+                name: `Surface ${state.surfaces.length + 1}`,
+                type: 'flat',
+                position: { x: 0, y: 3, z: 5 },
+                rotation: { x: 0, y: 0, z: 0 },
+                dimensions: { width: 8, height: 4.5 },
+                curvature: 0,
+                color: '#8844ff',
+                gain: 1.0
+            };
+            
+            state.surfaces.push(surface);
+            createSurfaceMesh(surface);
+            updateSurfaceList();
+            updateStatus();
+            selectObject('surface', id);
+            calculateCoverage();
+        }
+        
+        function createSurfaceMesh(surface) {
+            let geometry;
+            
+            if (surface.type === 'curved' && surface.curvature > 0) {
+                // Curved screen
+                const segments = 32;
+                const curveAngle = surface.curvature * Math.PI / 180;
+                const radius = surface.dimensions.width / curveAngle;
+                
+                geometry = new THREE.CylinderGeometry(
+                    radius, radius,
+                    surface.dimensions.height,
+                    segments, 1,
+                    true,
+                    -curveAngle/2 + Math.PI,
+                    curveAngle
+                );
+                geometry.rotateY(Math.PI);
+            } else {
+                geometry = new THREE.PlaneGeometry(
+                    surface.dimensions.width,
+                    surface.dimensions.height,
+                    32, 32
+                );
+            }
+            
+            const material = new THREE.MeshStandardMaterial({
+                color: 0xffffff,
+                side: THREE.DoubleSide,
+                metalness: 0.1,
+                roughness: 0.8
+            });
+            
+            const mesh = new THREE.Mesh(geometry, material);
+            mesh.userData.isSurface = true;
+            mesh.userData.surfaceId = surface.id;
+            mesh.receiveShadow = true;
+            
+            mesh.position.set(surface.position.x, surface.position.y, surface.position.z);
+            mesh.rotation.set(
+                THREE.MathUtils.degToRad(surface.rotation.x),
+                THREE.MathUtils.degToRad(surface.rotation.y),
+                THREE.MathUtils.degToRad(surface.rotation.z)
+            );
+            
+            surfaceGroup.add(mesh);
+        }
+        
+        function updateSurfaceMesh(surface) {
+            // Find the surface mesh directly from surfaceGroup's children
+            const surfaceMesh = surfaceGroup.children.find(
+                child => child.userData.surfaceId === surface.id
+            );
+            
+            if (surfaceMesh) {
+                surfaceGroup.remove(surfaceMesh);
+                createSurfaceMesh(surface);
+            }
+            
+            calculateCoverage();
+        }
+        
+        function removeSurface(id) {
+            state.surfaces = state.surfaces.filter(s => s.id !== id);
+            
+            // Find the surface mesh directly from surfaceGroup's children
+            const toRemove = surfaceGroup.children.find(
+                child => child.userData.surfaceId === id
+            );
+            
+            if (toRemove) {
+                surfaceGroup.remove(toRemove);
+            }
+            
+            if (state.selectedType === 'surface' && state.selectedObject === id) {
+                state.selectedObject = null;
+                state.selectedType = null;
+                updatePropertiesPanel();
+            }
+            
+            updateSurfaceList();
+            updateStatus();
+            calculateCoverage();
+        }
+        
+        function updateSurfaceList() {
+            const list = document.getElementById('surface-list');
+            document.getElementById('surface-count').textContent = state.surfaces.length;
+            
+            if (state.surfaces.length === 0) {
+                list.innerHTML = '<div class="empty-state"><p>No surfaces added yet.<br>Click the button below to add one.</p></div>';
+                return;
+            }
+            
+            list.innerHTML = state.surfaces.map(s => `
+                <div class="object-item ${state.selectedType === 'surface' && state.selectedObject === s.id ? 'selected' : ''}" 
+                     onclick="selectObject('surface', ${s.id})">
+                    <div class="object-icon surface">
+                        <svg viewBox="0 0 24 24"><path d="M20 6H4c-1.1 0-2 .9-2 2v8c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2z"/></svg>
+                    </div>
+                    <div class="object-info">
+                        <div class="object-name">${s.name}</div>
+                        <div class="object-type">${s.dimensions.width}m × ${s.dimensions.height}m • ${s.type}</div>
+                    </div>
+                    <div class="object-actions">
+                        <button class="icon-btn danger" onclick="event.stopPropagation(); removeSurface(${s.id})" title="Delete">
+                            <svg viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg>
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+        }
+        
+        // ==========================================
+        // SELECTION & PROPERTIES
+        // ==========================================
+        
+        function selectObject(type, id) {
+            state.selectedType = type;
+            state.selectedObject = id;
+            
+            updateProjectorList();
+            updateSurfaceList();
+            updatePropertiesPanel();
+            
+            // Highlight in 3D
+            highlightSelected(type, id);
+        }
+        
+        function highlightSelected(type, id) {
+            // Reset all highlights
+            projectorGroup.traverse((child) => {
+                if (child.isMesh && child.material && child.material.emissive) {
+                    child.material.emissive.setHex(0x000000);
+                    child.material.emissiveIntensity = 0;
+                }
+            });
+            
+            surfaceGroup.traverse((child) => {
+                if (child.isMesh && child.material && child.material.emissive) {
+                    child.material.emissive.setHex(0x000000);
+                    child.material.emissiveIntensity = 0;
+                }
+            });
+            
+            // Apply highlight to selected
+            const group = type === 'projector' ? projectorGroup : surfaceGroup;
+            const idKey = type === 'projector' ? 'projectorId' : 'surfaceId';
+            
+            group.traverse((child) => {
+                if (child.userData[idKey] === id && child.isMesh && child.material && child.material.emissive) {
+                    child.material.emissive.setHex(type === 'projector' ? 0x00aaff : 0x8844ff);
+                    child.material.emissiveIntensity = 0.3;
+                }
+            });
+        }
+        
+        function updatePropertiesPanel() {
+            const panel = document.getElementById('properties-panel');
+            
+            if (!state.selectedObject) {
+                panel.innerHTML = `
+                    <div class="no-selection">
+                        <div class="no-selection-icon">
+                            <svg viewBox="0 0 24 24"><path d="M3 17v2h6v-2H3zM3 5v2h10V5H3zm10 16v-2h8v-2h-8v-2h-2v6h2zM7 9v2H3v2h4v2h2V9H7zm14 4v-2H11v2h10zm-6-4h2V7h4V5h-4V3h-2v6z"/></svg>
+                        </div>
+                        <h3>No Selection</h3>
+                        <p>Select a projector or surface from the left panel to edit its properties.</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            if (state.selectedType === 'projector') {
+                const projector = state.projectors.find(p => p.id === state.selectedObject);
+                if (!projector) return;
+                
+                panel.innerHTML = `
+                    <div class="panel-section">
+                        <div class="panel-header">
+                            <span class="panel-title">Projector Properties</span>
+                        </div>
+                        <div class="panel-content">
+                            <div class="property-group">
+                                <div class="property-group-title">General</div>
+                                <div class="property-row">
+                                    <span class="property-label">Name</span>
+                                    <div class="single-input">
+                                        <input type="text" value="${projector.name}" onchange="updateProjectorProperty(${projector.id}, 'name', this.value)">
+                                    </div>
+                                </div>
+                                <div class="property-row">
+                                    <span class="property-label">Preset</span>
+                                    <div class="single-input">
+                                        <select onchange="applyProjectorPreset(${projector.id}, this.value)">
+                                            <option value="custom" ${projector.preset === 'custom' ? 'selected' : ''}>Custom</option>
+                                            <option value="barco-udx" ${projector.preset === 'barco-udx' ? 'selected' : ''}>Barco UDX</option>
+                                            <option value="panasonic-pt-rz120" ${projector.preset === 'panasonic-pt-rz120' ? 'selected' : ''}>Panasonic PT-RZ120</option>
+                                            <option value="christie-d4k40" ${projector.preset === 'christie-d4k40' ? 'selected' : ''}>Christie D4K40</option>
+                                            <option value="epson-pro-l30000" ${projector.preset === 'epson-pro-l30000' ? 'selected' : ''}>Epson Pro L30000</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="property-group">
+                                <div class="property-group-title">Position (meters)</div>
+                                <div class="property-row">
+                                    <span class="property-label">Position</span>
+                                    <div class="property-inputs">
+                                        <div class="input-group">
+                                            <label>X</label>
+                                            <input type="number" step="0.1" value="${projector.position.x}" onchange="updateProjectorPosition(${projector.id}, 'x', parseFloat(this.value))">
+                                        </div>
+                                        <div class="input-group">
+                                            <label>Y</label>
+                                            <input type="number" step="0.1" value="${projector.position.y}" onchange="updateProjectorPosition(${projector.id}, 'y', parseFloat(this.value))">
+                                        </div>
+                                        <div class="input-group">
+                                            <label>Z</label>
+                                            <input type="number" step="0.1" value="${projector.position.z}" onchange="updateProjectorPosition(${projector.id}, 'z', parseFloat(this.value))">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="property-group">
+                                <div class="property-group-title">Rotation (degrees)</div>
+                                <div class="property-row">
+                                    <span class="property-label">Rotation</span>
+                                    <div class="property-inputs">
+                                        <div class="input-group">
+                                            <label>X</label>
+                                            <input type="number" step="1" value="${projector.rotation.x}" onchange="updateProjectorRotation(${projector.id}, 'x', parseFloat(this.value))">
+                                        </div>
+                                        <div class="input-group">
+                                            <label>Y</label>
+                                            <input type="number" step="1" value="${projector.rotation.y}" onchange="updateProjectorRotation(${projector.id}, 'y', parseFloat(this.value))">
+                                        </div>
+                                        <div class="input-group">
+                                            <label>Z</label>
+                                            <input type="number" step="1" value="${projector.rotation.z}" onchange="updateProjectorRotation(${projector.id}, 'z', parseFloat(this.value))">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="property-group">
+                                <div class="property-group-title">Optics</div>
+                                <div class="slider-row">
+                                    <span class="slider-label">Throw Ratio</span>
+                                    <div class="slider-container">
+                                        <input type="range" class="slider" min="0.3" max="5" step="0.01" value="${projector.throwRatio}" 
+                                               oninput="updateProjectorProperty(${projector.id}, 'throwRatio', parseFloat(this.value))">
+                                        <span class="slider-value">${projector.throwRatio.toFixed(2)}</span>
+                                    </div>
+                                </div>
+                                <div class="slider-row">
+                                    <span class="slider-label">Zoom</span>
+                                    <div class="slider-container">
+                                        <input type="range" class="slider" min="0.5" max="2" step="0.01" value="${projector.zoom}" 
+                                               oninput="updateProjectorProperty(${projector.id}, 'zoom', parseFloat(this.value))">
+                                        <span class="slider-value">${projector.zoom.toFixed(2)}x</span>
+                                    </div>
+                                </div>
+                                <div class="property-row">
+                                    <span class="property-label">Lumens</span>
+                                    <div class="single-input">
+                                        <input type="number" step="1000" value="${projector.lumens}" onchange="updateProjectorProperty(${projector.id}, 'lumens', parseInt(this.value))">
+                                    </div>
+                                </div>
+                                <div class="property-row">
+                                    <span class="property-label">Resolution</span>
+                                    <div class="single-input">
+                                        <select onchange="updateProjectorProperty(${projector.id}, 'resolution', this.value)">
+                                            <option value="1920x1080" ${projector.resolution === '1920x1080' ? 'selected' : ''}>1920×1080 (FHD)</option>
+                                            <option value="1920x1200" ${projector.resolution === '1920x1200' ? 'selected' : ''}>1920×1200 (WUXGA)</option>
+                                            <option value="2560x1600" ${projector.resolution === '2560x1600' ? 'selected' : ''}>2560×1600 (WQXGA)</option>
+                                            <option value="3840x2160" ${projector.resolution === '3840x2160' ? 'selected' : ''}>3840×2160 (4K UHD)</option>
+                                            <option value="4096x2160" ${projector.resolution === '4096x2160' ? 'selected' : ''}>4096×2160 (DCI 4K)</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="property-group">
+                                <div class="property-group-title">Lens Shift</div>
+                                <div class="slider-row">
+                                    <span class="slider-label">Horizontal</span>
+                                    <div class="slider-container">
+                                        <input type="range" class="slider" min="-50" max="50" step="1" value="${projector.lensShift.h}" 
+                                               oninput="updateProjectorLensShift(${projector.id}, 'h', parseFloat(this.value))">
+                                        <span class="slider-value">${projector.lensShift.h}%</span>
+                                    </div>
+                                </div>
+                                <div class="slider-row">
+                                    <span class="slider-label">Vertical</span>
+                                    <div class="slider-container">
+                                        <input type="range" class="slider" min="-100" max="100" step="1" value="${projector.lensShift.v}" 
+                                               oninput="updateProjectorLensShift(${projector.id}, 'v', parseFloat(this.value))">
+                                        <span class="slider-value">${projector.lensShift.v}%</span>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="property-group">
+                                <div class="property-group-title">Display</div>
+                                <div class="property-row">
+                                    <span class="property-label">Color</span>
+                                    <div class="color-input-wrapper">
+                                        <div class="color-preview" style="background: ${projector.color}"></div>
+                                        <input type="color" value="${projector.color}" onchange="updateProjectorProperty(${projector.id}, 'color', this.value)">
+                                    </div>
+                                </div>
+                                <div class="toggle-row">
+                                    <span class="toggle-label">Enabled</span>
+                                    <div class="toggle ${projector.enabled ? 'active' : ''}" onclick="toggleProjectorEnabled(${projector.id})"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            } else if (state.selectedType === 'surface') {
+                const surface = state.surfaces.find(s => s.id === state.selectedObject);
+                if (!surface) return;
+                
+                panel.innerHTML = `
+                    <div class="panel-section">
+                        <div class="panel-header">
+                            <span class="panel-title">Surface Properties</span>
+                        </div>
+                        <div class="panel-content">
+                            <div class="property-group">
+                                <div class="property-group-title">General</div>
+                                <div class="property-row">
+                                    <span class="property-label">Name</span>
+                                    <div class="single-input">
+                                        <input type="text" value="${surface.name}" onchange="updateSurfaceProperty(${surface.id}, 'name', this.value)">
+                                    </div>
+                                </div>
+                                <div class="property-row">
+                                    <span class="property-label">Type</span>
+                                    <div class="single-input">
+                                        <select onchange="updateSurfaceProperty(${surface.id}, 'type', this.value)">
+                                            <option value="flat" ${surface.type === 'flat' ? 'selected' : ''}>Flat Screen</option>
+                                            <option value="curved" ${surface.type === 'curved' ? 'selected' : ''}>Curved Screen</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="property-group">
+                                <div class="property-group-title">Position (meters)</div>
+                                <div class="property-row">
+                                    <span class="property-label">Position</span>
+                                    <div class="property-inputs">
+                                        <div class="input-group">
+                                            <label>X</label>
+                                            <input type="number" step="0.1" value="${surface.position.x}" onchange="updateSurfacePosition(${surface.id}, 'x', parseFloat(this.value))">
+                                        </div>
+                                        <div class="input-group">
+                                            <label>Y</label>
+                                            <input type="number" step="0.1" value="${surface.position.y}" onchange="updateSurfacePosition(${surface.id}, 'y', parseFloat(this.value))">
+                                        </div>
+                                        <div class="input-group">
+                                            <label>Z</label>
+                                            <input type="number" step="0.1" value="${surface.position.z}" onchange="updateSurfacePosition(${surface.id}, 'z', parseFloat(this.value))">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="property-group">
+                                <div class="property-group-title">Rotation (degrees)</div>
+                                <div class="property-row">
+                                    <span class="property-label">Rotation</span>
+                                    <div class="property-inputs">
+                                        <div class="input-group">
+                                            <label>X</label>
+                                            <input type="number" step="1" value="${surface.rotation.x}" onchange="updateSurfaceRotation(${surface.id}, 'x', parseFloat(this.value))">
+                                        </div>
+                                        <div class="input-group">
+                                            <label>Y</label>
+                                            <input type="number" step="1" value="${surface.rotation.y}" onchange="updateSurfaceRotation(${surface.id}, 'y', parseFloat(this.value))">
+                                        </div>
+                                        <div class="input-group">
+                                            <label>Z</label>
+                                            <input type="number" step="1" value="${surface.rotation.z}" onchange="updateSurfaceRotation(${surface.id}, 'z', parseFloat(this.value))">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="property-group">
+                                <div class="property-group-title">Dimensions (meters)</div>
+                                <div class="property-row">
+                                    <span class="property-label">Width</span>
+                                    <div class="single-input">
+                                        <input type="number" step="0.1" min="0.1" value="${surface.dimensions.width}" 
+                                               onchange="updateSurfaceDimension(${surface.id}, 'width', parseFloat(this.value))">
+                                    </div>
+                                </div>
+                                <div class="property-row">
+                                    <span class="property-label">Height</span>
+                                    <div class="single-input">
+                                        <input type="number" step="0.1" min="0.1" value="${surface.dimensions.height}" 
+                                               onchange="updateSurfaceDimension(${surface.id}, 'height', parseFloat(this.value))">
+                                    </div>
+                                </div>
+                                ${surface.type === 'curved' ? `
+                                <div class="slider-row">
+                                    <span class="slider-label">Curvature</span>
+                                    <div class="slider-container">
+                                        <input type="range" class="slider" min="0" max="180" step="1" value="${surface.curvature}" 
+                                               oninput="updateSurfaceProperty(${surface.id}, 'curvature', parseFloat(this.value))">
+                                        <span class="slider-value">${surface.curvature}°</span>
+                                    </div>
+                                </div>
+                                ` : ''}
+                            </div>
+                            
+                            <div class="property-group">
+                                <div class="property-group-title">Material</div>
+                                <div class="slider-row">
+                                    <span class="slider-label">Screen Gain</span>
+                                    <div class="slider-container">
+                                        <input type="range" class="slider" min="0.5" max="2.5" step="0.1" value="${surface.gain}" 
+                                               oninput="updateSurfaceProperty(${surface.id}, 'gain', parseFloat(this.value))">
+                                        <span class="slider-value">${surface.gain.toFixed(1)}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+        }
+        
+        // ==========================================
+        // PROPERTY UPDATE HANDLERS
+        // ==========================================
+        
+        function updateProjectorProperty(id, prop, value) {
+            const projector = state.projectors.find(p => p.id === id);
+            if (projector) {
+                projector[prop] = value;
+                updateProjectorMesh(projector);
+                updateProjectorList();
+                updatePropertiesPanel();
+            }
+        }
+        
+        function updateProjectorPosition(id, axis, value) {
+            const projector = state.projectors.find(p => p.id === id);
+            if (projector) {
+                projector.position[axis] = value;
+                updateProjectorMesh(projector);
+            }
+        }
+        
+        function updateProjectorRotation(id, axis, value) {
+            const projector = state.projectors.find(p => p.id === id);
+            if (projector) {
+                projector.rotation[axis] = value;
+                updateProjectorMesh(projector);
+            }
+        }
+        
+        function updateProjectorLensShift(id, axis, value) {
+            const projector = state.projectors.find(p => p.id === id);
+            if (projector) {
+                projector.lensShift[axis] = value;
+                updateProjectorMesh(projector);
+                updatePropertiesPanel();
+            }
+        }
+        
+        function applyProjectorPreset(id, presetName) {
+            const projector = state.projectors.find(p => p.id === id);
+            const preset = projectorPresets[presetName];
+            if (projector && preset) {
+                projector.preset = presetName;
+                projector.lumens = preset.lumens;
+                projector.throwRatio = preset.throwRatio;
+                projector.aspectRatio = preset.aspectRatio;
+                projector.resolution = preset.resolution;
+                updateProjectorMesh(projector);
+                updateProjectorList();
+                updatePropertiesPanel();
+            }
+        }
+        
+        function toggleProjectorEnabled(id) {
+            const projector = state.projectors.find(p => p.id === id);
+            if (projector) {
+                projector.enabled = !projector.enabled;
+                
+                // Update visibility - find the projector group directly
+                const projectorMesh = projectorGroup.children.find(
+                    child => child.userData.projectorId === id
+                );
+                if (projectorMesh) {
+                    projectorMesh.visible = projector.enabled;
+                }
+                
+                updatePropertiesPanel();
+                calculateCoverage();
+            }
+        }
+        
+        function updateSurfaceProperty(id, prop, value) {
+            const surface = state.surfaces.find(s => s.id === id);
+            if (surface) {
+                surface[prop] = value;
+                updateSurfaceMesh(surface);
+                updateSurfaceList();
+                updatePropertiesPanel();
+            }
+        }
+        
+        function updateSurfacePosition(id, axis, value) {
+            const surface = state.surfaces.find(s => s.id === id);
+            if (surface) {
+                surface.position[axis] = value;
+                updateSurfaceMesh(surface);
+            }
+        }
+        
+        function updateSurfaceRotation(id, axis, value) {
+            const surface = state.surfaces.find(s => s.id === id);
+            if (surface) {
+                surface.rotation[axis] = value;
+                updateSurfaceMesh(surface);
+            }
+        }
+        
+        function updateSurfaceDimension(id, dim, value) {
+            const surface = state.surfaces.find(s => s.id === id);
+            if (surface) {
+                surface.dimensions[dim] = value;
+                updateSurfaceMesh(surface);
+            }
+        }
+        
+        // ==========================================
+        // VIEW CONTROLS
+        // ==========================================
+        
+        function setView(viewName) {
+            state.currentView = viewName;
+            
+            // Update buttons
+            document.querySelectorAll('.view-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.textContent.toLowerCase().includes(viewName) || 
+                    (viewName === 'projector' && btn.textContent === 'Projector View'));
+            });
+            
+            // Update camera
+            switch(viewName) {
+                case 'perspective':
+                    camera.position.set(15, 12, 15);
+                    camera.lookAt(0, 0, 0);
+                    document.getElementById('camera-info').textContent = 'Perspective';
+                    break;
+                case 'top':
+                    camera.position.set(0, 30, 0);
+                    camera.lookAt(0, 0, 0);
+                    document.getElementById('camera-info').textContent = 'Top (Orthographic)';
+                    break;
+                case 'front':
+                    camera.position.set(0, 5, -20);
+                    camera.lookAt(0, 5, 0);
+                    document.getElementById('camera-info').textContent = 'Front';
+                    break;
+                case 'side':
+                    camera.position.set(-20, 5, 0);
+                    camera.lookAt(0, 5, 0);
+                    document.getElementById('camera-info').textContent = 'Side';
+                    break;
+                case 'projector':
+                    if (state.projectors.length > 0) {
+                        const p = state.projectors[0];
+                        camera.position.set(p.position.x, p.position.y, p.position.z);
+                        // Look along projector direction
+                        const dir = new THREE.Vector3(0, 0, 1);
+                        dir.applyEuler(new THREE.Euler(
+                            THREE.MathUtils.degToRad(p.rotation.x),
+                            THREE.MathUtils.degToRad(p.rotation.y),
+                            THREE.MathUtils.degToRad(p.rotation.z)
+                        ));
+                        camera.lookAt(
+                            p.position.x + dir.x * 10,
+                            p.position.y + dir.y * 10,
+                            p.position.z + dir.z * 10
+                        );
+                        document.getElementById('camera-info').textContent = 'Projector POV';
+                    }
+                    break;
+            }
+        }
+        
+        // ==========================================
+        // DISPLAY OPTIONS
+        // ==========================================
+        
+        function toggleOption(option) {
+            state.displayOptions[option] = !state.displayOptions[option];
+            
+            const toggle = document.getElementById(`toggle-${option}`);
+            toggle.classList.toggle('active', state.displayOptions[option]);
+            
+            switch(option) {
+                case 'frustums':
+                    projectorGroup.traverse((child) => {
+                        if (child.userData.isFrustum) {
+                            child.visible = state.displayOptions.frustums;
+                        }
+                    });
+                    break;
+                case 'grid':
+                    gridHelper.visible = state.displayOptions.grid;
+                    break;
+                case 'wireframe':
+                    surfaceGroup.traverse((child) => {
+                        if (child.isMesh && child.material) {
+                            child.material.wireframe = state.displayOptions.wireframe;
+                        }
+                    });
+                    break;
+            }
+        }
+        
+        function setPattern(pattern) {
+            state.currentPattern = pattern;
+            
+            document.querySelectorAll('.pattern-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            event.currentTarget.classList.add('active');
+            
+            // Apply pattern to surfaces
+            applyTestPattern(pattern);
+        }
+        
+        function applyTestPattern(pattern) {
+            let texture = null;
+            
+            if (pattern !== 'none') {
+                const canvas = document.createElement('canvas');
+                canvas.width = 512;
+                canvas.height = 512;
+                const ctx = canvas.getContext('2d');
+                
+                switch(pattern) {
+                    case 'grid':
+                        ctx.fillStyle = '#1a1a1a';
+                        ctx.fillRect(0, 0, 512, 512);
+                        ctx.strokeStyle = '#888';
+                        ctx.lineWidth = 1;
+                        for (let i = 0; i <= 512; i += 32) {
+                            ctx.beginPath();
+                            ctx.moveTo(i, 0);
+                            ctx.lineTo(i, 512);
+                            ctx.stroke();
+                            ctx.beginPath();
+                            ctx.moveTo(0, i);
+                            ctx.lineTo(512, i);
+                            ctx.stroke();
+                        }
+                        break;
+                    case 'checker':
+                        for (let y = 0; y < 512; y += 32) {
+                            for (let x = 0; x < 512; x += 32) {
+                                ctx.fillStyle = ((x + y) / 32) % 2 === 0 ? '#fff' : '#000';
+                                ctx.fillRect(x, y, 32, 32);
+                            }
+                        }
+                        break;
+                    case 'gradient':
+                        const grad = ctx.createLinearGradient(0, 0, 512, 0);
+                        grad.addColorStop(0, '#000');
+                        grad.addColorStop(1, '#fff');
+                        ctx.fillStyle = grad;
+                        ctx.fillRect(0, 0, 512, 512);
+                        break;
+                    case 'colorbars':
+                        const colors = ['#fff', '#ff0', '#0ff', '#0f0', '#f0f', '#f00', '#00f'];
+                        const barWidth = 512 / 7;
+                        colors.forEach((color, i) => {
+                            ctx.fillStyle = color;
+                            ctx.fillRect(i * barWidth, 0, barWidth, 512);
+                        });
+                        break;
+                    case 'cross':
+                        ctx.fillStyle = '#1a1a1a';
+                        ctx.fillRect(0, 0, 512, 512);
+                        ctx.strokeStyle = '#fff';
+                        ctx.lineWidth = 2;
+                        ctx.beginPath();
+                        ctx.moveTo(256, 0);
+                        ctx.lineTo(256, 512);
+                        ctx.moveTo(0, 256);
+                        ctx.lineTo(512, 256);
+                        ctx.stroke();
+                        // Circle
+                        ctx.beginPath();
+                        ctx.arc(256, 256, 100, 0, Math.PI * 2);
+                        ctx.stroke();
+                        break;
+                    case 'white':
+                        ctx.fillStyle = '#fff';
+                        ctx.fillRect(0, 0, 512, 512);
+                        break;
+                    case 'blend':
+                        ctx.fillStyle = '#000';
+                        ctx.fillRect(0, 0, 512, 512);
+                        // Left blend zone
+                        const leftGrad = ctx.createLinearGradient(0, 0, 102, 0);
+                        leftGrad.addColorStop(0, 'rgba(255,0,0,0.5)');
+                        leftGrad.addColorStop(1, 'transparent');
+                        ctx.fillStyle = leftGrad;
+                        ctx.fillRect(0, 0, 102, 512);
+                        // Right blend zone
+                        const rightGrad = ctx.createLinearGradient(410, 0, 512, 0);
+                        rightGrad.addColorStop(0, 'transparent');
+                        rightGrad.addColorStop(1, 'rgba(0,255,0,0.5)');
+                        ctx.fillStyle = rightGrad;
+                        ctx.fillRect(410, 0, 102, 512);
+                        break;
+                }
+                
+                texture = new THREE.CanvasTexture(canvas);
+            }
+            
+            surfaceGroup.traverse((child) => {
+                if (child.isMesh) {
+                    if (texture) {
+                        child.material.map = texture;
+                        child.material.needsUpdate = true;
+                    } else {
+                        child.material.map = null;
+                        child.material.needsUpdate = true;
+                    }
+                }
+            });
+        }
+        
+        // ==========================================
+        // COVERAGE ANALYSIS
+        // ==========================================
+        
+        function calculateCoverage() {
+            // Simple coverage calculation
+            let totalSurfaceArea = 0;
+            let coveredArea = 0;
+            let totalLumens = 0;
+            
+            state.surfaces.forEach(surface => {
+                totalSurfaceArea += surface.dimensions.width * surface.dimensions.height;
+            });
+            
+            state.projectors.forEach(projector => {
+                if (projector.enabled) {
+                    // Estimate coverage based on throw ratio and distance
+                    const throwDistance = 10; // Simplified
+                    const projWidth = throwDistance / projector.throwRatio;
+                    const projHeight = projWidth / projector.aspectRatio;
+                    coveredArea += projWidth * projHeight * 0.8; // 80% efficiency estimate
+                    totalLumens += projector.lumens;
+                }
+            });
+            
+            const coverage = totalSurfaceArea > 0 ? Math.min(100, (coveredArea / totalSurfaceArea) * 100) : 0;
+            const luxValue = totalSurfaceArea > 0 ? Math.round(totalLumens / totalSurfaceArea) : 0;
+            
+            document.getElementById('coverage-fill').style.width = `${coverage}%`;
+            document.getElementById('coverage-percent').textContent = `${Math.round(coverage)}%`;
+            document.getElementById('lux-value').textContent = luxValue.toLocaleString();
+        }
+        
+        // ==========================================
+        // UTILITY FUNCTIONS
+        // ==========================================
+        
+        function updateStatus() {
+            document.getElementById('projector-status').textContent = `${state.projectors.length} Projector${state.projectors.length !== 1 ? 's' : ''}`;
+            document.getElementById('surface-status').textContent = `${state.surfaces.length} Surface${state.surfaces.length !== 1 ? 's' : ''}`;
+        }
+        
+        function resetScene() {
+            // Remove all projectors - clear all children from projectorGroup
+            while (projectorGroup.children.length > 0) {
+                projectorGroup.remove(projectorGroup.children[0]);
+            }
+            
+            // Remove all surfaces - clear all children from surfaceGroup
+            while (surfaceGroup.children.length > 0) {
+                surfaceGroup.remove(surfaceGroup.children[0]);
+            }
+            
+            state.projectors = [];
+            state.surfaces = [];
+            state.selectedObject = null;
+            state.selectedType = null;
+            
+            updateProjectorList();
+            updateSurfaceList();
+            updatePropertiesPanel();
+            updateStatus();
+            calculateCoverage();
+            setView('perspective');
+        }
+        
+        function exportConfig() {
+            const config = {
+                version: '1.0',
+                exported: new Date().toISOString(),
+                projectors: state.projectors,
+                surfaces: state.surfaces,
+                displayOptions: state.displayOptions
+            };
+            
+            const blob = new Blob([JSON.stringify(config, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'projection-study-config.json';
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+        
+        function saveProject() {
+            // Same as export for now
+            exportConfig();
+        }
+        
+        // ==========================================
+        // ANIMATION LOOP
+        // ==========================================
+        
+        let lastTime = performance.now();
+        let frameCount = 0;
+        
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            // FPS counter
+            frameCount++;
+            const currentTime = performance.now();
+            if (currentTime - lastTime >= 1000) {
+                document.getElementById('fps-counter').textContent = `${frameCount} FPS`;
+                frameCount = 0;
+                lastTime = currentTime;
+            }
+            
+            renderer.render(scene, camera);
+        }
+        
+        // Initialize on load
+        init();
+    </script>
+</body>
+</html>
