@@ -178,9 +178,40 @@
         .texture-preview { width: 100%; height: 80px; border-radius: 4px; background-size: contain; background-repeat: no-repeat; background-position: center; background-color: var(--bg-primary); margin-bottom: 8px; border: 1px solid var(--border-color); }
         .clear-texture-btn { margin-top: 8px; width: 100%; padding: 6px; font-size: 11px; }
         
-        .luminance-legend { display: flex; align-items: center; gap: 8px; margin-top: 12px; padding: 8px; background: var(--bg-primary); border-radius: 4px; }
-        .luminance-gradient { flex: 1; height: 12px; border-radius: 2px; background: linear-gradient(90deg, #000033, #0066ff, #00ff00, #ffff00, #ff6600, #ff0000); }
-        .luminance-labels { display: flex; justify-content: space-between; font-size: 9px; color: var(--text-muted); margin-top: 4px; }
+        .luminance-legend { 
+            margin-top: 12px; 
+            padding: 12px; 
+            background: var(--bg-primary); 
+            border-radius: 6px; 
+            border: 1px solid var(--border-color);
+        }
+        .legend-gradient { 
+            height: 20px; 
+            border-radius: 4px; 
+            background: linear-gradient(90deg, 
+                #000033 0%, 
+                #0044aa 20%, 
+                #00aa44 40%, 
+                #aaaa00 60%, 
+                #ff6600 80%, 
+                #ff0000 95%,
+                #ffffff 100%
+            ); 
+            margin-bottom: 6px;
+        }
+        .legend-labels { 
+            display: flex; 
+            justify-content: space-between; 
+            font-size: 10px; 
+            color: var(--text-secondary); 
+            font-family: 'JetBrains Mono', monospace;
+        }
+        .legend-unit {
+            text-align: center;
+            font-size: 9px;
+            color: var(--text-muted);
+            margin-top: 6px;
+        }
     </style>
 </head>
 <body>
@@ -268,10 +299,30 @@
                     <div class="toggle-row"><span class="toggle-label">Show Overlap</span><div class="toggle" id="toggle-overlap" onclick="toggleOption('overlap')"></div></div>
                     <div class="toggle-row"><span class="toggle-label">Luminance Heatmap</span><div class="toggle" id="toggle-heatmap" onclick="toggleOption('heatmap')"></div></div>
                     <div class="toggle-row"><span class="toggle-label">Wireframe</span><div class="toggle" id="toggle-wireframe" onclick="toggleOption('wireframe')"></div></div>
-                    <div class="luminance-legend" id="luminance-legend" style="display: none;">
-                        <span style="font-size: 9px;">0</span>
-                        <div class="luminance-gradient"></div>
-                        <span style="font-size: 9px;">lux</span>
+                </div>
+            </div>
+            
+            <div class="panel-section" id="heatmap-panel" style="display: none;">
+                <div class="panel-header"><span class="panel-title">Luminance Heatmap</span></div>
+                <div class="panel-content">
+                    <div class="property-group">
+                        <div class="property-group-title">Scale (cd/m²)</div>
+                        <div class="slider-row">
+                            <span class="slider-label">Max Value</span>
+                            <div class="slider-container">
+                                <input type="range" class="slider" min="100" max="10000" step="100" value="2000" id="heatmap-max-slider" oninput="updateHeatmapMax(+this.value); document.getElementById('heatmap-max-value').textContent=this.value">
+                                <span class="slider-value" id="heatmap-max-value">2000</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="luminance-legend">
+                        <div class="legend-gradient"></div>
+                        <div class="legend-labels">
+                            <span>0</span>
+                            <span id="legend-mid">1000</span>
+                            <span id="legend-max">2000+</span>
+                        </div>
+                        <div class="legend-unit">cd/m² (nits)</div>
                     </div>
                 </div>
             </div>
@@ -284,11 +335,11 @@
                         <div class="coverage-bar"><div class="coverage-fill" id="coverage-fill" style="width: 0%"></div></div>
                         <div class="coverage-stats">
                             <div class="coverage-stat">Covered: <span id="coverage-percent">0%</span></div>
-                            <div class="coverage-stat">Avg: <span id="avg-lux">0</span> lux</div>
+                            <div class="coverage-stat">Avg: <span id="avg-cdm2">0</span> cd/m²</div>
                         </div>
                         <div class="coverage-stats" style="margin-top: 4px;">
-                            <div class="coverage-stat">Min: <span id="min-lux">0</span> lux</div>
-                            <div class="coverage-stat">Max: <span id="max-lux">0</span> lux</div>
+                            <div class="coverage-stat">Min: <span id="min-cdm2">0</span> cd/m²</div>
+                            <div class="coverage-stat">Max: <span id="max-cdm2">0</span> cd/m²</div>
                         </div>
                     </div>
                 </div>
@@ -319,7 +370,8 @@
             selectedType: null,
             currentPattern: 'none',
             displayOptions: { frustums: true, grid: true, coverage: true, overlap: false, heatmap: false, wireframe: false },
-            currentView: 'perspective'
+            currentView: 'perspective',
+            heatmapMax: 2000 // cd/m² maximum for heatmap scale
         };
         
         let scene, camera, renderer, gridHelper, projectorGroup, surfaceGroup, raycaster, mouse;
@@ -359,7 +411,7 @@
             }
         `;
         
-        // Fragment shader with proper luminance calculation and blending
+        // Fragment shader with proper luminance calculation (cd/m²) and linear heatmap
         const projectionFragmentShader = `
             uniform sampler2D projTex0;
             uniform sampler2D projTex1;
@@ -387,27 +439,41 @@
             uniform bool showHeatmap;
             uniform float surfaceGain;
             uniform vec3 baseColor;
-            uniform float maxLux; // For heatmap normalization
+            uniform float heatmapMax; // Maximum cd/m² for heatmap scale
             
             varying vec4 vWorldPosition;
             varying vec3 vWorldNormal;
             
-            // Heatmap color function (blue -> cyan -> green -> yellow -> red)
+            // Linear heatmap color function with white for overflow
+            // 0.0 = dark blue, 0.5 = green, 1.0 = red, >1.0 = white
             vec3 heatmapColor(float t) {
+                // Clamp display but allow overflow detection
+                if (t > 1.0) {
+                    // Fade to white for values above max
+                    float overflow = min((t - 1.0) * 2.0, 1.0);
+                    return mix(vec3(1.0, 0.0, 0.0), vec3(1.0, 1.0, 1.0), overflow);
+                }
+                
                 t = clamp(t, 0.0, 1.0);
-                if (t < 0.25) {
-                    return mix(vec3(0.0, 0.0, 0.2), vec3(0.0, 0.4, 1.0), t * 4.0);
+                
+                // Linear gradient: dark blue -> blue -> cyan -> green -> yellow -> orange -> red
+                if (t < 0.167) {
+                    return mix(vec3(0.0, 0.0, 0.2), vec3(0.0, 0.27, 0.67), t / 0.167);
+                } else if (t < 0.333) {
+                    return mix(vec3(0.0, 0.27, 0.67), vec3(0.0, 0.67, 0.27), (t - 0.167) / 0.167);
                 } else if (t < 0.5) {
-                    return mix(vec3(0.0, 0.4, 1.0), vec3(0.0, 1.0, 0.0), (t - 0.25) * 4.0);
-                } else if (t < 0.75) {
-                    return mix(vec3(0.0, 1.0, 0.0), vec3(1.0, 1.0, 0.0), (t - 0.5) * 4.0);
+                    return mix(vec3(0.0, 0.67, 0.27), vec3(0.67, 0.67, 0.0), (t - 0.333) / 0.167);
+                } else if (t < 0.667) {
+                    return mix(vec3(0.67, 0.67, 0.0), vec3(1.0, 0.67, 0.0), (t - 0.5) / 0.167);
+                } else if (t < 0.833) {
+                    return mix(vec3(1.0, 0.67, 0.0), vec3(1.0, 0.4, 0.0), (t - 0.667) / 0.167);
                 } else {
-                    return mix(vec3(1.0, 1.0, 0.0), vec3(1.0, 0.0, 0.0), (t - 0.75) * 4.0);
+                    return mix(vec3(1.0, 0.4, 0.0), vec3(1.0, 0.0, 0.0), (t - 0.833) / 0.167);
                 }
             }
             
             // Sample projector and return color and luminance contribution
-            // Returns: vec4(color.rgb, lux)
+            // Returns: vec4(color.rgb, cd/m²)
             vec4 sampleProjector(mat4 projMat, sampler2D projTex, vec3 projPos, float lumens, float throwRatio) {
                 vec4 projCoord = projMat * vWorldPosition;
                 
@@ -426,58 +492,62 @@
                 float dist = length(projPos - vWorldPosition.xyz);
                 
                 // Calculate projected image size at this distance
-                // Width at distance = distance / throwRatio
-                // Area = (d/throw)^2 * (16/9) for 16:9 aspect
                 float projWidth = dist / throwRatio;
                 float projHeight = projWidth / (16.0/9.0);
                 float projArea = projWidth * projHeight;
                 
-                // Luminance (lux) = lumens / projected_area * cos(angle) * surface_gain
-                // This is physically accurate: lux = lumens per square meter
-                float lux = (lumens / projArea) * facing * surfaceGain;
+                // Illuminance (lux) = lumens / area
+                float lux = lumens / projArea;
+                
+                // Luminance (cd/m²) = Illuminance × Reflectance / π
+                // For projection screens: cd/m² = lux × gain / π
+                // This accounts for the Lambertian reflection model
+                float cdm2 = (lux * surfaceGain / 3.14159) * facing;
                 
                 // Edge falloff for soft blending
                 float edgeDist = max(abs(uv.x - 0.5), abs(uv.y - 0.5)) * 2.0;
                 float edgeFalloff = 1.0 - smoothstep(0.85, 1.0, edgeDist);
                 
-                lux *= edgeFalloff;
+                cdm2 *= edgeFalloff;
                 
                 vec4 texColor = texture2D(projTex, uv);
                 
                 // Color intensity based on luminance (normalized for display)
-                float displayIntensity = lux / 5000.0; // Normalize to reasonable display range
+                float displayIntensity = cdm2 / 1500.0; // Normalize for reasonable display
                 
-                return vec4(texColor.rgb * displayIntensity, lux);
+                return vec4(texColor.rgb * displayIntensity * facing, cdm2);
             }
             
             void main() {
                 vec3 color = baseColor * 0.02;
-                float totalLux = 0.0;
+                float totalCdm2 = 0.0;
                 int hitCount = 0;
                 
                 if (numProjectors > 0) {
                     vec4 result = sampleProjector(projMat0, projTex0, projPos0, projLumens0, projThrow0);
-                    if (result.a > 0.0) { color += result.rgb; totalLux += result.a; hitCount++; }
+                    if (result.a > 0.0) { color += result.rgb; totalCdm2 += result.a; hitCount++; }
                 }
                 if (numProjectors > 1) {
                     vec4 result = sampleProjector(projMat1, projTex1, projPos1, projLumens1, projThrow1);
-                    if (result.a > 0.0) { color += result.rgb; totalLux += result.a; hitCount++; }
+                    if (result.a > 0.0) { color += result.rgb; totalCdm2 += result.a; hitCount++; }
                 }
                 if (numProjectors > 2) {
                     vec4 result = sampleProjector(projMat2, projTex2, projPos2, projLumens2, projThrow2);
-                    if (result.a > 0.0) { color += result.rgb; totalLux += result.a; hitCount++; }
+                    if (result.a > 0.0) { color += result.rgb; totalCdm2 += result.a; hitCount++; }
                 }
                 if (numProjectors > 3) {
                     vec4 result = sampleProjector(projMat3, projTex3, projPos3, projLumens3, projThrow3);
-                    if (result.a > 0.0) { color += result.rgb; totalLux += result.a; hitCount++; }
+                    if (result.a > 0.0) { color += result.rgb; totalCdm2 += result.a; hitCount++; }
                 }
                 
                 // Luminance heatmap mode
                 if (showHeatmap) {
-                    float normalizedLux = totalLux / max(maxLux, 1.0);
-                    color = heatmapColor(normalizedLux);
                     if (hitCount == 0) {
                         color = vec3(0.0, 0.0, 0.1); // Dark blue for uncovered
+                    } else {
+                        // Linear scale: 0 to heatmapMax maps to 0.0 to 1.0
+                        float normalizedLuminance = totalCdm2 / heatmapMax;
+                        color = heatmapColor(normalizedLuminance);
                     }
                 } else {
                     // Coverage visualization: red if not hit
@@ -1007,16 +1077,6 @@
         function createSurfaceMaterial(surface) {
             const defaultTex = createPatternTexture('none');
             
-            // Calculate max expected lux for heatmap normalization
-            const totalLumens = state.projectors.filter(p => p.enabled).reduce((s, p) => s + p.lumens, 0);
-            const avgThrow = state.projectors.length > 0 ? 
-                state.projectors.reduce((s, p) => s + p.throwRatio, 0) / state.projectors.length : 1.5;
-            // Estimate max lux based on closest reasonable distance
-            const minDist = 5; // meters
-            const projWidth = minDist / avgThrow;
-            const projArea = projWidth * projWidth * (9/16);
-            const maxLux = Math.max(totalLumens / projArea * surface.gain, 1000);
-            
             const uniforms = {
                 projTex0: { value: defaultTex }, projTex1: { value: defaultTex },
                 projTex2: { value: defaultTex }, projTex3: { value: defaultTex },
@@ -1034,7 +1094,7 @@
                 showHeatmap: { value: state.displayOptions.heatmap },
                 surfaceGain: { value: surface.gain },
                 baseColor: { value: new THREE.Color(surface.color) },
-                maxLux: { value: maxLux }
+                heatmapMax: { value: state.heatmapMax }
             };
             
             const enabled = state.projectors.filter(p => p.enabled);
@@ -1154,10 +1214,10 @@
             
             let totalSamples = 0;
             let coveredSamples = 0;
-            let totalLux = 0;
-            let minLux = Infinity;
-            let maxLux = 0;
-            let luxSamples = [];
+            let totalCdm2 = 0;
+            let minCdm2 = Infinity;
+            let maxCdm2 = 0;
+            let cdm2Samples = [];
             
             const enabledProjectors = state.projectors.filter(p => p.enabled);
             
@@ -1186,7 +1246,7 @@
                         const worldNormal = localNormal.applyMatrix3(normalMatrix).normalize();
                         
                         totalSamples++;
-                        let sampleLux = 0;
+                        let sampleCdm2 = 0;
                         let isHit = false;
                         
                         enabledProjectors.forEach(proj => {
@@ -1217,44 +1277,46 @@
                             
                             isHit = true;
                             
-                            // Calculate luminance
+                            // Calculate luminance in cd/m²
+                            // cd/m² = (lumens / area) × gain / π × cos(angle)
                             const dist = data.position.distanceTo(worldPos);
                             const projWidth = dist / data.throwRatio;
                             const projHeight = projWidth / (16/9);
                             const projArea = projWidth * projHeight;
-                            const lux = (data.lumens / projArea) * facing * surface.gain;
+                            const lux = data.lumens / projArea;
+                            const cdm2 = (lux * surface.gain / Math.PI) * facing;
                             
-                            sampleLux += lux;
+                            sampleCdm2 += cdm2;
                         });
                         
                         if (isHit) {
                             coveredSamples++;
-                            luxSamples.push(sampleLux);
-                            totalLux += sampleLux;
-                            minLux = Math.min(minLux, sampleLux);
-                            maxLux = Math.max(maxLux, sampleLux);
+                            cdm2Samples.push(sampleCdm2);
+                            totalCdm2 += sampleCdm2;
+                            minCdm2 = Math.min(minCdm2, sampleCdm2);
+                            maxCdm2 = Math.max(maxCdm2, sampleCdm2);
                         }
                     }
                 }
             });
             
             const coverage = totalSamples > 0 ? (coveredSamples / totalSamples) * 100 : 0;
-            const avgLux = luxSamples.length > 0 ? totalLux / luxSamples.length : 0;
+            const avgCdm2 = cdm2Samples.length > 0 ? totalCdm2 / cdm2Samples.length : 0;
             
             updateCoverageDisplay(
                 coverage,
-                avgLux,
-                minLux === Infinity ? 0 : minLux,
-                maxLux
+                avgCdm2,
+                minCdm2 === Infinity ? 0 : minCdm2,
+                maxCdm2
             );
         }
         
-        function updateCoverageDisplay(coverage, avgLux, minLux, maxLux) {
+        function updateCoverageDisplay(coverage, avgCdm2, minCdm2, maxCdm2) {
             document.getElementById('coverage-fill').style.width = coverage + '%';
             document.getElementById('coverage-percent').textContent = coverage.toFixed(1) + '%';
-            document.getElementById('avg-lux').textContent = Math.round(avgLux).toLocaleString();
-            document.getElementById('min-lux').textContent = Math.round(minLux).toLocaleString();
-            document.getElementById('max-lux').textContent = Math.round(maxLux).toLocaleString();
+            document.getElementById('avg-cdm2').textContent = Math.round(avgCdm2).toLocaleString();
+            document.getElementById('min-cdm2').textContent = Math.round(minCdm2).toLocaleString();
+            document.getElementById('max-cdm2').textContent = Math.round(maxCdm2).toLocaleString();
         }
         
         // ==========================================
@@ -1315,8 +1377,8 @@
                         </div>
                         <div class="property-group">
                             <div class="property-group-title">Optics</div>
-                            <div class="slider-row"><span class="slider-label">Throw Ratio</span><div class="slider-container"><input type="range" class="slider" min="0.3" max="3" step="0.05" value="${p.throwRatio}" oninput="updateProjectorProp(${p.id}, 'throwRatio', +this.value); this.nextElementSibling.textContent=this.value.toFixed(2)"><span class="slider-value">${p.throwRatio.toFixed(2)}</span></div></div>
-                            <div class="slider-row"><span class="slider-label">Zoom</span><div class="slider-container"><input type="range" class="slider" min="0.8" max="1.5" step="0.01" value="${p.zoom}" oninput="updateProjectorProp(${p.id}, 'zoom', +this.value); this.nextElementSibling.textContent=this.value.toFixed(2)+'x'"><span class="slider-value">${p.zoom.toFixed(2)}x</span></div></div>
+                            <div class="slider-row"><span class="slider-label">Throw Ratio</span><div class="slider-container"><input type="range" class="slider" min="0.3" max="3" step="0.05" value="${p.throwRatio}" oninput="updateProjectorProp(${p.id}, 'throwRatio', +this.value); this.nextElementSibling.textContent=Number(this.value).toFixed(2)"><span class="slider-value">${p.throwRatio.toFixed(2)}</span></div></div>
+                            <div class="slider-row"><span class="slider-label">Zoom</span><div class="slider-container"><input type="range" class="slider" min="0.8" max="1.5" step="0.01" value="${p.zoom}" oninput="updateProjectorProp(${p.id}, 'zoom', +this.value); this.nextElementSibling.textContent=Number(this.value).toFixed(2)+'x'"><span class="slider-value">${p.zoom.toFixed(2)}x</span></div></div>
                             <div class="property-row"><span class="property-label">Lumens</span><div class="single-input"><input type="number" step="1000" value="${p.lumens}" onchange="updateProjectorProp(${p.id}, 'lumens', +this.value)"></div></div>
                             <div class="property-row"><span class="property-label">Resolution</span><div class="single-input"><input type="text" value="${p.resolution || '1920×1080'}" readonly style="opacity: 0.6;"></div></div>
                         </div>
@@ -1377,7 +1439,7 @@
                         </div>
                         <div class="property-group">
                             <div class="property-group-title">Screen Properties</div>
-                            <div class="slider-row"><span class="slider-label">Screen Gain</span><div class="slider-container"><input type="range" class="slider" min="0.5" max="2.5" step="0.1" value="${s.gain}" oninput="updateSurfaceProp(${s.id}, 'gain', +this.value); this.nextElementSibling.textContent=this.value.toFixed(1)"><span class="slider-value">${s.gain.toFixed(1)}</span></div></div>
+                            <div class="slider-row"><span class="slider-label">Screen Gain</span><div class="slider-container"><input type="range" class="slider" min="0.5" max="2.5" step="0.1" value="${s.gain}" oninput="updateSurfaceProp(${s.id}, 'gain', +this.value); this.nextElementSibling.textContent=Number(this.value).toFixed(1)"><span class="slider-value">${s.gain.toFixed(1)}</span></div></div>
                         </div>
                     </div></div>`;
             }
@@ -1482,7 +1544,7 @@
             else if (opt === 'grid') gridHelper.visible = state.displayOptions.grid;
             else if (opt === 'wireframe') surfaceGroup.children.forEach(m => { if (m.material) m.material.wireframe = state.displayOptions.wireframe; });
             else if (opt === 'heatmap') {
-                document.getElementById('luminance-legend').style.display = state.displayOptions.heatmap ? 'flex' : 'none';
+                document.getElementById('heatmap-panel').style.display = state.displayOptions.heatmap ? 'block' : 'none';
                 surfaceGroup.children.forEach(m => {
                     if (m.material?.uniforms) m.material.uniforms.showHeatmap.value = state.displayOptions.heatmap;
                 });
@@ -1495,6 +1557,19 @@
                     }
                 });
             }
+        }
+        
+        function updateHeatmapMax(value) {
+            state.heatmapMax = value;
+            document.getElementById('legend-mid').textContent = Math.round(value / 2);
+            document.getElementById('legend-max').textContent = value + '+';
+            
+            // Update all surface materials with new heatmap max
+            surfaceGroup.children.forEach(m => {
+                if (m.material?.uniforms?.heatmapMax) {
+                    m.material.uniforms.heatmapMax.value = value;
+                }
+            });
         }
         
         function setPattern(pattern) {
