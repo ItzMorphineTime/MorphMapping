@@ -1791,11 +1791,11 @@
                 
                 obj.position.set(newX, newY, newZ);
                 
-                // Update projector matrix if projector
+                // Update shadow maps when any object moves
                 if (state.selectedType === 'projector') {
                     updateProjectorMatrix(data);
-                    updateAllSurfaceMaterials();
                 }
+                updateAllSurfaceMaterials();
             }
         }
         
@@ -1848,11 +1848,11 @@
                 THREE.MathUtils.degToRad(data.rotation.z)
             );
             
-            // Update projector matrix if projector
+            // Update shadow maps when any object rotates
             if (state.selectedType === 'projector') {
                 updateProjectorMatrix(data);
-                updateAllSurfaceMaterials();
             }
+            updateAllSurfaceMaterials();
         }
         
         function highlightAxis(axis, highlight) {
@@ -1978,10 +1978,16 @@
             varying vec4 vWorldPosition;
             varying vec3 vWorldNormal;
             
-            // Unpack depth from RGBA
+            // Unpack depth from RGBA - matches THREE.js RGBADepthPacking
             float unpackDepth(vec4 rgbaDepth) {
-                const vec4 bitShift = vec4(1.0 / (256.0 * 256.0 * 256.0), 1.0 / (256.0 * 256.0), 1.0 / 256.0, 1.0);
-                return dot(rgbaDepth, bitShift);
+                const float UnpackDownscale = 255.0 / 256.0;
+                const vec4 UnpackFactors = UnpackDownscale * vec4(
+                    1.0 / (256.0 * 256.0 * 256.0),
+                    1.0 / (256.0 * 256.0),
+                    1.0 / 256.0,
+                    1.0
+                );
+                return dot(rgbaDepth, UnpackFactors);
             }
             
             // Linear heatmap color function with white for overflow
@@ -2029,23 +2035,23 @@
                 float facing = dot(vWorldNormal, toProj);
                 if (facing <= 0.0) return vec4(0.0);
                 
-                // Shadow occlusion - check if another surface is blocking the light
-                float fragDepth = length(projPos - vWorldPosition.xyz);
-                float normalizedDepth = (fragDepth - nearPlane) / (farPlane - nearPlane);
+                // Shadow occlusion - compare depths in clip space
+                // ndc.z is in [-1, 1], convert to [0, 1] to match shadow map
+                float fragDepthNormalized = ndc.z * 0.5 + 0.5;
                 
                 vec4 shadowSample = texture2D(shadowMap, uv);
                 float shadowDepth = unpackDepth(shadowSample);
                 
                 // Bias based on surface angle to prevent shadow acne
-                float bias = 0.002 + 0.008 * (1.0 - facing);
+                float bias = 0.001 + 0.004 * (1.0 - facing);
                 
                 // If something is closer to the projector, this point is occluded
-                if (normalizedDepth > shadowDepth + bias) {
+                if (fragDepthNormalized > shadowDepth + bias) {
                     return vec4(0.0);
                 }
                 
-                // Calculate illumination
-                float dist = fragDepth;
+                // Calculate illumination using actual distance
+                float dist = length(projPos - vWorldPosition.xyz);
                 float projWidth = dist / throwRatio;
                 float projHeight = projWidth / (16.0/9.0);
                 float projArea = projWidth * projHeight;
@@ -2167,7 +2173,8 @@
         
         // Create or update shadow map for a projector
         function updateShadowMap(projector) {
-            const fov = 2 * Math.atan(1 / (2 * projector.throwRatio * projector.zoom)) * (180 / Math.PI);
+            // Use same vertical FOV calculation as projection matrix
+            const verticalFov = 2 * Math.atan(1 / (2 * projector.throwRatio * projector.zoom * projector.aspectRatio)) * (180 / Math.PI);
             
             let shadowData = shadowMaps.get(projector.id);
             
@@ -2179,7 +2186,7 @@
                     format: THREE.RGBAFormat
                 });
                 
-                const shadowCamera = new THREE.PerspectiveCamera(fov, projector.aspectRatio, 0.1, 100);
+                const shadowCamera = new THREE.PerspectiveCamera(verticalFov, projector.aspectRatio, 0.1, 100);
                 
                 shadowData = { renderTarget, camera: shadowCamera };
                 shadowMaps.set(projector.id, shadowData);
@@ -2187,7 +2194,7 @@
             
             // Update shadow camera
             const shadowCamera = shadowData.camera;
-            shadowCamera.fov = fov;
+            shadowCamera.fov = verticalFov;
             shadowCamera.aspect = projector.aspectRatio;
             shadowCamera.position.set(projector.position.x, projector.position.y, projector.position.z);
             
@@ -2229,8 +2236,11 @@
             gridHelper.visible = false;
             
             renderer.setRenderTarget(shadowData.renderTarget);
+            renderer.setClearColor(0xffffff, 1); // White = max depth (nothing there)
+            renderer.clear();
             renderer.render(scene, shadowData.camera);
             renderer.setRenderTarget(null);
+            renderer.setClearColor(0x0d0d12, 1); // Restore scene clear color
             
             // Restore
             scene.background = currentBackground;
@@ -2624,10 +2634,13 @@
         }
         
         function updateProjectorMatrix(projector) {
-            // FIXED: Divide by zoom for correct FOV calculation
-            const fov = 2 * Math.atan(1 / (2 * projector.throwRatio * projector.zoom)) * (180 / Math.PI);
+            // Calculate VERTICAL FOV from throw ratio
+            // Throw ratio = distance / width, so horizontal half-angle = atan(1 / (2 * throwRatio * zoom))
+            // Vertical half-angle = horizontal half-angle / aspectRatio
+            // PerspectiveCamera expects vertical FOV
+            const verticalFov = 2 * Math.atan(1 / (2 * projector.throwRatio * projector.zoom * projector.aspectRatio)) * (180 / Math.PI);
             
-            const projCam = new THREE.PerspectiveCamera(fov, projector.aspectRatio, 0.1, 100);
+            const projCam = new THREE.PerspectiveCamera(verticalFov, projector.aspectRatio, 0.1, 100);
             projCam.position.set(projector.position.x, projector.position.y, projector.position.z);
             
             const euler = new THREE.Euler(
@@ -2810,6 +2823,8 @@
             
             state.surfaces.push(surface);
             createSurfaceMesh(surface);
+            // Re-render shadow maps to include new surface, then update all materials
+            updateAllSurfaceMaterials();
             updateSurfaceList();
             updateStatus();
             selectObject('surface', id);
@@ -2852,6 +2867,8 @@
                     // Create mesh from OBJ with projection material
                     createOBJSurfaceMesh(surface, obj, center);
                     
+                    // Re-render shadow maps to include new surface, then update all materials
+                    updateAllSurfaceMaterials();
                     updateSurfaceList();
                     updateStatus();
                     selectObject('surface', id);
@@ -3054,6 +3071,8 @@
                 surfaceGroup.remove(mesh);
                 createSurfaceMesh(surface);
             }
+            // Re-render shadow maps since surface geometry/position changed
+            updateAllSurfaceMaterials();
             calculateCoverage();
         }
         
@@ -3083,6 +3102,8 @@
             if (state.selectedType === 'surface' && state.selectedObject === id) {
                 state.selectedObject = null; state.selectedType = null; updatePropertiesPanel();
             }
+            // Re-render shadow maps since surface no longer blocks light
+            updateAllSurfaceMaterials();
             updateSurfaceList(); updateStatus(); calculateCoverage();
         }
         
