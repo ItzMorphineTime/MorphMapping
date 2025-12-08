@@ -119,13 +119,42 @@
         .view-btn { padding: 6px 12px; border-radius: 4px; border: 1px solid var(--border-color); background: rgba(17, 17, 20, 0.85); backdrop-filter: blur(8px); color: var(--text-secondary); font-family: 'Outfit', sans-serif; font-size: 11px; font-weight: 500; cursor: pointer; transition: all 0.15s ease; }
         .view-btn:hover, .view-btn.active { border-color: var(--accent-primary); color: var(--accent-primary); }
         
+        .transform-tools { position: absolute; top: 12px; right: 12px; display: flex; gap: 4px; }
+        .tool-btn { width: 36px; height: 36px; border-radius: 6px; border: 1px solid var(--border-color); background: rgba(17, 17, 20, 0.85); backdrop-filter: blur(8px); color: var(--text-secondary); cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.15s ease; }
+        .tool-btn:hover { border-color: var(--border-hover); color: var(--text-primary); }
+        .tool-btn.active { border-color: var(--accent-primary); color: var(--accent-primary); background: rgba(0, 212, 170, 0.1); }
+        .tool-btn svg { width: 18px; height: 18px; fill: currentColor; }
+        .tool-btn.disabled { opacity: 0.4; pointer-events: none; }
+        .tool-divider { width: 1px; background: var(--border-color); margin: 4px 4px; }
+        
+        .gizmo-info { position: absolute; top: 60px; right: 12px; background: rgba(17, 17, 20, 0.9); backdrop-filter: blur(8px); padding: 10px 14px; border-radius: 6px; border: 1px solid var(--border-color); font-size: 11px; display: none; }
+        .gizmo-info.visible { display: block; }
+        .gizmo-info-title { color: var(--text-muted); margin-bottom: 6px; text-transform: uppercase; font-size: 9px; letter-spacing: 0.05em; }
+        .gizmo-info-value { font-family: 'JetBrains Mono', monospace; color: var(--text-primary); }
+        .gizmo-info-row { display: flex; gap: 12px; margin-top: 4px; }
+        .gizmo-info-axis { display: flex; align-items: center; gap: 4px; }
+        .gizmo-info-axis.x { color: #ff4444; }
+        .gizmo-info-axis.y { color: #44ff44; }
+        .gizmo-info-axis.z { color: #4488ff; }
+        
+        .snap-controls { position: absolute; bottom: 60px; right: 12px; background: rgba(17, 17, 20, 0.85); backdrop-filter: blur(8px); padding: 8px 12px; border-radius: 6px; border: 1px solid var(--border-color); display: flex; align-items: center; gap: 10px; }
+        .snap-label { font-size: 10px; color: var(--text-muted); }
+        .snap-toggle { display: flex; align-items: center; gap: 6px; cursor: pointer; }
+        .snap-toggle input { display: none; }
+        .snap-checkbox { width: 14px; height: 14px; border-radius: 3px; border: 1px solid var(--border-color); background: var(--bg-tertiary); display: flex; align-items: center; justify-content: center; }
+        .snap-toggle input:checked + .snap-checkbox { background: var(--accent-primary); border-color: var(--accent-primary); }
+        .snap-checkbox svg { width: 10px; height: 10px; fill: var(--bg-primary); opacity: 0; }
+        .snap-toggle input:checked + .snap-checkbox svg { opacity: 1; }
+        .snap-value { width: 50px; padding: 4px 6px; border-radius: 4px; border: 1px solid var(--border-color); background: var(--bg-tertiary); color: var(--text-primary); font-family: 'JetBrains Mono', monospace; font-size: 10px; text-align: center; }
+        .snap-value:focus { outline: none; border-color: var(--accent-primary); }
+        
         .viewport-info { position: absolute; bottom: 12px; left: 12px; background: rgba(17, 17, 20, 0.85); backdrop-filter: blur(8px); padding: 10px 14px; border-radius: 6px; border: 1px solid var(--border-color); }
         .viewport-info-row { display: flex; gap: 16px; font-size: 11px; }
         .viewport-info-item { display: flex; align-items: center; gap: 6px; }
         .viewport-info-item span:first-child { color: var(--text-muted); }
         .viewport-info-item span:last-child { font-family: 'JetBrains Mono', monospace; color: var(--text-secondary); }
         
-        .controls-hint { position: absolute; bottom: 12px; right: 12px; background: rgba(17, 17, 20, 0.85); backdrop-filter: blur(8px); padding: 8px 12px; border-radius: 6px; border: 1px solid var(--border-color); font-size: 10px; color: var(--text-muted); }
+        .controls-hint { position: absolute; bottom: 110px; right: 12px; background: rgba(17, 17, 20, 0.85); backdrop-filter: blur(8px); padding: 8px 12px; border-radius: 6px; border: 1px solid var(--border-color); font-size: 10px; color: var(--text-muted); }
         .controls-hint kbd { background: var(--bg-tertiary); padding: 2px 5px; border-radius: 3px; font-family: 'JetBrains Mono', monospace; margin: 0 2px; }
         
         .pattern-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
@@ -473,6 +502,64 @@
         .toast.error svg {
             fill: var(--danger);
         }
+        
+        .password-modal .modal {
+            width: 360px;
+        }
+        .password-input-wrapper {
+            position: relative;
+        }
+        .password-input {
+            width: 100%;
+            padding: 12px 40px 12px 14px;
+            border-radius: 6px;
+            border: 1px solid var(--border-color);
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 13px;
+        }
+        .password-input:focus {
+            outline: none;
+            border-color: var(--accent-primary);
+        }
+        .password-input.error {
+            border-color: var(--danger);
+            animation: shake 0.4s ease;
+        }
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            20%, 60% { transform: translateX(-6px); }
+            40%, 80% { transform: translateX(6px); }
+        }
+        .password-toggle {
+            position: absolute;
+            right: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            cursor: pointer;
+            padding: 4px;
+        }
+        .password-toggle:hover {
+            color: var(--text-secondary);
+        }
+        .password-toggle svg {
+            width: 18px;
+            height: 18px;
+            fill: currentColor;
+        }
+        .password-error {
+            color: var(--danger);
+            font-size: 11px;
+            margin-top: 8px;
+            display: none;
+        }
+        .password-error.visible {
+            display: block;
+        }
     </style>
 </head>
 <body>
@@ -503,6 +590,8 @@
             <div class="add-buttons">
                 <button class="add-btn" onclick="addProjector()"><svg viewBox="0 0 24 24"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>Projector</button>
                 <button class="add-btn" onclick="addSurface()"><svg viewBox="0 0 24 24"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>Surface</button>
+                <button class="add-btn" onclick="document.getElementById('obj-import').click()"><svg viewBox="0 0 24 24"><path d="M9 16h6v-6h4l-7-7-7 7h4v6zm-4 2h14v2H5v-2z"/></svg>OBJ</button>
+                <input type="file" id="obj-import" accept=".obj" style="display:none" onchange="importOBJSurface(this.files[0])">
             </div>
         </aside>
         
@@ -515,6 +604,43 @@
                 <button class="view-btn" onclick="setView('side')">Side</button>
                 <button class="view-btn" onclick="setView('projector')">Projector POV</button>
             </div>
+            
+            <div class="transform-tools">
+                <button class="tool-btn disabled" id="tool-select" onclick="setTransformMode('select')" title="Select (V)">
+                    <svg viewBox="0 0 24 24"><path d="M3 3l7.07 16.97 2.51-6.39 6.39-2.51L3 3zm10.57 10.57l-1.12 2.85-3.03-7.27 7.27 3.03-2.85 1.12l3.88 3.88-1.41 1.41-3.74-3.87z"/></svg>
+                </button>
+                <button class="tool-btn disabled" id="tool-translate" onclick="setTransformMode('translate')" title="Move (G)">
+                    <svg viewBox="0 0 24 24"><path d="M10 9h4V6h3l-5-5-5 5h3v3zm-1 1H6V7l-5 5 5 5v-3h3v-4zm14 2l-5-5v3h-3v4h3v3l5-5zm-9 3h-4v3H7l5 5 5-5h-3v-3z"/></svg>
+                </button>
+                <button class="tool-btn disabled" id="tool-rotate" onclick="setTransformMode('rotate')" title="Rotate (R)">
+                    <svg viewBox="0 0 24 24"><path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg>
+                </button>
+                <div class="tool-divider"></div>
+                <button class="tool-btn" id="tool-local" onclick="toggleCoordSpace()" title="Local/World Space">
+                    <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/></svg>
+                </button>
+            </div>
+            
+            <div class="gizmo-info" id="gizmo-info">
+                <div class="gizmo-info-title" id="gizmo-info-title">Position</div>
+                <div class="gizmo-info-row">
+                    <span class="gizmo-info-axis x">X: <span id="gizmo-x">0.00</span></span>
+                    <span class="gizmo-info-axis y">Y: <span id="gizmo-y">0.00</span></span>
+                    <span class="gizmo-info-axis z">Z: <span id="gizmo-z">0.00</span></span>
+                </div>
+            </div>
+            
+            <div class="snap-controls">
+                <span class="snap-label">Snap:</span>
+                <label class="snap-toggle">
+                    <input type="checkbox" id="snap-enabled" onchange="updateSnapSettings()">
+                    <div class="snap-checkbox"><svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"/></svg></div>
+                </label>
+                <input type="number" class="snap-value" id="snap-translate" value="0.5" step="0.1" min="0.1" title="Translation snap" onchange="updateSnapSettings()">
+                <span class="snap-label">m</span>
+                <input type="number" class="snap-value" id="snap-rotate" value="15" step="5" min="1" title="Rotation snap" onchange="updateSnapSettings()">
+                <span class="snap-label">°</span>
+            </div>
             <div class="viewport-info">
                 <div class="viewport-info-row">
                     <div class="viewport-info-item"><span>Camera:</span><span id="camera-info">Perspective</span></div>
@@ -524,7 +650,11 @@
             <div class="controls-hint">
                 <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> Move &nbsp;
                 <kbd>Q</kbd><kbd>E</kbd> Up/Down &nbsp;
-                <kbd>Drag</kbd> Look
+                <kbd>Drag</kbd> Look &nbsp;|&nbsp;
+                <kbd>G</kbd> Translate &nbsp;
+                <kbd>R</kbd> Rotate &nbsp;
+                <kbd>Esc</kbd> Deselect &nbsp;
+                <kbd>Del</kbd> Delete
             </div>
         </main>
         
@@ -791,7 +921,273 @@
         <span id="toast-message">Success!</span>
     </div>
     
+    <!-- Password Modal -->
+    <div class="modal-overlay password-modal" id="password-modal">
+        <div class="modal">
+            <div class="modal-header">
+                <span class="modal-title">Authentication Required</span>
+                <button class="modal-close" onclick="closeModal('password-modal')">
+                    <svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12 19 6.41z"/></svg>
+                </button>
+            </div>
+            <div class="modal-body">
+                <p style="font-size: 12px; color: var(--text-secondary); margin-bottom: 16px;">Enter the project password to export or save.</p>
+                <label style="font-size: 11px; color: var(--text-muted); display: block; margin-bottom: 6px;">Password</label>
+                <div class="password-input-wrapper">
+                    <input type="password" class="password-input" id="export-password" placeholder="Enter password" onkeydown="if(event.key==='Enter')verifyAndProceed()">
+                    <button class="password-toggle" onclick="togglePasswordVisibility()" type="button">
+                        <svg viewBox="0 0 24 24" id="password-eye"><path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/></svg>
+                    </button>
+                </div>
+                <p class="password-error" id="password-error">Incorrect password. Please try again.</p>
+            </div>
+            <div class="modal-footer">
+                <button class="btn" onclick="closeModal('password-modal')">Cancel</button>
+                <button class="btn btn-primary" onclick="verifyAndProceed()">
+                    <svg viewBox="0 0 24 24" fill="currentColor" style="width:14px;height:14px;margin-right:4px;"><path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/></svg>
+                    Verify
+                </button>
+            </div>
+        </div>
+    </div>
+    
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script>
+    // OBJLoader for Three.js r128
+    THREE.OBJLoader = function(manager) {
+        this.manager = (manager !== undefined) ? manager : THREE.DefaultLoadingManager;
+        this.materials = null;
+    };
+    
+    THREE.OBJLoader.prototype = {
+        constructor: THREE.OBJLoader,
+        
+        load: function(url, onLoad, onProgress, onError) {
+            var scope = this;
+            var loader = new THREE.FileLoader(scope.manager);
+            loader.setPath(this.path);
+            loader.load(url, function(text) {
+                onLoad(scope.parse(text));
+            }, onProgress, onError);
+        },
+        
+        setPath: function(value) {
+            this.path = value;
+            return this;
+        },
+        
+        setMaterials: function(materials) {
+            this.materials = materials;
+            return this;
+        },
+        
+        parse: function(text) {
+            var state = {
+                objects: [],
+                object: {},
+                vertices: [],
+                normals: [],
+                colors: [],
+                uvs: [],
+                materialLibraries: [],
+                startObject: function(name, fromDeclaration) {
+                    if (this.object && this.object.fromDeclaration === false) {
+                        this.object.name = name;
+                        this.object.fromDeclaration = (fromDeclaration !== false);
+                        return;
+                    }
+                    var previousMaterial = (this.object && typeof this.object.currentMaterial === 'function' ? this.object.currentMaterial() : undefined);
+                    if (this.object && typeof this.object._finalize === 'function') {
+                        this.object._finalize(true);
+                    }
+                    this.object = {
+                        name: name || '',
+                        fromDeclaration: (fromDeclaration !== false),
+                        geometry: { vertices: [], normals: [], colors: [], uvs: [] },
+                        materials: [],
+                        smooth: true,
+                        startMaterial: function(name, libraries) {
+                            var previous = this._finalize(false);
+                            if (previous && (previous.inherited || previous.groupCount <= 0)) {
+                                this.materials.splice(previous.index, 1);
+                            }
+                            var material = { index: this.materials.length, name: name || '', mtllib: (Array.isArray(libraries) && libraries.length > 0 ? libraries[libraries.length - 1] : ''), smooth: (previous !== undefined ? previous.smooth : this.smooth), groupStart: (previous !== undefined ? previous.groupEnd : 0), groupEnd: -1, groupCount: -1, inherited: false };
+                            this.materials.push(material);
+                            return material;
+                        },
+                        currentMaterial: function() {
+                            if (this.materials.length > 0) return this.materials[this.materials.length - 1];
+                            return undefined;
+                        },
+                        _finalize: function(end) {
+                            var lastMultiMaterial = this.currentMaterial();
+                            if (lastMultiMaterial && lastMultiMaterial.groupEnd === -1) {
+                                lastMultiMaterial.groupEnd = this.geometry.vertices.length / 3;
+                                lastMultiMaterial.groupCount = lastMultiMaterial.groupEnd - lastMultiMaterial.groupStart;
+                                lastMultiMaterial.inherited = false;
+                            }
+                            if (end && this.materials.length > 1) {
+                                for (var mi = this.materials.length - 1; mi >= 0; mi--) {
+                                    if (this.materials[mi].groupCount <= 0) {
+                                        this.materials.splice(mi, 1);
+                                    }
+                                }
+                            }
+                            if (end && this.materials.length === 0) {
+                                this.materials.push({ name: '', smooth: this.smooth });
+                            }
+                            return lastMultiMaterial;
+                        }
+                    };
+                    if (previousMaterial && previousMaterial.name && typeof previousMaterial.clone === 'function') {
+                        var declared = previousMaterial.clone(0);
+                        declared.inherited = true;
+                        this.object.materials.push(declared);
+                    }
+                    this.objects.push(this.object);
+                },
+                finalize: function() {
+                    if (this.object && typeof this.object._finalize === 'function') {
+                        this.object._finalize(true);
+                    }
+                },
+                parseVertexIndex: function(value, len) {
+                    var index = parseInt(value, 10);
+                    return (index >= 0 ? index - 1 : index + len / 3) * 3;
+                },
+                parseNormalIndex: function(value, len) {
+                    var index = parseInt(value, 10);
+                    return (index >= 0 ? index - 1 : index + len / 3) * 3;
+                },
+                parseUVIndex: function(value, len) {
+                    var index = parseInt(value, 10);
+                    return (index >= 0 ? index - 1 : index + len / 2) * 2;
+                },
+                addVertex: function(a, b, c) {
+                    var src = this.vertices;
+                    var dst = this.object.geometry.vertices;
+                    dst.push(src[a + 0], src[a + 1], src[a + 2]);
+                    dst.push(src[b + 0], src[b + 1], src[b + 2]);
+                    dst.push(src[c + 0], src[c + 1], src[c + 2]);
+                },
+                addVertexPoint: function(a) {
+                    var src = this.vertices;
+                    var dst = this.object.geometry.vertices;
+                    dst.push(src[a + 0], src[a + 1], src[a + 2]);
+                },
+                addVertexLine: function(a) {
+                    var src = this.vertices;
+                    var dst = this.object.geometry.vertices;
+                    dst.push(src[a + 0], src[a + 1], src[a + 2]);
+                },
+                addNormal: function(a, b, c) {
+                    var src = this.normals;
+                    var dst = this.object.geometry.normals;
+                    dst.push(src[a + 0], src[a + 1], src[a + 2]);
+                    dst.push(src[b + 0], src[b + 1], src[b + 2]);
+                    dst.push(src[c + 0], src[c + 1], src[c + 2]);
+                },
+                addUV: function(a, b, c) {
+                    var src = this.uvs;
+                    var dst = this.object.geometry.uvs;
+                    dst.push(src[a + 0], src[a + 1]);
+                    dst.push(src[b + 0], src[b + 1]);
+                    dst.push(src[c + 0], src[c + 1]);
+                },
+                addFace: function(a, b, c, ua, ub, uc, na, nb, nc) {
+                    var vLen = this.vertices.length;
+                    var ia = this.parseVertexIndex(a, vLen);
+                    var ib = this.parseVertexIndex(b, vLen);
+                    var ic = this.parseVertexIndex(c, vLen);
+                    this.addVertex(ia, ib, ic);
+                    if (na !== undefined && na !== '') {
+                        var nLen = this.normals.length;
+                        ia = this.parseNormalIndex(na, nLen);
+                        ib = this.parseNormalIndex(nb, nLen);
+                        ic = this.parseNormalIndex(nc, nLen);
+                        this.addNormal(ia, ib, ic);
+                    }
+                    if (ua !== undefined && ua !== '') {
+                        var uvLen = this.uvs.length;
+                        ia = this.parseUVIndex(ua, uvLen);
+                        ib = this.parseUVIndex(ub, uvLen);
+                        ic = this.parseUVIndex(uc, uvLen);
+                        this.addUV(ia, ib, ic);
+                    }
+                }
+            };
+            
+            state.startObject('', false);
+            var lines = text.split('\n');
+            for (var i = 0; i < lines.length; i++) {
+                var line = lines[i].trim();
+                if (line.length === 0 || line.charAt(0) === '#') continue;
+                var lineFirstChar = line.charAt(0);
+                var data = line.split(/\s+/);
+                var keyword = data[0];
+                
+                if (lineFirstChar === 'v') {
+                    if (keyword === 'v') {
+                        state.vertices.push(parseFloat(data[1]), parseFloat(data[2]), parseFloat(data[3]));
+                    } else if (keyword === 'vn') {
+                        state.normals.push(parseFloat(data[1]), parseFloat(data[2]), parseFloat(data[3]));
+                    } else if (keyword === 'vt') {
+                        state.uvs.push(parseFloat(data[1]), parseFloat(data[2]));
+                    }
+                } else if (lineFirstChar === 'f') {
+                    var vertices = [];
+                    for (var j = 1; j < data.length; j++) {
+                        var vertex = data[j].split('/');
+                        vertices.push(vertex);
+                    }
+                    for (var j = 1; j < vertices.length - 1; j++) {
+                        var v1 = vertices[0], v2 = vertices[j], v3 = vertices[j + 1];
+                        state.addFace(v1[0], v2[0], v3[0], v1[1], v2[1], v3[1], v1[2], v2[2], v3[2]);
+                    }
+                } else if (keyword === 'o' || keyword === 'g') {
+                    state.startObject(data[1]);
+                } else if (keyword === 'usemtl') {
+                    state.object.startMaterial(data[1], state.materialLibraries);
+                } else if (keyword === 's') {
+                    if (data[1] === 'off' || data[1] === '0') {
+                        state.object.smooth = false;
+                    } else {
+                        state.object.smooth = true;
+                    }
+                    var material = state.object.currentMaterial();
+                    if (material) material.smooth = state.object.smooth;
+                }
+            }
+            
+            state.finalize();
+            
+            var container = new THREE.Group();
+            for (var i = 0; i < state.objects.length; i++) {
+                var object = state.objects[i];
+                var geometry = object.geometry;
+                if (geometry.vertices.length === 0) continue;
+                
+                var buffergeometry = new THREE.BufferGeometry();
+                buffergeometry.setAttribute('position', new THREE.Float32BufferAttribute(geometry.vertices, 3));
+                if (geometry.normals.length > 0) {
+                    buffergeometry.setAttribute('normal', new THREE.Float32BufferAttribute(geometry.normals, 3));
+                } else {
+                    buffergeometry.computeVertexNormals();
+                }
+                if (geometry.uvs.length > 0) {
+                    buffergeometry.setAttribute('uv', new THREE.Float32BufferAttribute(geometry.uvs, 2));
+                }
+                
+                var material = new THREE.MeshBasicMaterial({ color: 0x888888 });
+                var mesh = new THREE.Mesh(buffergeometry, material);
+                mesh.name = object.name;
+                container.add(mesh);
+            }
+            
+            return container;
+        }
+    };
+    </script>
     <script>
         // ==========================================
         // PROJECTION STUDIO v2.3
@@ -809,13 +1205,704 @@
             heatmapMax: 2000 // cd/m² maximum for heatmap scale
         };
         
+        // ==========================================
+        // SECURITY MODULE - DO NOT MODIFY
+        // ==========================================
+        
+        // Session validation and integrity check routines
+        let _0x7f3a = null; // pending action callback
+        const _0x4e2d = [0x42,0x75,0x79,0x4a,0x6f,0x65,0x4c,0x6f,0x65,0x43,0x6f,0x66,0x66,0x65,0x65];
+        const _0x9c1b = { v: null, t: Date.now() };
+        
+        // Integrity verification matrix
+        const _0x3f8e = [
+            [0x1a, 0x2b, 0x3c], [0x4d, 0x5e, 0x6f], // decoy
+            [0x28, 0x33, 0x0d, 0x17], // offset markers
+        ];
+        
+        // Session token generator (obfuscated validation)
+        function _0x2a4f(input) {
+            const _0x8b7c = _0x4e2d.map((c, i) => c ^ (_0x3f8e[2][i % 4]));
+            const _0x6d9e = String.fromCharCode(..._0x4e2d);
+            
+            // Additional entropy mixing
+            const _0x1f5a = input.split('').reduce((a, c, i) => {
+                return a + (c.charCodeAt(0) * (i + 1));
+            }, 0);
+            
+            const _0x7e3b = _0x6d9e.split('').reduce((a, c, i) => {
+                return a + (c.charCodeAt(0) * (i + 1));
+            }, 0);
+            
+            return _0x1f5a === _0x7e3b && input.length === _0x4e2d.length;
+        }
+        
+        // Async hash verification with timing attack mitigation
+        async function _0xa3c7(str) {
+            const encoder = new TextEncoder();
+            const data = encoder.encode(str);
+            const hash = await crypto.subtle.digest('SHA-256', data);
+            const arr = Array.from(new Uint8Array(hash));
+            return arr.map(b => b.toString(16).padStart(2, '0')).join('');
+        }
+        
+        // Multi-layer verification
+        async function _0x5b2e(input) {
+            // Layer 1: Length and character validation
+            if (!input || typeof input !== 'string') return false;
+            
+            // Layer 2: Quick rejection for obvious mismatches
+            const quickCheck = _0x2a4f(input);
+            if (!quickCheck) return false;
+            
+            // Layer 3: Cryptographic verification
+            const inputHash = await _0xa3c7(input);
+            const _0xd4f1 = await _0xa3c7(String.fromCharCode(..._0x4e2d));
+            
+            // Constant-time comparison to prevent timing attacks
+            let match = inputHash.length === _0xd4f1.length;
+            for (let i = 0; i < inputHash.length; i++) {
+                match = match && (inputHash[i] === _0xd4f1[i]);
+            }
+            
+            return match;
+        }
+        
+        function requestAuthentication(callback) {
+            _0x7f3a = callback;
+            document.getElementById('export-password').value = '';
+            document.getElementById('password-error').classList.remove('visible');
+            document.getElementById('export-password').classList.remove('error');
+            document.getElementById('password-modal').classList.add('active');
+            setTimeout(() => document.getElementById('export-password').focus(), 100);
+        }
+        
+        async function verifyAndProceed() {
+            const input = document.getElementById('export-password').value;
+            const isValid = await _0x5b2e(input);
+            
+            if (isValid) {
+                _0x9c1b.v = true;
+                _0x9c1b.t = Date.now();
+                closeModal('password-modal');
+                if (_0x7f3a) {
+                    _0x7f3a();
+                    _0x7f3a = null;
+                }
+            } else {
+                document.getElementById('export-password').classList.add('error');
+                document.getElementById('password-error').classList.add('visible');
+                setTimeout(() => {
+                    document.getElementById('export-password').classList.remove('error');
+                }, 400);
+            }
+        }
+        
+        function togglePasswordVisibility() {
+            const input = document.getElementById('export-password');
+            const eye = document.getElementById('password-eye');
+            if (input.type === 'password') {
+                input.type = 'text';
+                eye.innerHTML = '<path d="M12 7c2.76 0 5 2.24 5 5 0 .65-.13 1.26-.36 1.83l2.92 2.92c1.51-1.26 2.7-2.89 3.43-4.75-1.73-4.39-6-7.5-11-7.5-1.4 0-2.74.25-3.98.7l2.16 2.16C10.74 7.13 11.35 7 12 7zM2 4.27l2.28 2.28.46.46C3.08 8.3 1.78 10.02 1 12c1.73 4.39 6 7.5 11 7.5 1.55 0 3.03-.3 4.38-.84l.42.42L19.73 22 21 20.73 3.27 3 2 4.27zM7.53 9.8l1.55 1.55c-.05.21-.08.43-.08.65 0 1.66 1.34 3 3 3 .22 0 .44-.03.65-.08l1.55 1.55c-.67.33-1.41.53-2.2.53-2.76 0-5-2.24-5-5 0-.79.2-1.53.53-2.2zm4.31-.78l3.15 3.15.02-.16c0-1.66-1.34-3-3-3l-.17.01z"/>';
+            } else {
+                input.type = 'password';
+                eye.innerHTML = '<path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/>';
+            }
+        }
+        
+        // Check if session is still valid (5 minute window)
+        function isSessionValid() {
+            return _0x9c1b.v === true && (Date.now() - _0x9c1b.t) < 300000;
+        }
+        
+        // ==========================================
+        // END SECURITY MODULE
+        // ==========================================
+        
         let scene, camera, renderer, gridHelper, projectorGroup, surfaceGroup, raycaster, mouse;
         const projectionTextures = new Map();
         const projectorMatrixData = new Map();
         const customTextureData = new Map();
         
+        // Shadow map system for occlusion
+        const shadowMaps = new Map(); // projector ID -> { renderTarget, camera }
+        const SHADOW_MAP_SIZE = 1024;
+        let depthMaterial = null;
+        
         // Keyboard state for WASD controls
         const keys = { w: false, a: false, s: false, d: false, q: false, e: false };
+        
+        // ==========================================
+        // TRANSFORM GIZMO SYSTEM
+        // ==========================================
+        
+        const gizmoState = {
+            mode: 'select', // 'select', 'translate', 'rotate'
+            activeAxis: null, // 'x', 'y', 'z', 'xy', 'xz', 'yz'
+            isDragging: false,
+            startPoint: new THREE.Vector3(),
+            startValue: null,
+            localSpace: false,
+            snap: {
+                enabled: false,
+                translate: 0.5,
+                rotate: 15
+            }
+        };
+        
+        let gizmoGroup = null;
+        let translateGizmo = null;
+        let rotateGizmo = null;
+        const gizmoRaycaster = new THREE.Raycaster();
+        gizmoRaycaster.params.Line.threshold = 0.15;
+        
+        function createGizmos() {
+            gizmoGroup = new THREE.Group();
+            gizmoGroup.visible = false;
+            gizmoGroup.renderOrder = 999;
+            scene.add(gizmoGroup);
+            
+            createTranslateGizmo();
+            createRotateGizmo();
+        }
+        
+        function createTranslateGizmo() {
+            translateGizmo = new THREE.Group();
+            translateGizmo.name = 'translateGizmo';
+            
+            const axisLength = 1.5;
+            const coneHeight = 0.25;
+            const coneRadius = 0.08;
+            const lineWidth = 3;
+            
+            const colors = {
+                x: 0xff4444,
+                y: 0x44ff44,
+                z: 0x4488ff
+            };
+            
+            // Create axes
+            ['x', 'y', 'z'].forEach(axis => {
+                const group = new THREE.Group();
+                group.userData.axis = axis;
+                group.userData.gizmoType = 'translate';
+                
+                // Line
+                const lineGeom = new THREE.BufferGeometry();
+                const start = new THREE.Vector3();
+                const end = new THREE.Vector3();
+                if (axis === 'x') end.x = axisLength;
+                if (axis === 'y') end.y = axisLength;
+                if (axis === 'z') end.z = axisLength;
+                lineGeom.setFromPoints([start, end]);
+                
+                const lineMat = new THREE.LineBasicMaterial({ 
+                    color: colors[axis], 
+                    linewidth: lineWidth,
+                    depthTest: false,
+                    transparent: true
+                });
+                const line = new THREE.Line(lineGeom, lineMat);
+                line.userData.axis = axis;
+                line.userData.gizmoType = 'translate';
+                group.add(line);
+                
+                // Cone (arrow head)
+                const coneGeom = new THREE.ConeGeometry(coneRadius, coneHeight, 12);
+                const coneMat = new THREE.MeshBasicMaterial({ 
+                    color: colors[axis],
+                    depthTest: false,
+                    transparent: true
+                });
+                const cone = new THREE.Mesh(coneGeom, coneMat);
+                cone.userData.axis = axis;
+                cone.userData.gizmoType = 'translate';
+                
+                // Position and rotate cone
+                if (axis === 'x') {
+                    cone.position.x = axisLength;
+                    cone.rotation.z = -Math.PI / 2;
+                } else if (axis === 'y') {
+                    cone.position.y = axisLength;
+                } else if (axis === 'z') {
+                    cone.position.z = axisLength;
+                    cone.rotation.x = Math.PI / 2;
+                }
+                group.add(cone);
+                
+                // Invisible cylinder for easier picking
+                const pickGeom = new THREE.CylinderGeometry(0.1, 0.1, axisLength, 8);
+                const pickMat = new THREE.MeshBasicMaterial({ visible: false });
+                const picker = new THREE.Mesh(pickGeom, pickMat);
+                picker.userData.axis = axis;
+                picker.userData.gizmoType = 'translate';
+                picker.userData.isPicker = true;
+                
+                if (axis === 'x') {
+                    picker.rotation.z = -Math.PI / 2;
+                    picker.position.x = axisLength / 2;
+                } else if (axis === 'y') {
+                    picker.position.y = axisLength / 2;
+                } else if (axis === 'z') {
+                    picker.rotation.x = Math.PI / 2;
+                    picker.position.z = axisLength / 2;
+                }
+                group.add(picker);
+                
+                translateGizmo.add(group);
+            });
+            
+            // Plane handles for 2-axis movement
+            const planeSize = 0.35;
+            const planeOffset = 0.5;
+            const planeColors = {
+                xy: 0x4488ff,
+                xz: 0x44ff44,
+                yz: 0xff4444
+            };
+            
+            [['xy', 'z'], ['xz', 'y'], ['yz', 'x']].forEach(([plane, normal]) => {
+                const planeGeom = new THREE.PlaneGeometry(planeSize, planeSize);
+                const planeMat = new THREE.MeshBasicMaterial({ 
+                    color: planeColors[plane],
+                    transparent: true,
+                    opacity: 0.3,
+                    side: THREE.DoubleSide,
+                    depthTest: false
+                });
+                const planeMesh = new THREE.Mesh(planeGeom, planeMat);
+                planeMesh.userData.axis = plane;
+                planeMesh.userData.gizmoType = 'translate';
+                
+                if (plane === 'xy') {
+                    planeMesh.position.set(planeOffset, planeOffset, 0);
+                } else if (plane === 'xz') {
+                    planeMesh.position.set(planeOffset, 0, planeOffset);
+                    planeMesh.rotation.x = Math.PI / 2;
+                } else if (plane === 'yz') {
+                    planeMesh.position.set(0, planeOffset, planeOffset);
+                    planeMesh.rotation.y = Math.PI / 2;
+                }
+                
+                translateGizmo.add(planeMesh);
+            });
+            
+            gizmoGroup.add(translateGizmo);
+        }
+        
+        function createRotateGizmo() {
+            rotateGizmo = new THREE.Group();
+            rotateGizmo.name = 'rotateGizmo';
+            rotateGizmo.visible = false;
+            
+            const ringRadius = 1.2;
+            const tubeRadius = 0.02;
+            const segments = 64;
+            
+            const colors = {
+                x: 0xff4444,
+                y: 0x44ff44,
+                z: 0x4488ff
+            };
+            
+            ['x', 'y', 'z'].forEach(axis => {
+                // Torus ring
+                const torusGeom = new THREE.TorusGeometry(ringRadius, tubeRadius, 8, segments);
+                const torusMat = new THREE.MeshBasicMaterial({ 
+                    color: colors[axis],
+                    depthTest: false,
+                    transparent: true
+                });
+                const torus = new THREE.Mesh(torusGeom, torusMat);
+                torus.userData.axis = axis;
+                torus.userData.gizmoType = 'rotate';
+                
+                // Invisible torus for easier picking
+                const pickGeom = new THREE.TorusGeometry(ringRadius, 0.12, 8, segments);
+                const pickMat = new THREE.MeshBasicMaterial({ visible: false });
+                const picker = new THREE.Mesh(pickGeom, pickMat);
+                picker.userData.axis = axis;
+                picker.userData.gizmoType = 'rotate';
+                picker.userData.isPicker = true;
+                
+                if (axis === 'x') {
+                    torus.rotation.y = Math.PI / 2;
+                    picker.rotation.y = Math.PI / 2;
+                } else if (axis === 'y') {
+                    torus.rotation.x = Math.PI / 2;
+                    picker.rotation.x = Math.PI / 2;
+                }
+                // z axis is default orientation
+                
+                rotateGizmo.add(torus);
+                rotateGizmo.add(picker);
+            });
+            
+            gizmoGroup.add(rotateGizmo);
+        }
+        
+        function updateGizmoPosition() {
+            if (!gizmoGroup || !state.selectedObject) {
+                if (gizmoGroup) gizmoGroup.visible = false;
+                return;
+            }
+            
+            let targetObject = null;
+            let objectData = null;
+            
+            if (state.selectedType === 'projector') {
+                targetObject = projectorGroup.children.find(c => c.userData.projectorId === state.selectedObject);
+                objectData = state.projectors.find(p => p.id === state.selectedObject);
+            } else if (state.selectedType === 'surface') {
+                targetObject = surfaceGroup.children.find(c => c.userData.surfaceId === state.selectedObject);
+                objectData = state.surfaces.find(s => s.id === state.selectedObject);
+            }
+            
+            if (!targetObject || !objectData) {
+                gizmoGroup.visible = false;
+                return;
+            }
+            
+            gizmoGroup.visible = gizmoState.mode !== 'select';
+            gizmoGroup.position.copy(targetObject.position);
+            
+            // Apply rotation in local space mode
+            if (gizmoState.localSpace) {
+                gizmoGroup.rotation.copy(targetObject.rotation);
+            } else {
+                gizmoGroup.rotation.set(0, 0, 0);
+            }
+            
+            // Scale gizmo based on camera distance
+            const dist = camera.position.distanceTo(gizmoGroup.position);
+            const scale = dist * 0.15;
+            gizmoGroup.scale.setScalar(Math.max(0.5, Math.min(scale, 2)));
+            
+            // Show appropriate gizmo
+            translateGizmo.visible = gizmoState.mode === 'translate';
+            rotateGizmo.visible = gizmoState.mode === 'rotate';
+        }
+        
+        function setTransformMode(mode) {
+            gizmoState.mode = mode;
+            
+            // Update tool buttons
+            document.querySelectorAll('.tool-btn').forEach(btn => {
+                btn.classList.remove('active');
+                if (!state.selectedObject) {
+                    btn.classList.add('disabled');
+                }
+            });
+            
+            const activeBtn = document.getElementById(`tool-${mode}`);
+            if (activeBtn) activeBtn.classList.add('active');
+            
+            updateGizmoPosition();
+        }
+        
+        function toggleCoordSpace() {
+            gizmoState.localSpace = !gizmoState.localSpace;
+            document.getElementById('tool-local').classList.toggle('active', gizmoState.localSpace);
+            updateGizmoPosition();
+        }
+        
+        function updateSnapSettings() {
+            gizmoState.snap.enabled = document.getElementById('snap-enabled').checked;
+            gizmoState.snap.translate = parseFloat(document.getElementById('snap-translate').value) || 0.5;
+            gizmoState.snap.rotate = parseFloat(document.getElementById('snap-rotate').value) || 15;
+        }
+        
+        function enableTransformTools(enabled) {
+            const tools = ['tool-select', 'tool-translate', 'tool-rotate'];
+            tools.forEach(id => {
+                const btn = document.getElementById(id);
+                if (btn) {
+                    btn.classList.toggle('disabled', !enabled);
+                }
+            });
+        }
+        
+        function handleGizmoInteraction(event, phase) {
+            if (!gizmoGroup || !gizmoGroup.visible || gizmoState.mode === 'select') return false;
+            
+            const rect = renderer.domElement.getBoundingClientRect();
+            const mouse = new THREE.Vector2(
+                ((event.clientX - rect.left) / rect.width) * 2 - 1,
+                -((event.clientY - rect.top) / rect.height) * 2 + 1
+            );
+            
+            gizmoRaycaster.setFromCamera(mouse, camera);
+            
+            if (phase === 'down') {
+                const gizmoObjects = [];
+                gizmoGroup.traverse(child => {
+                    if (child.isMesh && (child.userData.gizmoType === gizmoState.mode || child.userData.isPicker)) {
+                        gizmoObjects.push(child);
+                    }
+                });
+                
+                const intersects = gizmoRaycaster.intersectObjects(gizmoObjects);
+                
+                if (intersects.length > 0) {
+                    const hit = intersects[0].object;
+                    gizmoState.activeAxis = hit.userData.axis;
+                    gizmoState.isDragging = true;
+                    gizmoState.startPoint.copy(intersects[0].point);
+                    
+                    // Store starting value
+                    if (state.selectedType === 'projector') {
+                        const p = state.projectors.find(x => x.id === state.selectedObject);
+                        gizmoState.startValue = gizmoState.mode === 'translate' 
+                            ? { ...p.position } 
+                            : { ...p.rotation };
+                    } else if (state.selectedType === 'surface') {
+                        const s = state.surfaces.find(x => x.id === state.selectedObject);
+                        gizmoState.startValue = gizmoState.mode === 'translate' 
+                            ? { ...s.position } 
+                            : { ...s.rotation };
+                    }
+                    
+                    // Highlight active axis
+                    highlightAxis(gizmoState.activeAxis, true);
+                    showGizmoInfo(true);
+                    
+                    return true;
+                }
+            } else if (phase === 'move' && gizmoState.isDragging) {
+                updateGizmoDrag(event);
+                return true;
+            } else if (phase === 'up') {
+                if (gizmoState.isDragging) {
+                    gizmoState.isDragging = false;
+                    highlightAxis(gizmoState.activeAxis, false);
+                    gizmoState.activeAxis = null;
+                    showGizmoInfo(false);
+                    calculateCoverage();
+                    return true;
+                }
+            }
+            
+            return false;
+        }
+        
+        function updateGizmoDrag(event) {
+            if (!gizmoState.isDragging || !gizmoState.activeAxis) return;
+            
+            const rect = renderer.domElement.getBoundingClientRect();
+            const mouse = new THREE.Vector2(
+                ((event.clientX - rect.left) / rect.width) * 2 - 1,
+                -((event.clientY - rect.top) / rect.height) * 2 + 1
+            );
+            
+            // Get object being transformed
+            let obj, data;
+            if (state.selectedType === 'projector') {
+                obj = projectorGroup.children.find(c => c.userData.projectorId === state.selectedObject);
+                data = state.projectors.find(p => p.id === state.selectedObject);
+            } else {
+                obj = surfaceGroup.children.find(c => c.userData.surfaceId === state.selectedObject);
+                data = state.surfaces.find(s => s.id === state.selectedObject);
+            }
+            
+            if (!obj || !data) return;
+            
+            if (gizmoState.mode === 'translate') {
+                updateTranslation(mouse, obj, data);
+            } else if (gizmoState.mode === 'rotate') {
+                updateRotation(event, mouse, obj, data);
+            }
+            
+            // Update gizmo position
+            updateGizmoPosition();
+            
+            // Update info display
+            updateGizmoInfo(data);
+            
+            // Update properties panel in real-time
+            updatePropertiesPanel();
+        }
+        
+        function updateTranslation(mouse, obj, data) {
+            const axis = gizmoState.activeAxis;
+            
+            // Create a plane for intersection based on camera view and axis
+            const planeNormal = new THREE.Vector3();
+            const cameraDir = new THREE.Vector3();
+            camera.getWorldDirection(cameraDir);
+            
+            if (axis === 'x') {
+                planeNormal.set(0, Math.abs(cameraDir.y) > Math.abs(cameraDir.z) ? 0 : 1, Math.abs(cameraDir.y) > Math.abs(cameraDir.z) ? 1 : 0);
+            } else if (axis === 'y') {
+                planeNormal.set(Math.abs(cameraDir.x) > Math.abs(cameraDir.z) ? 0 : 1, 0, Math.abs(cameraDir.x) > Math.abs(cameraDir.z) ? 1 : 0);
+            } else if (axis === 'z') {
+                planeNormal.set(Math.abs(cameraDir.x) > Math.abs(cameraDir.y) ? 0 : 1, Math.abs(cameraDir.x) > Math.abs(cameraDir.y) ? 1 : 0, 0);
+            } else if (axis === 'xy') {
+                planeNormal.set(0, 0, 1);
+            } else if (axis === 'xz') {
+                planeNormal.set(0, 1, 0);
+            } else if (axis === 'yz') {
+                planeNormal.set(1, 0, 0);
+            }
+            
+            const plane = new THREE.Plane();
+            plane.setFromNormalAndCoplanarPoint(planeNormal, gizmoGroup.position);
+            
+            const ray = new THREE.Ray();
+            gizmoRaycaster.setFromCamera(mouse, camera);
+            ray.copy(gizmoRaycaster.ray);
+            
+            const intersection = new THREE.Vector3();
+            ray.intersectPlane(plane, intersection);
+            
+            if (intersection) {
+                let delta = intersection.clone().sub(gizmoState.startPoint);
+                
+                // Constrain to axis
+                if (axis === 'x') {
+                    delta.y = 0; delta.z = 0;
+                } else if (axis === 'y') {
+                    delta.x = 0; delta.z = 0;
+                } else if (axis === 'z') {
+                    delta.x = 0; delta.y = 0;
+                } else if (axis === 'xy') {
+                    delta.z = 0;
+                } else if (axis === 'xz') {
+                    delta.y = 0;
+                } else if (axis === 'yz') {
+                    delta.x = 0;
+                }
+                
+                // Apply to position
+                let newX = gizmoState.startValue.x + delta.x;
+                let newY = gizmoState.startValue.y + delta.y;
+                let newZ = gizmoState.startValue.z + delta.z;
+                
+                // Snap
+                if (gizmoState.snap.enabled) {
+                    const snap = gizmoState.snap.translate;
+                    newX = Math.round(newX / snap) * snap;
+                    newY = Math.round(newY / snap) * snap;
+                    newZ = Math.round(newZ / snap) * snap;
+                }
+                
+                data.position.x = newX;
+                data.position.y = newY;
+                data.position.z = newZ;
+                
+                obj.position.set(newX, newY, newZ);
+                
+                // Update projector matrix if projector
+                if (state.selectedType === 'projector') {
+                    updateProjectorMatrix(data);
+                    updateAllSurfaceMaterials();
+                }
+            }
+        }
+        
+        function updateRotation(event, mouse, obj, data) {
+            const axis = gizmoState.activeAxis;
+            
+            // Calculate rotation based on mouse movement around the gizmo center
+            const gizmoScreenPos = gizmoGroup.position.clone().project(camera);
+            const centerX = (gizmoScreenPos.x + 1) / 2 * renderer.domElement.clientWidth;
+            const centerY = (-gizmoScreenPos.y + 1) / 2 * renderer.domElement.clientHeight;
+            
+            const rect = renderer.domElement.getBoundingClientRect();
+            const currentAngle = Math.atan2(
+                event.clientY - rect.top - centerY,
+                event.clientX - rect.left - centerX
+            );
+            
+            // Store initial angle on first move
+            if (!gizmoState.startAngle) {
+                gizmoState.startAngle = currentAngle;
+            }
+            
+            let deltaAngle = (currentAngle - gizmoState.startAngle) * (180 / Math.PI);
+            
+            // Invert based on camera orientation for intuitive rotation
+            const camDir = new THREE.Vector3();
+            camera.getWorldDirection(camDir);
+            if (axis === 'x' && camDir.x < 0) deltaAngle = -deltaAngle;
+            if (axis === 'y' && camDir.y > 0) deltaAngle = -deltaAngle;
+            if (axis === 'z' && camDir.z < 0) deltaAngle = -deltaAngle;
+            
+            // Snap
+            if (gizmoState.snap.enabled) {
+                const snap = gizmoState.snap.rotate;
+                deltaAngle = Math.round(deltaAngle / snap) * snap;
+            }
+            
+            // Apply rotation
+            if (axis === 'x') {
+                data.rotation.x = gizmoState.startValue.x + deltaAngle;
+            } else if (axis === 'y') {
+                data.rotation.y = gizmoState.startValue.y + deltaAngle;
+            } else if (axis === 'z') {
+                data.rotation.z = gizmoState.startValue.z + deltaAngle;
+            }
+            
+            obj.rotation.set(
+                THREE.MathUtils.degToRad(data.rotation.x),
+                THREE.MathUtils.degToRad(data.rotation.y),
+                THREE.MathUtils.degToRad(data.rotation.z)
+            );
+            
+            // Update projector matrix if projector
+            if (state.selectedType === 'projector') {
+                updateProjectorMatrix(data);
+                updateAllSurfaceMaterials();
+            }
+        }
+        
+        function highlightAxis(axis, highlight) {
+            const gizmo = gizmoState.mode === 'translate' ? translateGizmo : rotateGizmo;
+            const highlightColor = 0xffff00;
+            
+            gizmo.traverse(child => {
+                if (child.material && child.userData.axis === axis && !child.userData.isPicker) {
+                    if (highlight) {
+                        child.userData.originalColor = child.material.color.getHex();
+                        child.material.color.setHex(highlightColor);
+                        if (child.material.opacity !== undefined) {
+                            child.userData.originalOpacity = child.material.opacity;
+                            child.material.opacity = Math.min(1, child.material.opacity + 0.4);
+                        }
+                    } else if (child.userData.originalColor !== undefined) {
+                        child.material.color.setHex(child.userData.originalColor);
+                        if (child.userData.originalOpacity !== undefined) {
+                            child.material.opacity = child.userData.originalOpacity;
+                        }
+                    }
+                }
+            });
+        }
+        
+        function showGizmoInfo(visible) {
+            const info = document.getElementById('gizmo-info');
+            info.classList.toggle('visible', visible);
+            
+            if (visible) {
+                document.getElementById('gizmo-info-title').textContent = 
+                    gizmoState.mode === 'translate' ? 'Position' : 'Rotation';
+            }
+        }
+        
+        function updateGizmoInfo(data) {
+            if (gizmoState.mode === 'translate') {
+                document.getElementById('gizmo-x').textContent = data.position.x.toFixed(2);
+                document.getElementById('gizmo-y').textContent = data.position.y.toFixed(2);
+                document.getElementById('gizmo-z').textContent = data.position.z.toFixed(2);
+            } else {
+                document.getElementById('gizmo-x').textContent = data.rotation.x.toFixed(1) + '°';
+                document.getElementById('gizmo-y').textContent = data.rotation.y.toFixed(1) + '°';
+                document.getElementById('gizmo-z').textContent = data.rotation.z.toFixed(1) + '°';
+            }
+        }
+        
+        // ==========================================
+        // END TRANSFORM GIZMO SYSTEM
+        // ==========================================
         
         // Projector presets with real-world specifications
         const projectorPresets = {
@@ -846,12 +1933,16 @@
             }
         `;
         
-        // Fragment shader with proper luminance calculation (cd/m²) and linear heatmap
+        // Fragment shader with shadow mapping for occlusion
         const projectionFragmentShader = `
             uniform sampler2D projTex0;
             uniform sampler2D projTex1;
             uniform sampler2D projTex2;
             uniform sampler2D projTex3;
+            uniform sampler2D shadowMap0;
+            uniform sampler2D shadowMap1;
+            uniform sampler2D shadowMap2;
+            uniform sampler2D shadowMap3;
             uniform mat4 projMat0;
             uniform mat4 projMat1;
             uniform mat4 projMat2;
@@ -868,30 +1959,40 @@
             uniform float projThrow1;
             uniform float projThrow2;
             uniform float projThrow3;
+            uniform float projNear0;
+            uniform float projNear1;
+            uniform float projNear2;
+            uniform float projNear3;
+            uniform float projFar0;
+            uniform float projFar1;
+            uniform float projFar2;
+            uniform float projFar3;
             uniform int numProjectors;
             uniform bool showCoverage;
             uniform bool showOverlap;
             uniform bool showHeatmap;
             uniform float surfaceGain;
             uniform vec3 baseColor;
-            uniform float heatmapMax; // Maximum cd/m² for heatmap scale
+            uniform float heatmapMax;
             
             varying vec4 vWorldPosition;
             varying vec3 vWorldNormal;
             
+            // Unpack depth from RGBA
+            float unpackDepth(vec4 rgbaDepth) {
+                const vec4 bitShift = vec4(1.0 / (256.0 * 256.0 * 256.0), 1.0 / (256.0 * 256.0), 1.0 / 256.0, 1.0);
+                return dot(rgbaDepth, bitShift);
+            }
+            
             // Linear heatmap color function with white for overflow
-            // 0.0 = dark blue, 0.5 = green, 1.0 = red, >1.0 = white
             vec3 heatmapColor(float t) {
-                // Clamp display but allow overflow detection
                 if (t > 1.0) {
-                    // Fade to white for values above max
                     float overflow = min((t - 1.0) * 2.0, 1.0);
                     return mix(vec3(1.0, 0.0, 0.0), vec3(1.0, 1.0, 1.0), overflow);
                 }
                 
                 t = clamp(t, 0.0, 1.0);
                 
-                // Linear gradient: dark blue -> blue -> cyan -> green -> yellow -> orange -> red
                 if (t < 0.167) {
                     return mix(vec3(0.0, 0.0, 0.2), vec3(0.0, 0.27, 0.67), t / 0.167);
                 } else if (t < 0.333) {
@@ -907,48 +2008,59 @@
                 }
             }
             
-            // Sample projector and return color and luminance contribution
-            // Returns: vec4(color.rgb, cd/m²)
-            vec4 sampleProjector(mat4 projMat, sampler2D projTex, vec3 projPos, float lumens, float throwRatio) {
+            // Sample projector with physically accurate occlusion
+            // - Back-face rejection: surfaces facing away from projector receive no light
+            // - Shadow occlusion: surfaces behind other geometry receive no light
+            vec4 sampleProjector(mat4 projMat, sampler2D projTex, sampler2D shadowMap, vec3 projPos, float lumens, float throwRatio, float nearPlane, float farPlane) {
                 vec4 projCoord = projMat * vWorldPosition;
                 
+                // Behind the projector - no light
                 if (projCoord.w <= 0.0) return vec4(0.0);
                 
                 vec3 ndc = projCoord.xyz / projCoord.w;
                 vec2 uv = ndc.xy * 0.5 + 0.5;
                 
+                // Outside projector frustum - no light
                 if (uv.x < 0.0 || uv.x > 1.0 || uv.y < 0.0 || uv.y > 1.0) return vec4(0.0);
                 if (ndc.z < -1.0 || ndc.z > 1.0) return vec4(0.0);
                 
+                // Back-face rejection - surface facing away from projector receives no light
                 vec3 toProj = normalize(projPos - vWorldPosition.xyz);
                 float facing = dot(vWorldNormal, toProj);
                 if (facing <= 0.0) return vec4(0.0);
                 
-                float dist = length(projPos - vWorldPosition.xyz);
+                // Shadow occlusion - check if another surface is blocking the light
+                float fragDepth = length(projPos - vWorldPosition.xyz);
+                float normalizedDepth = (fragDepth - nearPlane) / (farPlane - nearPlane);
                 
-                // Calculate projected image size at this distance
+                vec4 shadowSample = texture2D(shadowMap, uv);
+                float shadowDepth = unpackDepth(shadowSample);
+                
+                // Bias based on surface angle to prevent shadow acne
+                float bias = 0.002 + 0.008 * (1.0 - facing);
+                
+                // If something is closer to the projector, this point is occluded
+                if (normalizedDepth > shadowDepth + bias) {
+                    return vec4(0.0);
+                }
+                
+                // Calculate illumination
+                float dist = fragDepth;
                 float projWidth = dist / throwRatio;
                 float projHeight = projWidth / (16.0/9.0);
                 float projArea = projWidth * projHeight;
                 
-                // Illuminance (lux) = lumens / area
+                // Illuminance (lux) and Luminance (cd/m²)
                 float lux = lumens / projArea;
-                
-                // Luminance (cd/m²) = Illuminance × Reflectance / π
-                // For projection screens: cd/m² = lux × gain / π
-                // This accounts for the Lambertian reflection model
                 float cdm2 = (lux * surfaceGain / 3.14159) * facing;
                 
-                // Edge falloff for soft blending
+                // Edge falloff for soft blending at frustum edges
                 float edgeDist = max(abs(uv.x - 0.5), abs(uv.y - 0.5)) * 2.0;
                 float edgeFalloff = 1.0 - smoothstep(0.85, 1.0, edgeDist);
-                
                 cdm2 *= edgeFalloff;
                 
                 vec4 texColor = texture2D(projTex, uv);
-                
-                // Color intensity based on luminance (normalized for display)
-                float displayIntensity = cdm2 / 1500.0; // Normalize for reasonable display
+                float displayIntensity = cdm2 / 1500.0;
                 
                 return vec4(texColor.rgb * displayIntensity * facing, cdm2);
             }
@@ -959,38 +2071,34 @@
                 int hitCount = 0;
                 
                 if (numProjectors > 0) {
-                    vec4 result = sampleProjector(projMat0, projTex0, projPos0, projLumens0, projThrow0);
+                    vec4 result = sampleProjector(projMat0, projTex0, shadowMap0, projPos0, projLumens0, projThrow0, projNear0, projFar0);
                     if (result.a > 0.0) { color += result.rgb; totalCdm2 += result.a; hitCount++; }
                 }
                 if (numProjectors > 1) {
-                    vec4 result = sampleProjector(projMat1, projTex1, projPos1, projLumens1, projThrow1);
+                    vec4 result = sampleProjector(projMat1, projTex1, shadowMap1, projPos1, projLumens1, projThrow1, projNear1, projFar1);
                     if (result.a > 0.0) { color += result.rgb; totalCdm2 += result.a; hitCount++; }
                 }
                 if (numProjectors > 2) {
-                    vec4 result = sampleProjector(projMat2, projTex2, projPos2, projLumens2, projThrow2);
+                    vec4 result = sampleProjector(projMat2, projTex2, shadowMap2, projPos2, projLumens2, projThrow2, projNear2, projFar2);
                     if (result.a > 0.0) { color += result.rgb; totalCdm2 += result.a; hitCount++; }
                 }
                 if (numProjectors > 3) {
-                    vec4 result = sampleProjector(projMat3, projTex3, projPos3, projLumens3, projThrow3);
+                    vec4 result = sampleProjector(projMat3, projTex3, shadowMap3, projPos3, projLumens3, projThrow3, projNear3, projFar3);
                     if (result.a > 0.0) { color += result.rgb; totalCdm2 += result.a; hitCount++; }
                 }
                 
-                // Luminance heatmap mode
                 if (showHeatmap) {
                     if (hitCount == 0) {
-                        color = vec3(0.0, 0.0, 0.1); // Dark blue for uncovered
+                        color = vec3(0.0, 0.0, 0.1);
                     } else {
-                        // Linear scale: 0 to heatmapMax maps to 0.0 to 1.0
                         float normalizedLuminance = totalCdm2 / heatmapMax;
                         color = heatmapColor(normalizedLuminance);
                     }
                 } else {
-                    // Coverage visualization: red if not hit
                     if (showCoverage && hitCount == 0) {
                         color = vec3(0.25, 0.02, 0.02);
                     }
                     
-                    // Overlap visualization: orange tint
                     if (showOverlap && hitCount > 1) {
                         float overlapIntensity = float(hitCount - 1) / 3.0;
                         color = mix(color, vec3(1.0, 0.5, 0.0), min(overlapIntensity, 0.7));
@@ -1042,10 +2150,99 @@
             raycaster = new THREE.Raycaster();
             mouse = new THREE.Vector2();
             
+            // Create depth material for shadow mapping
+            depthMaterial = new THREE.MeshDepthMaterial({
+                depthPacking: THREE.RGBADepthPacking
+            });
+            
+            // Create transform gizmos
+            createGizmos();
+            
             window.addEventListener('resize', () => {
                 camera.aspect = container.clientWidth / container.clientHeight;
                 camera.updateProjectionMatrix();
                 renderer.setSize(container.clientWidth, container.clientHeight);
+            });
+        }
+        
+        // Create or update shadow map for a projector
+        function updateShadowMap(projector) {
+            const fov = 2 * Math.atan(1 / (2 * projector.throwRatio * projector.zoom)) * (180 / Math.PI);
+            
+            let shadowData = shadowMaps.get(projector.id);
+            
+            if (!shadowData) {
+                // Create new render target and camera
+                const renderTarget = new THREE.WebGLRenderTarget(SHADOW_MAP_SIZE, SHADOW_MAP_SIZE, {
+                    minFilter: THREE.NearestFilter,
+                    magFilter: THREE.NearestFilter,
+                    format: THREE.RGBAFormat
+                });
+                
+                const shadowCamera = new THREE.PerspectiveCamera(fov, projector.aspectRatio, 0.1, 100);
+                
+                shadowData = { renderTarget, camera: shadowCamera };
+                shadowMaps.set(projector.id, shadowData);
+            }
+            
+            // Update shadow camera
+            const shadowCamera = shadowData.camera;
+            shadowCamera.fov = fov;
+            shadowCamera.aspect = projector.aspectRatio;
+            shadowCamera.position.set(projector.position.x, projector.position.y, projector.position.z);
+            
+            const euler = new THREE.Euler(
+                THREE.MathUtils.degToRad(projector.rotation.x),
+                THREE.MathUtils.degToRad(projector.rotation.y),
+                THREE.MathUtils.degToRad(projector.rotation.z),
+                'YXZ'
+            );
+            
+            const forward = new THREE.Vector3(0, 0, 1).applyEuler(euler);
+            const target = new THREE.Vector3().copy(shadowCamera.position).add(forward);
+            shadowCamera.lookAt(target);
+            
+            shadowCamera.updateMatrixWorld(true);
+            shadowCamera.updateProjectionMatrix();
+            
+            // Render shadow map
+            renderShadowMap(projector.id);
+            
+            return shadowData;
+        }
+        
+        function renderShadowMap(projectorId) {
+            const shadowData = shadowMaps.get(projectorId);
+            if (!shadowData || !depthMaterial) return;
+            
+            const currentBackground = scene.background;
+            const currentOverrideMaterial = scene.overrideMaterial;
+            
+            scene.background = null;
+            scene.overrideMaterial = depthMaterial;
+            
+            // Hide gizmos and projectors during shadow render
+            const gizmoVisible = gizmoGroup ? gizmoGroup.visible : false;
+            const projectorVisible = projectorGroup.visible;
+            if (gizmoGroup) gizmoGroup.visible = false;
+            projectorGroup.visible = false;
+            gridHelper.visible = false;
+            
+            renderer.setRenderTarget(shadowData.renderTarget);
+            renderer.render(scene, shadowData.camera);
+            renderer.setRenderTarget(null);
+            
+            // Restore
+            scene.background = currentBackground;
+            scene.overrideMaterial = currentOverrideMaterial;
+            if (gizmoGroup) gizmoGroup.visible = gizmoVisible;
+            projectorGroup.visible = projectorVisible;
+            gridHelper.visible = state.displayOptions.grid;
+        }
+        
+        function renderAllShadowMaps() {
+            state.projectors.filter(p => p.enabled).forEach(p => {
+                updateShadowMap(p);
             });
         }
         
@@ -1054,8 +2251,17 @@
             let prevMouseX = 0, prevMouseY = 0;
             let mouseDownX = 0, mouseDownY = 0;
             let isDragging = false;
+            let isGizmoActive = false;
             
             renderer.domElement.addEventListener('mousedown', e => {
+                if (e.button === 0) {
+                    // Check if clicking on gizmo first
+                    if (handleGizmoInteraction(e, 'down')) {
+                        isGizmoActive = true;
+                        return;
+                    }
+                }
+                
                 if (e.button === 0 || e.button === 2) {
                     isMouseDown = true;
                     isDragging = false;
@@ -1067,6 +2273,13 @@
             });
             
             renderer.domElement.addEventListener('mouseup', e => {
+                if (isGizmoActive) {
+                    handleGizmoInteraction(e, 'up');
+                    isGizmoActive = false;
+                    gizmoState.startAngle = null;
+                    return;
+                }
+                
                 if (!isDragging && e.button === 0) {
                     handleCanvasClick(e);
                 }
@@ -1074,10 +2287,24 @@
                 isDragging = false;
             });
             
-            renderer.domElement.addEventListener('mouseleave', () => { isMouseDown = false; isDragging = false; });
+            renderer.domElement.addEventListener('mouseleave', () => { 
+                isMouseDown = false; 
+                isDragging = false;
+                if (isGizmoActive) {
+                    handleGizmoInteraction(null, 'up');
+                    isGizmoActive = false;
+                    gizmoState.startAngle = null;
+                }
+            });
             renderer.domElement.addEventListener('contextmenu', e => e.preventDefault());
             
             renderer.domElement.addEventListener('mousemove', e => {
+                // Handle gizmo dragging
+                if (isGizmoActive) {
+                    handleGizmoInteraction(e, 'move');
+                    return;
+                }
+                
                 if (!isMouseDown) return;
                 
                 const deltaX = e.clientX - prevMouseX;
@@ -1094,12 +2321,92 @@
                 prevMouseX = e.clientX;
                 prevMouseY = e.clientY;
             });
+            
+            // Gizmo hover effect
+            renderer.domElement.addEventListener('mousemove', e => {
+                if (isGizmoActive || !gizmoGroup || !gizmoGroup.visible) return;
+                
+                const rect = renderer.domElement.getBoundingClientRect();
+                const mouse = new THREE.Vector2(
+                    ((e.clientX - rect.left) / rect.width) * 2 - 1,
+                    -((e.clientY - rect.top) / rect.height) * 2 + 1
+                );
+                
+                gizmoRaycaster.setFromCamera(mouse, camera);
+                
+                const gizmoObjects = [];
+                gizmoGroup.traverse(child => {
+                    if (child.isMesh && child.userData.gizmoType) {
+                        gizmoObjects.push(child);
+                    }
+                });
+                
+                const intersects = gizmoRaycaster.intersectObjects(gizmoObjects);
+                
+                // Reset cursor
+                renderer.domElement.style.cursor = intersects.length > 0 ? 'pointer' : 'default';
+            });
         }
         
         function initKeyboardControls() {
             window.addEventListener('keydown', e => {
                 const key = e.key.toLowerCase();
-                if (keys.hasOwnProperty(key)) { keys[key] = true; e.preventDefault(); }
+                const tag = document.activeElement.tagName;
+                const isTyping = tag === 'INPUT' || tag === 'TEXTAREA' || document.activeElement.isContentEditable;
+                
+                // Skip all hotkeys if user is typing in an input field
+                if (isTyping) {
+                    // Only allow Escape to blur the input
+                    if (key === 'escape') {
+                        document.activeElement.blur();
+                        e.preventDefault();
+                    }
+                    return; // Don't capture any other keys while typing
+                }
+                
+                // WASD movement keys (only when not typing)
+                if (keys.hasOwnProperty(key)) { 
+                    keys[key] = true; 
+                    e.preventDefault(); 
+                }
+                
+                // Transform mode shortcuts
+                if (key === 'g' && state.selectedObject) {
+                    setTransformMode('translate');
+                    e.preventDefault();
+                } else if (key === 'r' && state.selectedObject) {
+                    setTransformMode('rotate');
+                    e.preventDefault();
+                } else if (key === 'v') {
+                    setTransformMode('select');
+                    e.preventDefault();
+                } else if (key === 'escape') {
+                    // Cancel current operation or deselect
+                    if (gizmoState.isDragging) {
+                        gizmoState.isDragging = false;
+                        gizmoState.activeAxis = null;
+                        showGizmoInfo(false);
+                    } else {
+                        state.selectedObject = null;
+                        state.selectedType = null;
+                        updateProjectorList();
+                        updateSurfaceList();
+                        updatePropertiesPanel();
+                        enableTransformTools(false);
+                        updateGizmoPosition();
+                    }
+                    e.preventDefault();
+                } else if (key === 'delete' || key === 'backspace') {
+                    // Delete selected object
+                    if (state.selectedObject) {
+                        if (state.selectedType === 'projector') {
+                            removeProjector(state.selectedObject);
+                        } else if (state.selectedType === 'surface') {
+                            removeSurface(state.selectedObject);
+                        }
+                        e.preventDefault();
+                    }
+                }
             });
             window.addEventListener('keyup', e => {
                 const key = e.key.toLowerCase();
@@ -1509,12 +2816,152 @@
             calculateCoverage();
         }
         
+        function importOBJSurface(file) {
+            if (!file) return;
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const loader = new THREE.OBJLoader();
+                    const obj = loader.parse(e.target.result);
+                    
+                    // Calculate bounding box to determine size and center
+                    const box = new THREE.Box3().setFromObject(obj);
+                    const size = new THREE.Vector3();
+                    const center = new THREE.Vector3();
+                    box.getSize(size);
+                    box.getCenter(center);
+                    
+                    const id = Date.now();
+                    const surface = {
+                        id,
+                        name: file.name.replace('.obj', ''),
+                        type: 'custom',
+                        position: { x: 0, y: size.y / 2, z: 5 },
+                        rotation: { x: 0, y: 0, z: 0 },
+                        dimensions: { width: size.x, height: size.y },
+                        curvature: 0,
+                        color: '#555555',
+                        gain: 1.0,
+                        scale: 1.0,
+                        objData: e.target.result // Store OBJ data for export
+                    };
+                    
+                    state.surfaces.push(surface);
+                    
+                    // Create mesh from OBJ with projection material
+                    createOBJSurfaceMesh(surface, obj, center);
+                    
+                    updateSurfaceList();
+                    updateStatus();
+                    selectObject('surface', id);
+                    calculateCoverage();
+                    
+                    showToast(`Imported "${surface.name}" successfully`);
+                } catch (err) {
+                    console.error('OBJ import error:', err);
+                    showToast('Failed to import OBJ file', 'error');
+                }
+            };
+            
+            reader.onerror = function() {
+                showToast('Failed to read OBJ file', 'error');
+            };
+            
+            reader.readAsText(file);
+            
+            // Reset file input
+            document.getElementById('obj-import').value = '';
+        }
+        
+        function createOBJSurfaceMesh(surface, obj, center) {
+            // Merge all geometries from the OBJ
+            const geometries = [];
+            obj.traverse(child => {
+                if (child.isMesh && child.geometry) {
+                    // Clone and transform geometry
+                    const geom = child.geometry.clone();
+                    
+                    // Center the geometry
+                    geom.translate(-center.x, -center.y, -center.z);
+                    
+                    // Ensure normals exist
+                    if (!geom.attributes.normal) {
+                        geom.computeVertexNormals();
+                    }
+                    
+                    geometries.push(geom);
+                }
+            });
+            
+            if (geometries.length === 0) {
+                showToast('No valid geometry found in OBJ', 'error');
+                return;
+            }
+            
+            // Merge geometries if multiple
+            let finalGeom;
+            if (geometries.length === 1) {
+                finalGeom = geometries[0];
+            } else {
+                // Simple merge - combine all buffer attributes
+                const positions = [];
+                const normals = [];
+                const uvs = [];
+                
+                geometries.forEach(geom => {
+                    const pos = geom.attributes.position;
+                    const norm = geom.attributes.normal;
+                    const uv = geom.attributes.uv;
+                    
+                    for (let i = 0; i < pos.count; i++) {
+                        positions.push(pos.getX(i), pos.getY(i), pos.getZ(i));
+                        if (norm) normals.push(norm.getX(i), norm.getY(i), norm.getZ(i));
+                        if (uv) uvs.push(uv.getX(i), uv.getY(i));
+                    }
+                });
+                
+                finalGeom = new THREE.BufferGeometry();
+                finalGeom.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
+                if (normals.length > 0) {
+                    finalGeom.setAttribute('normal', new THREE.Float32BufferAttribute(normals, 3));
+                } else {
+                    finalGeom.computeVertexNormals();
+                }
+                if (uvs.length > 0) {
+                    finalGeom.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+                }
+            }
+            
+            const mesh = new THREE.Mesh(finalGeom, createSurfaceMaterial(surface));
+            mesh.userData.surfaceId = surface.id;
+            mesh.userData.surface = surface;
+            mesh.userData.isCustomOBJ = true;
+            
+            mesh.position.set(surface.position.x, surface.position.y, surface.position.z);
+            mesh.rotation.set(
+                THREE.MathUtils.degToRad(surface.rotation.x),
+                THREE.MathUtils.degToRad(surface.rotation.y),
+                THREE.MathUtils.degToRad(surface.rotation.z)
+            );
+            
+            // Apply scale
+            const scale = surface.scale || 1.0;
+            mesh.scale.setScalar(scale);
+            
+            surfaceGroup.add(mesh);
+        }
+        
         function createSurfaceMaterial(surface) {
             const defaultTex = createPatternTexture('none');
+            const defaultShadowTex = new THREE.DataTexture(new Uint8Array([255, 255, 255, 255]), 1, 1, THREE.RGBAFormat);
+            defaultShadowTex.needsUpdate = true;
             
             const uniforms = {
                 projTex0: { value: defaultTex }, projTex1: { value: defaultTex },
                 projTex2: { value: defaultTex }, projTex3: { value: defaultTex },
+                shadowMap0: { value: defaultShadowTex }, shadowMap1: { value: defaultShadowTex },
+                shadowMap2: { value: defaultShadowTex }, shadowMap3: { value: defaultShadowTex },
                 projMat0: { value: new THREE.Matrix4() }, projMat1: { value: new THREE.Matrix4() },
                 projMat2: { value: new THREE.Matrix4() }, projMat3: { value: new THREE.Matrix4() },
                 projPos0: { value: new THREE.Vector3() }, projPos1: { value: new THREE.Vector3() },
@@ -1523,6 +2970,10 @@
                 projLumens2: { value: 0 }, projLumens3: { value: 0 },
                 projThrow0: { value: 1.5 }, projThrow1: { value: 1.5 },
                 projThrow2: { value: 1.5 }, projThrow3: { value: 1.5 },
+                projNear0: { value: 0.1 }, projNear1: { value: 0.1 },
+                projNear2: { value: 0.1 }, projNear3: { value: 0.1 },
+                projFar0: { value: 100 }, projFar1: { value: 100 },
+                projFar2: { value: 100 }, projFar3: { value: 100 },
                 numProjectors: { value: 0 },
                 showCoverage: { value: state.displayOptions.coverage },
                 showOverlap: { value: state.displayOptions.overlap },
@@ -1538,13 +2989,17 @@
             enabled.slice(0, 4).forEach((proj, i) => {
                 const data = projectorMatrixData.get(proj.id);
                 const tex = projectionTextures.get(proj.id);
+                const shadow = shadowMaps.get(proj.id);
                 if (data) {
                     uniforms[`projMat${i}`].value.copy(data.matrix);
                     uniforms[`projPos${i}`].value.copy(data.position);
                     uniforms[`projLumens${i}`].value = data.lumens;
                     uniforms[`projThrow${i}`].value = data.throwRatio;
+                    uniforms[`projNear${i}`].value = 0.1;
+                    uniforms[`projFar${i}`].value = 100;
                 }
                 if (tex) uniforms[`projTex${i}`].value = tex;
+                if (shadow) uniforms[`shadowMap${i}`].value = shadow.renderTarget.texture;
             });
             
             return new THREE.ShaderMaterial({
@@ -1556,6 +3011,20 @@
         }
         
         function createSurfaceMesh(surface) {
+            // Skip custom OBJ surfaces - they're handled by createOBJSurfaceMesh
+            if (surface.type === 'custom') {
+                // Re-parse OBJ data if available
+                if (surface.objData) {
+                    const loader = new THREE.OBJLoader();
+                    const obj = loader.parse(surface.objData);
+                    const box = new THREE.Box3().setFromObject(obj);
+                    const center = new THREE.Vector3();
+                    box.getCenter(center);
+                    createOBJSurfaceMesh(surface, obj, center);
+                }
+                return;
+            }
+            
             let geom;
             if (surface.type === 'curved' && surface.curvature > 0) {
                 const angle = surface.curvature * Math.PI / 180;
@@ -1595,6 +3064,9 @@
                 }
             });
             
+            // Always render shadow maps for physically accurate occlusion
+            renderAllShadowMaps();
+            
             state.surfaces.forEach(surface => {
                 const mesh = surfaceGroup.children.find(c => c.userData.surfaceId === surface.id);
                 if (mesh) {
@@ -1623,18 +3095,25 @@
                 return;
             }
             
-            list.innerHTML = state.surfaces.map(s => `
+            list.innerHTML = state.surfaces.map(s => {
+                const typeInfo = s.type === 'custom' 
+                    ? `Custom OBJ • Scale ${(s.scale || 1.0).toFixed(1)}×`
+                    : `${s.dimensions.width.toFixed(1)}m × ${s.dimensions.height.toFixed(1)}m • Gain ${s.gain}`;
+                const icon = s.type === 'custom'
+                    ? `<svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/></svg>`
+                    : `<svg viewBox="0 0 24 24"><path d="M20 6H4c-1.1 0-2 .9-2 2v8c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2z"/></svg>`;
+                return `
                 <div class="object-item ${state.selectedType === 'surface' && state.selectedObject === s.id ? 'selected' : ''}" onclick="selectObject('surface', ${s.id})">
-                    <div class="object-icon surface"><svg viewBox="0 0 24 24"><path d="M20 6H4c-1.1 0-2 .9-2 2v8c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2z"/></svg></div>
+                    <div class="object-icon surface">${icon}</div>
                     <div class="object-info">
                         <div class="object-name">${s.name}</div>
-                        <div class="object-type">${s.dimensions.width}m × ${s.dimensions.height}m • Gain ${s.gain}</div>
+                        <div class="object-type">${typeInfo}</div>
                     </div>
                     <div class="object-actions">
                         <button class="icon-btn danger" onclick="event.stopPropagation(); removeSurface(${s.id})"><svg viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg></button>
                     </div>
-                </div>
-            `).join('');
+                </div>`;
+            }).join('');
         }
         
         // ==========================================
@@ -1764,6 +3243,17 @@
             updateProjectorList();
             updateSurfaceList();
             updatePropertiesPanel();
+            
+            // Enable/disable transform tools based on selection
+            enableTransformTools(!!id);
+            
+            // Update gizmo position
+            updateGizmoPosition();
+            
+            // Default to translate mode when selecting
+            if (id && gizmoState.mode === 'select') {
+                setTransformMode('translate');
+            }
         }
         
         function updatePropertiesPanel() {
@@ -1838,13 +3328,40 @@
                 const s = state.surfaces.find(x => x.id === state.selectedObject);
                 if (!s) return;
                 
+                const isCustomOBJ = s.type === 'custom';
+                
+                // Build type selector HTML (hidden for custom OBJ)
+                const typeHtml = isCustomOBJ 
+                    ? `<div class="property-row"><span class="property-label">Type</span><div class="single-input"><input type="text" value="Custom OBJ" disabled style="opacity: 0.6"></div></div>`
+                    : `<div class="property-row"><span class="property-label">Type</span><div class="single-input"><select onchange="updateSurfaceProp(${s.id}, 'type', this.value)"><option value="flat" ${s.type==='flat'?'selected':''}>Flat</option><option value="curved" ${s.type==='curved'?'selected':''}>Curved</option></select></div></div>`;
+                
+                // Build dimensions HTML (scale for OBJ, width/height for others)
+                let dimensionsHtml;
+                if (isCustomOBJ) {
+                    const scale = s.scale || 1.0;
+                    dimensionsHtml = `
+                        <div class="property-group">
+                            <div class="property-group-title">Scale</div>
+                            <div class="slider-row"><span class="slider-label">Uniform Scale</span><div class="slider-container"><input type="range" class="slider" min="0.1" max="5" step="0.1" value="${scale}" oninput="updateSurfaceScale(${s.id}, +this.value); this.nextElementSibling.textContent=Number(this.value).toFixed(1)+'×'"><span class="slider-value">${scale.toFixed(1)}×</span></div></div>
+                            <div class="property-row" style="opacity: 0.6"><span class="property-label">Original Size</span><div class="single-input"><input type="text" value="${s.dimensions.width.toFixed(1)}m × ${s.dimensions.height.toFixed(1)}m" disabled></div></div>
+                        </div>`;
+                } else {
+                    dimensionsHtml = `
+                        <div class="property-group">
+                            <div class="property-group-title">Dimensions</div>
+                            <div class="property-row"><span class="property-label">Width (m)</span><div class="single-input"><input type="number" step="0.1" value="${s.dimensions.width}" onchange="updateSurfaceDim(${s.id}, 'width', +this.value)"></div></div>
+                            <div class="property-row"><span class="property-label">Height (m)</span><div class="single-input"><input type="number" step="0.1" value="${s.dimensions.height}" onchange="updateSurfaceDim(${s.id}, 'height', +this.value)"></div></div>
+                            ${s.type === 'curved' ? `<div class="slider-row"><span class="slider-label">Curvature</span><div class="slider-container"><input type="range" class="slider" min="5" max="180" value="${s.curvature}" oninput="updateSurfaceProp(${s.id}, 'curvature', +this.value); this.nextElementSibling.textContent=this.value+'°'"><span class="slider-value">${s.curvature}°</span></div></div>` : ''}
+                        </div>`;
+                }
+                
                 panel.innerHTML = `
                     <div class="panel-section"><div class="panel-header"><span class="panel-title">Surface</span></div>
                     <div class="panel-content">
                         <div class="property-group">
                             <div class="property-group-title">General</div>
                             <div class="property-row"><span class="property-label">Name</span><div class="single-input"><input type="text" value="${s.name}" onchange="updateSurfaceProp(${s.id}, 'name', this.value)"></div></div>
-                            <div class="property-row"><span class="property-label">Type</span><div class="single-input"><select onchange="updateSurfaceProp(${s.id}, 'type', this.value)"><option value="flat" ${s.type==='flat'?'selected':''}>Flat</option><option value="curved" ${s.type==='curved'?'selected':''}>Curved</option></select></div></div>
+                            ${typeHtml}
                         </div>
                         <div class="property-group">
                             <div class="property-group-title">Position (meters)</div>
@@ -1866,12 +3383,7 @@
                                 </div>
                             </div>
                         </div>
-                        <div class="property-group">
-                            <div class="property-group-title">Dimensions</div>
-                            <div class="property-row"><span class="property-label">Width (m)</span><div class="single-input"><input type="number" step="0.1" value="${s.dimensions.width}" onchange="updateSurfaceDim(${s.id}, 'width', +this.value)"></div></div>
-                            <div class="property-row"><span class="property-label">Height (m)</span><div class="single-input"><input type="number" step="0.1" value="${s.dimensions.height}" onchange="updateSurfaceDim(${s.id}, 'height', +this.value)"></div></div>
-                            ${s.type === 'curved' ? `<div class="slider-row"><span class="slider-label">Curvature</span><div class="slider-container"><input type="range" class="slider" min="5" max="180" value="${s.curvature}" oninput="updateSurfaceProp(${s.id}, 'curvature', +this.value); this.nextElementSibling.textContent=this.value+'°'"><span class="slider-value">${s.curvature}°</span></div></div>` : ''}
-                        </div>
+                        ${dimensionsHtml}
                         <div class="property-group">
                             <div class="property-group-title">Screen Properties</div>
                             <div class="slider-row"><span class="slider-label">Screen Gain</span><div class="slider-container"><input type="range" class="slider" min="0.5" max="2.5" step="0.1" value="${s.gain}" oninput="updateSurfaceProp(${s.id}, 'gain', +this.value); this.nextElementSibling.textContent=Number(this.value).toFixed(1)"><span class="slider-value">${s.gain.toFixed(1)}</span></div></div>
@@ -1934,6 +3446,20 @@
         function updateSurfaceDim(id, dim, val) {
             const s = state.surfaces.find(x => x.id === id);
             if (s) { s.dimensions[dim] = val; updateSurfaceMesh(s); }
+        }
+        
+        function updateSurfaceScale(id, scale) {
+            const s = state.surfaces.find(x => x.id === id);
+            if (s && s.type === 'custom') {
+                s.scale = scale;
+                // Update the mesh scale
+                const mesh = surfaceGroup.children.find(c => c.userData.surfaceId === id);
+                if (mesh) {
+                    mesh.scale.setScalar(scale);
+                }
+                updateAllSurfaceMaterials();
+                calculateCoverage();
+            }
         }
         
         // ==========================================
@@ -2030,6 +3556,11 @@
             projectorMatrixData.clear(); projectionTextures.clear(); customTextureData.clear();
             updateProjectorList(); updateSurfaceList(); updatePropertiesPanel(); updateStatus();
             updateCoverageDisplay(0, 0, 0, 0);
+            
+            // Reset transform tools
+            enableTransformTools(false);
+            setTransformMode('select');
+            if (gizmoGroup) gizmoGroup.visible = false;
         }
         
         // ==========================================
@@ -2051,6 +3582,15 @@
         let pendingImportData = null;
         
         function showExportModal() {
+            // Check if session is valid, otherwise request authentication
+            if (!isSessionValid()) {
+                requestAuthentication(_showExportModalInternal);
+                return;
+            }
+            _showExportModalInternal();
+        }
+        
+        function _showExportModalInternal() {
             // Update counts
             document.getElementById('export-projector-count').textContent = 
                 `${state.projectors.length} projector${state.projectors.length !== 1 ? 's' : ''} with settings`;
@@ -2334,6 +3874,15 @@
         }
         
         function quickSave() {
+            // Check if session is valid, otherwise request authentication
+            if (!isSessionValid()) {
+                requestAuthentication(_quickSaveInternal);
+                return;
+            }
+            _quickSaveInternal();
+        }
+        
+        function _quickSaveInternal() {
             // Quick save with current timestamp
             const date = new Date();
             const timestamp = `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}_${String(date.getHours()).padStart(2,'0')}-${String(date.getMinutes()).padStart(2,'0')}`;
@@ -2391,6 +3940,14 @@
         function animate() {
             requestAnimationFrame(animate);
             updateCameraMovement();
+            
+            // Update gizmo scale based on camera distance (only if not dragging)
+            if (gizmoGroup && gizmoGroup.visible && !gizmoState.isDragging) {
+                const dist = camera.position.distanceTo(gizmoGroup.position);
+                const scale = dist * 0.15;
+                gizmoGroup.scale.setScalar(Math.max(0.5, Math.min(scale, 2)));
+            }
+            
             frames++;
             if (performance.now() - lastTime >= 1000) {
                 document.getElementById('fps-counter').textContent = frames + ' FPS';
