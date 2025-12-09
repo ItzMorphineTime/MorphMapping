@@ -137,6 +137,9 @@
         .gizmo-info-axis.y { color: #44ff44; }
         .gizmo-info-axis.z { color: #4488ff; }
         
+        .distance-label { position: absolute; background: rgba(0, 0, 0, 0.85); backdrop-filter: blur(4px); color: #00ff00; padding: 6px 10px; border-radius: 4px; font-size: 11px; font-family: 'JetBrains Mono', monospace; pointer-events: none; white-space: nowrap; border: 1px solid rgba(0, 255, 0, 0.3); z-index: 100; transform: translate(-50%, -50%); }
+        .distance-label strong { color: #fff; font-weight: 500; }
+        
         .snap-controls { position: absolute; bottom: 60px; right: 12px; background: rgba(17, 17, 20, 0.85); backdrop-filter: blur(8px); padding: 8px 12px; border-radius: 6px; border: 1px solid var(--border-color); display: flex; align-items: center; gap: 10px; }
         .snap-label { font-size: 10px; color: var(--text-muted); }
         .snap-toggle { display: flex; align-items: center; gap: 6px; cursor: pointer; }
@@ -690,6 +693,7 @@
                     <div class="toggle-row"><span class="toggle-label">Show Grid</span><div class="toggle active" id="toggle-grid" onclick="toggleOption('grid')"></div></div>
                     <div class="toggle-row"><span class="toggle-label">Show Coverage</span><div class="toggle active" id="toggle-coverage" onclick="toggleOption('coverage')"></div></div>
                     <div class="toggle-row"><span class="toggle-label">Show Overlap</span><div class="toggle" id="toggle-overlap" onclick="toggleOption('overlap')"></div></div>
+                    <div class="toggle-row"><span class="toggle-label">Show Distance</span><div class="toggle" id="toggle-distance" onclick="toggleOption('distance')"></div></div>
                     <div class="toggle-row"><span class="toggle-label">Luminance Heatmap</span><div class="toggle" id="toggle-heatmap" onclick="toggleOption('heatmap')"></div></div>
                     <div class="toggle-row"><span class="toggle-label">Wireframe</span><div class="toggle" id="toggle-wireframe" onclick="toggleOption('wireframe')"></div></div>
                 </div>
@@ -1200,7 +1204,7 @@
             selectedObject: null,
             selectedType: null,
             currentPattern: 'none',
-            displayOptions: { frustums: true, grid: true, coverage: true, overlap: false, heatmap: false, wireframe: false },
+            displayOptions: { frustums: true, grid: true, coverage: true, overlap: false, distance: false, heatmap: false, wireframe: false },
             currentView: 'perspective',
             heatmapMax: 2000 // cd/m² maximum for heatmap scale
         };
@@ -1319,7 +1323,7 @@
         // END SECURITY MODULE
         // ==========================================
         
-        let scene, camera, renderer, gridHelper, projectorGroup, surfaceGroup, raycaster, mouse;
+        let scene, camera, renderer, gridHelper, projectorGroup, surfaceGroup, distanceHelperGroup, raycaster, mouse;
         const projectionTextures = new Map();
         const projectorMatrixData = new Map();
         const customTextureData = new Map();
@@ -1978,16 +1982,10 @@
             varying vec4 vWorldPosition;
             varying vec3 vWorldNormal;
             
-            // Unpack depth from RGBA - matches THREE.js RGBADepthPacking
-            float unpackDepth(vec4 rgbaDepth) {
-                const float UnpackDownscale = 255.0 / 256.0;
-                const vec4 UnpackFactors = UnpackDownscale * vec4(
-                    1.0 / (256.0 * 256.0 * 256.0),
-                    1.0 / (256.0 * 256.0),
-                    1.0 / 256.0,
-                    1.0
-                );
-                return dot(rgbaDepth, UnpackFactors);
+            // Unpack linear depth from RGBA
+            float unpackLinearDepth(vec4 rgbaDepth) {
+                const vec4 bitShift = vec4(1.0 / (256.0 * 256.0 * 256.0), 1.0 / (256.0 * 256.0), 1.0 / 256.0, 1.0);
+                return dot(rgbaDepth, bitShift);
             }
             
             // Linear heatmap color function with white for overflow
@@ -2035,15 +2033,21 @@
                 float facing = dot(vWorldNormal, toProj);
                 if (facing <= 0.0) return vec4(0.0);
                 
-                // Shadow occlusion - compare depths in clip space
-                // ndc.z is in [-1, 1], convert to [0, 1] to match shadow map
-                float fragDepthNormalized = ndc.z * 0.5 + 0.5;
+                // Shadow occlusion using LINEAR depth for precision at distance
+                // Calculate actual distance from projector to this fragment
+                float fragDist = length(projPos - vWorldPosition.xyz);
                 
+                // Normalize to [0,1] using same formula as shadow map
+                float fragDepthNormalized = (fragDist - nearPlane) / (farPlane - nearPlane);
+                
+                // Sample shadow map (contains linear depth)
                 vec4 shadowSample = texture2D(shadowMap, uv);
-                float shadowDepth = unpackDepth(shadowSample);
+                float shadowDepth = unpackLinearDepth(shadowSample);
                 
-                // Bias based on surface angle to prevent shadow acne
-                float bias = 0.001 + 0.004 * (1.0 - facing);
+                // Bias based on surface angle and distance to prevent shadow acne
+                float distanceBias = 0.001 + (fragDist * 0.0005); // Scale bias with distance
+                float angleBias = 0.002 * (1.0 - facing);
+                float bias = distanceBias + angleBias;
                 
                 // If something is closer to the projector, this point is occluded
                 if (fragDepthNormalized > shadowDepth + bias) {
@@ -2150,15 +2154,54 @@
             
             projectorGroup = new THREE.Group();
             surfaceGroup = new THREE.Group();
+            distanceHelperGroup = new THREE.Group();
             scene.add(projectorGroup);
             scene.add(surfaceGroup);
+            scene.add(distanceHelperGroup);
             
             raycaster = new THREE.Raycaster();
             mouse = new THREE.Vector2();
             
-            // Create depth material for shadow mapping
-            depthMaterial = new THREE.MeshDepthMaterial({
-                depthPacking: THREE.RGBADepthPacking
+            // Custom linear depth material for better precision at distance
+            // Standard depth buffers have poor precision at large distances
+            const linearDepthVertexShader = `
+                varying float vLinearDepth;
+                void main() {
+                    vec4 mvPosition = modelViewMatrix * vec4(position, 1.0);
+                    vLinearDepth = -mvPosition.z; // Linear view-space depth
+                    gl_Position = projectionMatrix * mvPosition;
+                }
+            `;
+            
+            const linearDepthFragmentShader = `
+                varying float vLinearDepth;
+                uniform float cameraNear;
+                uniform float cameraFar;
+                
+                // Pack float to RGBA for precision
+                vec4 packDepth(float depth) {
+                    float normalized = (depth - cameraNear) / (cameraFar - cameraNear);
+                    normalized = clamp(normalized, 0.0, 1.0);
+                    
+                    const vec4 bitShift = vec4(256.0 * 256.0 * 256.0, 256.0 * 256.0, 256.0, 1.0);
+                    const vec4 bitMask = vec4(0.0, 1.0 / 256.0, 1.0 / 256.0, 1.0 / 256.0);
+                    vec4 res = fract(normalized * bitShift);
+                    res -= res.xxyz * bitMask;
+                    return res;
+                }
+                
+                void main() {
+                    gl_FragColor = packDepth(vLinearDepth);
+                }
+            `;
+            
+            depthMaterial = new THREE.ShaderMaterial({
+                vertexShader: linearDepthVertexShader,
+                fragmentShader: linearDepthFragmentShader,
+                uniforms: {
+                    cameraNear: { value: 0.1 },
+                    cameraFar: { value: 100 }
+                }
             });
             
             // Create transform gizmos
@@ -2176,6 +2219,9 @@
             // Use same vertical FOV calculation as projection matrix
             const verticalFov = 2 * Math.atan(1 / (2 * projector.throwRatio * projector.zoom * projector.aspectRatio)) * (180 / Math.PI);
             
+            const nearPlane = projector.nearPlane || 0.1;
+            const farPlane = projector.farPlane || 100;
+            
             let shadowData = shadowMaps.get(projector.id);
             
             if (!shadowData) {
@@ -2186,7 +2232,7 @@
                     format: THREE.RGBAFormat
                 });
                 
-                const shadowCamera = new THREE.PerspectiveCamera(verticalFov, projector.aspectRatio, 0.1, 100);
+                const shadowCamera = new THREE.PerspectiveCamera(verticalFov, projector.aspectRatio, nearPlane, farPlane);
                 
                 shadowData = { renderTarget, camera: shadowCamera };
                 shadowMaps.set(projector.id, shadowData);
@@ -2196,6 +2242,8 @@
             const shadowCamera = shadowData.camera;
             shadowCamera.fov = verticalFov;
             shadowCamera.aspect = projector.aspectRatio;
+            shadowCamera.near = nearPlane;
+            shadowCamera.far = farPlane;
             shadowCamera.position.set(projector.position.x, projector.position.y, projector.position.z);
             
             const euler = new THREE.Euler(
@@ -2228,10 +2276,12 @@
             scene.background = null;
             scene.overrideMaterial = depthMaterial;
             
-            // Hide gizmos and projectors during shadow render
+            // Hide gizmos, projectors, and distance helpers during shadow render
             const gizmoVisible = gizmoGroup ? gizmoGroup.visible : false;
             const projectorVisible = projectorGroup.visible;
+            const distanceVisible = distanceHelperGroup ? distanceHelperGroup.visible : false;
             if (gizmoGroup) gizmoGroup.visible = false;
+            if (distanceHelperGroup) distanceHelperGroup.visible = false;
             projectorGroup.visible = false;
             gridHelper.visible = false;
             
@@ -2246,6 +2296,7 @@
             scene.background = currentBackground;
             scene.overrideMaterial = currentOverrideMaterial;
             if (gizmoGroup) gizmoGroup.visible = gizmoVisible;
+            if (distanceHelperGroup) distanceHelperGroup.visible = distanceVisible;
             projectorGroup.visible = projectorVisible;
             gridHelper.visible = state.displayOptions.grid;
         }
@@ -2561,7 +2612,10 @@
                 resolution: preset.resolution,
                 zoom: 1.0,
                 enabled: true,
-                customTextureUrl: null
+                customTextureUrl: null,
+                nearPlane: 0.1,
+                farPlane: 100,
+                frustumDistance: 20
             };
             
             state.projectors.push(projector);
@@ -2612,19 +2666,21 @@
             const group = new THREE.Group();
             group.userData.isFrustum = true;
             
-            const dist = 15;
-            // FIXED: Divide by zoom (zoom in = narrower beam = smaller frustum)
+            const dist = projector.frustumDistance || 20;
+            // Calculate frustum dimensions at the target distance
             const w = (dist / projector.throwRatio) / projector.zoom;
             const h = w / projector.aspectRatio;
             
             const mat = new THREE.LineBasicMaterial({ color: 0x00aaff, transparent: true, opacity: 0.5 });
             
+            // Frustum edge lines from projector to far plane
             const pts = [
                 [0,0,0], [-w/2,-h/2,dist], [0,0,0], [w/2,-h/2,dist],
                 [0,0,0], [w/2,h/2,dist], [0,0,0], [-w/2,h/2,dist]
             ].map(p => new THREE.Vector3(...p));
             group.add(new THREE.LineSegments(new THREE.BufferGeometry().setFromPoints(pts), mat));
             
+            // Rectangle at frustum end
             const rect = [[-w/2,-h/2,dist], [w/2,-h/2,dist], [w/2,h/2,dist], [-w/2,h/2,dist], [-w/2,-h/2,dist]]
                 .map(p => new THREE.Vector3(...p));
             group.add(new THREE.Line(new THREE.BufferGeometry().setFromPoints(rect), mat));
@@ -2640,7 +2696,10 @@
             // PerspectiveCamera expects vertical FOV
             const verticalFov = 2 * Math.atan(1 / (2 * projector.throwRatio * projector.zoom * projector.aspectRatio)) * (180 / Math.PI);
             
-            const projCam = new THREE.PerspectiveCamera(verticalFov, projector.aspectRatio, 0.1, 100);
+            const nearPlane = projector.nearPlane || 0.1;
+            const farPlane = projector.farPlane || 100;
+            
+            const projCam = new THREE.PerspectiveCamera(verticalFov, projector.aspectRatio, nearPlane, farPlane);
             projCam.position.set(projector.position.x, projector.position.y, projector.position.z);
             
             const euler = new THREE.Euler(
@@ -2664,7 +2723,9 @@
                 matrix: vpMatrix,
                 position: new THREE.Vector3(projector.position.x, projector.position.y, projector.position.z),
                 lumens: projector.lumens,
-                throwRatio: projector.throwRatio * projector.zoom // Effective throw ratio
+                throwRatio: projector.throwRatio * projector.zoom, // Effective throw ratio
+                nearPlane: nearPlane,
+                farPlane: farPlane
             });
             
             if (projector.customTextureUrl && customTextureData.has(projector.id)) {
@@ -2685,7 +2746,14 @@
                 );
                 
                 const oldF = mesh.children.find(c => c.userData.isFrustum);
-                if (oldF) mesh.remove(oldF);
+                if (oldF) {
+                    // Dispose old frustum geometry and materials
+                    oldF.traverse(child => {
+                        if (child.geometry) child.geometry.dispose();
+                        if (child.material) child.material.dispose();
+                    });
+                    mesh.remove(oldF);
+                }
                 mesh.add(createFrustum(projector));
             }
             
@@ -2712,8 +2780,35 @@
         
         function removeProjector(id) {
             state.projectors = state.projectors.filter(p => p.id !== id);
+            
+            // Clean up mesh and all its children
             const mesh = projectorGroup.children.find(c => c.userData.projectorId === id);
-            if (mesh) projectorGroup.remove(mesh);
+            if (mesh) {
+                mesh.traverse(child => {
+                    if (child.geometry) child.geometry.dispose();
+                    if (child.material) {
+                        if (Array.isArray(child.material)) {
+                            child.material.forEach(m => m.dispose());
+                        } else {
+                            child.material.dispose();
+                        }
+                    }
+                });
+                projectorGroup.remove(mesh);
+            }
+            
+            // Clean up shadow map render target
+            const shadowData = shadowMaps.get(id);
+            if (shadowData) {
+                shadowData.renderTarget.dispose();
+                shadowMaps.delete(id);
+            }
+            
+            // Clean up textures
+            const tex = projectionTextures.get(id);
+            if (tex && !customTextureData.has(id)) {
+                tex.dispose(); // Only dispose if not a custom texture
+            }
             projectorMatrixData.delete(id);
             projectionTextures.delete(id);
             customTextureData.delete(id);
@@ -3012,8 +3107,8 @@
                     uniforms[`projPos${i}`].value.copy(data.position);
                     uniforms[`projLumens${i}`].value = data.lumens;
                     uniforms[`projThrow${i}`].value = data.throwRatio;
-                    uniforms[`projNear${i}`].value = 0.1;
-                    uniforms[`projFar${i}`].value = 100;
+                    uniforms[`projNear${i}`].value = data.nearPlane || 0.1;
+                    uniforms[`projFar${i}`].value = data.farPlane || 100;
                 }
                 if (tex) uniforms[`projTex${i}`].value = tex;
                 if (shadow) uniforms[`shadowMap${i}`].value = shadow.renderTarget.texture;
@@ -3093,6 +3188,11 @@
                     mesh.material = createSurfaceMaterial(surface);
                 }
             });
+            
+            // Update distance helpers if enabled
+            if (state.displayOptions.distance) {
+                updateDistanceHelpers();
+            }
         }
         
         function removeSurface(id) {
@@ -3156,83 +3256,155 @@
             
             const enabledProjectors = state.projectors.filter(p => p.enabled);
             
-            // Sample each surface
+            // Sample each surface using actual geometry
             state.surfaces.forEach(surface => {
                 const mesh = surfaceGroup.children.find(c => c.userData.surfaceId === surface.id);
-                if (!mesh) return;
+                if (!mesh || !mesh.geometry) return;
                 
-                const sampleResolution = 20; // 20x20 grid per surface
-                const w = surface.dimensions.width;
-                const h = surface.dimensions.height;
+                // Update matrix world to ensure accurate transforms
+                mesh.updateMatrixWorld(true);
                 
-                for (let iy = 0; iy < sampleResolution; iy++) {
-                    for (let ix = 0; ix < sampleResolution; ix++) {
-                        // Local position on surface (-0.5 to 0.5)
-                        const lx = (ix / (sampleResolution - 1) - 0.5) * w;
-                        const ly = (iy / (sampleResolution - 1) - 0.5) * h;
+                const geometry = mesh.geometry;
+                const positionAttr = geometry.attributes.position;
+                const normalAttr = geometry.attributes.normal;
+                
+                if (!positionAttr) return;
+                
+                // For accuracy, sample at vertex positions and face centers
+                const sampledPoints = [];
+                
+                // Sample vertices
+                const vertexStride = Math.max(1, Math.floor(positionAttr.count / 200)); // Limit to ~200 vertices
+                for (let i = 0; i < positionAttr.count; i += vertexStride) {
+                    const localPos = new THREE.Vector3(
+                        positionAttr.getX(i),
+                        positionAttr.getY(i),
+                        positionAttr.getZ(i)
+                    );
+                    
+                    let localNormal;
+                    if (normalAttr) {
+                        localNormal = new THREE.Vector3(
+                            normalAttr.getX(i),
+                            normalAttr.getY(i),
+                            normalAttr.getZ(i)
+                        );
+                    } else {
+                        localNormal = new THREE.Vector3(0, 0, 1);
+                    }
+                    
+                    sampledPoints.push({ pos: localPos, normal: localNormal });
+                }
+                
+                // Also sample face centers for indexed geometry
+                if (geometry.index) {
+                    const indices = geometry.index.array;
+                    const faceStride = Math.max(3, Math.floor(indices.length / 300) * 3); // Limit to ~100 faces
+                    
+                    for (let i = 0; i < indices.length; i += faceStride) {
+                        if (i + 2 >= indices.length) break;
                         
-                        // Transform to world position
-                        const localPos = new THREE.Vector3(lx, ly, 0);
-                        const worldPos = localPos.applyMatrix4(mesh.matrixWorld);
+                        const i0 = indices[i], i1 = indices[i + 1], i2 = indices[i + 2];
                         
-                        // Get world normal
-                        const localNormal = new THREE.Vector3(0, 0, 1);
-                        const normalMatrix = new THREE.Matrix3().getNormalMatrix(mesh.matrixWorld);
-                        const worldNormal = localNormal.applyMatrix3(normalMatrix).normalize();
+                        const p0 = new THREE.Vector3(positionAttr.getX(i0), positionAttr.getY(i0), positionAttr.getZ(i0));
+                        const p1 = new THREE.Vector3(positionAttr.getX(i1), positionAttr.getY(i1), positionAttr.getZ(i1));
+                        const p2 = new THREE.Vector3(positionAttr.getX(i2), positionAttr.getY(i2), positionAttr.getZ(i2));
                         
-                        totalSamples++;
-                        let sampleCdm2 = 0;
-                        let isHit = false;
+                        // Face center
+                        const center = new THREE.Vector3().addVectors(p0, p1).add(p2).divideScalar(3);
                         
-                        enabledProjectors.forEach(proj => {
-                            const data = projectorMatrixData.get(proj.id);
-                            if (!data) return;
-                            
-                            // Check if point is within projector frustum
-                            const projCoord = new THREE.Vector4(worldPos.x, worldPos.y, worldPos.z, 1);
-                            projCoord.applyMatrix4(data.matrix);
-                            
-                            if (projCoord.w <= 0) return;
-                            
-                            const ndc = new THREE.Vector3(
-                                projCoord.x / projCoord.w,
-                                projCoord.y / projCoord.w,
-                                projCoord.z / projCoord.w
-                            );
-                            
-                            const uv = new THREE.Vector2(ndc.x * 0.5 + 0.5, ndc.y * 0.5 + 0.5);
-                            
-                            if (uv.x < 0 || uv.x > 1 || uv.y < 0 || uv.y > 1) return;
-                            if (ndc.z < -1 || ndc.z > 1) return;
-                            
-                            // Check facing
-                            const toProj = new THREE.Vector3().subVectors(data.position, worldPos).normalize();
-                            const facing = worldNormal.dot(toProj);
-                            if (facing <= 0) return;
-                            
-                            isHit = true;
-                            
-                            // Calculate luminance in cd/m²
-                            // cd/m² = (lumens / area) × gain / π × cos(angle)
-                            const dist = data.position.distanceTo(worldPos);
-                            const projWidth = dist / data.throwRatio;
-                            const projHeight = projWidth / (16/9);
-                            const projArea = projWidth * projHeight;
-                            const lux = data.lumens / projArea;
-                            const cdm2 = (lux * surface.gain / Math.PI) * facing;
-                            
-                            sampleCdm2 += cdm2;
-                        });
+                        // Face normal (computed from vertices)
+                        const edge1 = new THREE.Vector3().subVectors(p1, p0);
+                        const edge2 = new THREE.Vector3().subVectors(p2, p0);
+                        const faceNormal = new THREE.Vector3().crossVectors(edge1, edge2).normalize();
                         
-                        if (isHit) {
-                            coveredSamples++;
-                            cdm2Samples.push(sampleCdm2);
-                            totalCdm2 += sampleCdm2;
-                            minCdm2 = Math.min(minCdm2, sampleCdm2);
-                            maxCdm2 = Math.max(maxCdm2, sampleCdm2);
-                        }
+                        sampledPoints.push({ pos: center, normal: faceNormal });
                     }
                 }
+                
+                // Process each sample point
+                sampledPoints.forEach(sample => {
+                    // Transform to world space
+                    const worldPos = sample.pos.clone().applyMatrix4(mesh.matrixWorld);
+                    
+                    const normalMatrix = new THREE.Matrix3().getNormalMatrix(mesh.matrixWorld);
+                    const worldNormal = sample.normal.clone().applyMatrix3(normalMatrix).normalize();
+                    
+                    totalSamples++;
+                    let sampleCdm2 = 0;
+                    let isHit = false;
+                    
+                    enabledProjectors.forEach(proj => {
+                        const data = projectorMatrixData.get(proj.id);
+                        const shadowData = shadowMaps.get(proj.id);
+                        if (!data) return;
+                        
+                        // Check if point is within projector frustum
+                        const projCoord = new THREE.Vector4(worldPos.x, worldPos.y, worldPos.z, 1);
+                        projCoord.applyMatrix4(data.matrix);
+                        
+                        if (projCoord.w <= 0) return;
+                        
+                        const ndc = new THREE.Vector3(
+                            projCoord.x / projCoord.w,
+                            projCoord.y / projCoord.w,
+                            projCoord.z / projCoord.w
+                        );
+                        
+                        const uv = new THREE.Vector2(ndc.x * 0.5 + 0.5, ndc.y * 0.5 + 0.5);
+                        
+                        if (uv.x < 0 || uv.x > 1 || uv.y < 0 || uv.y > 1) return;
+                        if (ndc.z < -1 || ndc.z > 1) return;
+                        
+                        // Check facing - surface must face the projector
+                        const toProj = new THREE.Vector3().subVectors(data.position, worldPos).normalize();
+                        const facing = worldNormal.dot(toProj);
+                        if (facing <= 0) return;
+                        
+                        // Shadow occlusion check - sample shadow map
+                        // This mirrors the shader logic
+                        if (shadowData && shadowData.renderTarget) {
+                            const fragDepthNormalized = ndc.z * 0.5 + 0.5;
+                            
+                            // Read shadow map at this UV (approximation - we use a raycast instead for CPU accuracy)
+                            // For better accuracy, cast a ray from projector to point and check for intersections
+                            const rayOrigin = data.position.clone();
+                            const rayDir = new THREE.Vector3().subVectors(worldPos, rayOrigin).normalize();
+                            const distToPoint = data.position.distanceTo(worldPos);
+                            
+                            const shadowRay = new THREE.Raycaster(rayOrigin, rayDir, 0.01, distToPoint - 0.01);
+                            const intersects = shadowRay.intersectObjects(surfaceGroup.children, false);
+                            
+                            // If ray hits something before reaching this point, it's occluded
+                            if (intersects.length > 0) {
+                                const hitDist = intersects[0].distance;
+                                if (hitDist < distToPoint - 0.05) {
+                                    return; // Occluded by another surface
+                                }
+                            }
+                        }
+                        
+                        isHit = true;
+                        
+                        // Calculate luminance in cd/m²
+                        const dist = data.position.distanceTo(worldPos);
+                        const projWidth = dist / data.throwRatio;
+                        const projHeight = projWidth / proj.aspectRatio;
+                        const projArea = projWidth * projHeight;
+                        const lux = data.lumens / projArea;
+                        const cdm2 = (lux * surface.gain / Math.PI) * facing;
+                        
+                        sampleCdm2 += cdm2;
+                    });
+                    
+                    if (isHit) {
+                        coveredSamples++;
+                        cdm2Samples.push(sampleCdm2);
+                        totalCdm2 += sampleCdm2;
+                        minCdm2 = Math.min(minCdm2, sampleCdm2);
+                        maxCdm2 = Math.max(maxCdm2, sampleCdm2);
+                    }
+                });
             });
             
             const coverage = totalSamples > 0 ? (coveredSamples / totalSamples) * 100 : 0;
@@ -3341,6 +3513,12 @@
                             `}
                         </div>
                         <div class="property-group">
+                            <div class="property-group-title">Range</div>
+                            <div class="slider-row"><span class="slider-label">Max Distance</span><div class="slider-container"><input type="range" class="slider" min="10" max="500" step="5" value="${p.farPlane || 100}" oninput="updateProjectorProp(${p.id}, 'farPlane', +this.value); this.nextElementSibling.textContent=this.value+'m'"><span class="slider-value">${(p.farPlane || 100)}m</span></div></div>
+                            <div class="slider-row"><span class="slider-label">Frustum Display</span><div class="slider-container"><input type="range" class="slider" min="5" max="100" step="1" value="${p.frustumDistance || 20}" oninput="updateProjectorProp(${p.id}, 'frustumDistance', +this.value); this.nextElementSibling.textContent=this.value+'m'"><span class="slider-value">${(p.frustumDistance || 20)}m</span></div></div>
+                            <p style="font-size: 10px; color: #666; margin: 4px 0 0 0;">Max Distance affects shadow occlusion range</p>
+                        </div>
+                        <div class="property-group">
                             <div class="property-group-title">Display</div>
                             <div class="toggle-row"><span class="toggle-label">Enabled</span><div class="toggle ${p.enabled ? 'active' : ''}" onclick="toggleProjectorEnabled(${p.id})"></div></div>
                         </div>
@@ -3416,10 +3594,17 @@
         // ==========================================
         // PROPERTY HANDLERS
         // ==========================================
+        // PROPERTY HANDLERS WITH VALIDATION
+        // ==========================================
         
         function updateProjectorProp(id, prop, val) {
             const p = state.projectors.find(x => x.id === id);
             if (p) {
+                // Validate numeric properties
+                if (prop === 'lumens') val = Math.max(100, Math.min(100000, val));
+                if (prop === 'throwRatio') val = Math.max(0.3, Math.min(10, val));
+                if (prop === 'zoom') val = Math.max(0.5, Math.min(2, val));
+                
                 p[prop] = val;
                 if (prop !== 'name') p.preset = 'custom';
                 updateProjectorMesh(p);
@@ -3451,7 +3636,16 @@
         
         function updateSurfaceProp(id, prop, val) {
             const s = state.surfaces.find(x => x.id === id);
-            if (s) { s[prop] = val; updateSurfaceMesh(s); updateSurfaceList(); updatePropertiesPanel(); }
+            if (s) {
+                // Validate gain
+                if (prop === 'gain') val = Math.max(0.1, Math.min(5, val));
+                if (prop === 'curvature') val = Math.max(0, Math.min(180, val));
+                
+                s[prop] = val;
+                updateSurfaceMesh(s);
+                updateSurfaceList();
+                updatePropertiesPanel();
+            }
         }
         
         function updateSurfacePos(id, axis, val) {
@@ -3466,12 +3660,19 @@
         
         function updateSurfaceDim(id, dim, val) {
             const s = state.surfaces.find(x => x.id === id);
-            if (s) { s.dimensions[dim] = val; updateSurfaceMesh(s); }
+            if (s) {
+                // Validate dimensions - must be positive
+                val = Math.max(0.1, Math.min(100, val));
+                s.dimensions[dim] = val;
+                updateSurfaceMesh(s);
+            }
         }
         
         function updateSurfaceScale(id, scale) {
             const s = state.surfaces.find(x => x.id === id);
             if (s && s.type === 'custom') {
+                // Validate scale
+                scale = Math.max(0.1, Math.min(10, scale));
                 s.scale = scale;
                 // Update the mesh scale
                 const mesh = surfaceGroup.children.find(c => c.userData.surfaceId === id);
@@ -3479,8 +3680,15 @@
                     mesh.scale.setScalar(scale);
                 }
                 updateAllSurfaceMaterials();
-                calculateCoverage();
+                debouncedCalculateCoverage();
             }
+        }
+        
+        // Debounced coverage calculation for better performance
+        let coverageTimeout = null;
+        function debouncedCalculateCoverage() {
+            if (coverageTimeout) clearTimeout(coverageTimeout);
+            coverageTimeout = setTimeout(calculateCoverage, 150);
         }
         
         // ==========================================
@@ -3539,6 +3747,87 @@
                     }
                 });
             }
+            else if (opt === 'distance') {
+                updateDistanceHelpers();
+            }
+        }
+        
+        function updateDistanceHelpers() {
+            // Clear existing helpers
+            while (distanceHelperGroup.children.length > 0) {
+                const child = distanceHelperGroup.children[0];
+                if (child.geometry) child.geometry.dispose();
+                if (child.material) child.material.dispose();
+                distanceHelperGroup.remove(child);
+            }
+            
+            // Remove any existing labels
+            document.querySelectorAll('.distance-label').forEach(el => el.remove());
+            
+            if (!state.displayOptions.distance) return;
+            
+            const enabledProjectors = state.projectors.filter(p => p.enabled);
+            if (enabledProjectors.length === 0 || surfaceGroup.children.length === 0) return;
+            
+            enabledProjectors.forEach(proj => {
+                // Get projector world position and direction
+                const projMesh = projectorGroup.children.find(c => c.userData.projectorId === proj.id);
+                if (!projMesh) return;
+                
+                const projPos = new THREE.Vector3(proj.position.x, proj.position.y, proj.position.z);
+                
+                // Calculate forward direction from rotation
+                const euler = new THREE.Euler(
+                    THREE.MathUtils.degToRad(proj.rotation.x),
+                    THREE.MathUtils.degToRad(proj.rotation.y),
+                    THREE.MathUtils.degToRad(proj.rotation.z),
+                    'YXZ'
+                );
+                const forward = new THREE.Vector3(0, 0, 1).applyEuler(euler);
+                
+                // Raycast from projector center to find nearest surface
+                const raycaster = new THREE.Raycaster(projPos, forward, 0.1, proj.farPlane || 100);
+                const intersects = raycaster.intersectObjects(surfaceGroup.children, false);
+                
+                if (intersects.length > 0) {
+                    const hit = intersects[0];
+                    const distance = hit.distance;
+                    
+                    // Create line from projector to hit point
+                    const lineGeom = new THREE.BufferGeometry().setFromPoints([projPos, hit.point]);
+                    const lineMat = new THREE.LineBasicMaterial({ 
+                        color: 0x00ff00, 
+                        transparent: true, 
+                        opacity: 0.8,
+                        depthTest: false
+                    });
+                    const line = new THREE.Line(lineGeom, lineMat);
+                    line.renderOrder = 999;
+                    distanceHelperGroup.add(line);
+                    
+                    // Create a small sphere at the hit point
+                    const sphereGeom = new THREE.SphereGeometry(0.05, 8, 8);
+                    const sphereMat = new THREE.MeshBasicMaterial({ color: 0x00ff00, depthTest: false });
+                    const sphere = new THREE.Mesh(sphereGeom, sphereMat);
+                    sphere.position.copy(hit.point);
+                    sphere.renderOrder = 999;
+                    distanceHelperGroup.add(sphere);
+                    
+                    // Create HTML label for distance
+                    const label = document.createElement('div');
+                    label.className = 'distance-label';
+                    label.innerHTML = `
+                        <strong>${proj.name}</strong><br>
+                        ${distance.toFixed(2)}m
+                    `;
+                    label.dataset.projectorId = proj.id;
+                    document.querySelector('.viewport').appendChild(label);
+                    
+                    // Store hit point for label positioning in animate loop
+                    label.hitPoint = hit.point.clone();
+                    label.midPoint = projPos.clone().add(hit.point).multiplyScalar(0.5);
+                }
+            });
         }
         
         function updateHeatmapMax(value) {
@@ -3681,7 +3970,7 @@
             const filename = document.getElementById('export-filename').value.trim() || 'projection-config';
             
             const config = {
-                version: '2.3',
+                version: '2.4',
                 exportDate: new Date().toISOString(),
                 metadata: {
                     projectorCount: state.projectors.length,
@@ -3799,7 +4088,10 @@
                         resolution: projData.resolution || '1920×1080',
                         zoom: projData.zoom || 1.0,
                         enabled: projData.enabled !== false,
-                        customTextureUrl: projData.customTextureUrl || null
+                        customTextureUrl: projData.customTextureUrl || null,
+                        nearPlane: projData.nearPlane || 0.1,
+                        farPlane: projData.farPlane || 100,
+                        frustumDistance: projData.frustumDistance || 20
                     };
                     
                     state.projectors.push(projector);
@@ -3909,7 +4201,7 @@
             const timestamp = `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}_${String(date.getHours()).padStart(2,'0')}-${String(date.getMinutes()).padStart(2,'0')}`;
             
             const config = {
-                version: '2.3',
+                version: '2.4',
                 exportDate: date.toISOString(),
                 metadata: {
                     projectorCount: state.projectors.length,
@@ -3967,6 +4259,31 @@
                 const dist = camera.position.distanceTo(gizmoGroup.position);
                 const scale = dist * 0.15;
                 gizmoGroup.scale.setScalar(Math.max(0.5, Math.min(scale, 2)));
+            }
+            
+            // Update distance label positions in screen space
+            if (state.displayOptions.distance) {
+                const container = document.querySelector('.viewport');
+                if (container) {
+                    const rect = container.getBoundingClientRect();
+                    
+                    document.querySelectorAll('.distance-label').forEach(label => {
+                        if (label.midPoint) {
+                            const screenPos = label.midPoint.clone().project(camera);
+                            const x = (screenPos.x * 0.5 + 0.5) * rect.width;
+                            const y = (-screenPos.y * 0.5 + 0.5) * rect.height;
+                            
+                            // Only show if in front of camera
+                            if (screenPos.z < 1) {
+                                label.style.left = x + 'px';
+                                label.style.top = y + 'px';
+                                label.style.display = 'block';
+                            } else {
+                                label.style.display = 'none';
+                            }
+                        }
+                    });
+                }
             }
             
             frames++;
