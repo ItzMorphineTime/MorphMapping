@@ -121,10 +121,10 @@
         
         .transform-tools { position: absolute; top: 12px; right: 12px; display: flex; gap: 4px; }
         .tool-btn { width: 36px; height: 36px; border-radius: 6px; border: 1px solid var(--border-color); background: rgba(17, 17, 20, 0.85); backdrop-filter: blur(8px); color: var(--text-secondary); cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.15s ease; }
-        .tool-btn:hover { border-color: var(--border-hover); color: var(--text-primary); }
+        .tool-btn:hover:not(:disabled) { border-color: var(--border-hover); color: var(--text-primary); }
         .tool-btn.active { border-color: var(--accent-primary); color: var(--accent-primary); background: rgba(0, 212, 170, 0.1); }
         .tool-btn svg { width: 18px; height: 18px; fill: currentColor; }
-        .tool-btn.disabled { opacity: 0.4; pointer-events: none; }
+        .tool-btn.disabled, .tool-btn:disabled { opacity: 0.4; pointer-events: none; cursor: not-allowed; }
         .tool-divider { width: 1px; background: var(--border-color); margin: 4px 4px; }
         
         .gizmo-info { position: absolute; top: 60px; right: 12px; background: rgba(17, 17, 20, 0.9); backdrop-filter: blur(8px); padding: 10px 14px; border-radius: 6px; border: 1px solid var(--border-color); font-size: 11px; display: none; }
@@ -619,6 +619,9 @@
                     <svg viewBox="0 0 24 24"><path d="M17.65 6.35C16.2 4.9 14.21 4 12 4c-4.42 0-7.99 3.58-7.99 8s3.57 8 7.99 8c3.73 0 6.84-2.55 7.73-6h-2.08c-.82 2.33-3.04 4-5.65 4-3.31 0-6-2.69-6-6s2.69-6 6-6c1.66 0 3.14.69 4.22 1.78L13 11h7V4l-2.35 2.35z"/></svg>
                 </button>
                 <div class="tool-divider"></div>
+                <button class="tool-btn" id="undo-btn" onclick="undo()" title="Nothing to undo (Ctrl+Z)" disabled>
+                    <svg viewBox="0 0 24 24"><path d="M12.5 8c-2.65 0-5.05.99-6.9 2.6L2 7v9h9l-3.62-3.62c1.39-1.16 3.16-1.88 5.12-1.88 3.54 0 6.55 2.31 7.6 5.5l2.37-.78C21.08 11.03 17.15 8 12.5 8z"/></svg>
+                </button>
                 <button class="tool-btn" id="tool-local" onclick="toggleCoordSpace()" title="Local/World Space">
                     <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/></svg>
                 </button>
@@ -656,6 +659,7 @@
                 <kbd>Drag</kbd> Look &nbsp;|&nbsp;
                 <kbd>G</kbd> Translate &nbsp;
                 <kbd>R</kbd> Rotate &nbsp;
+                <kbd>Ctrl+Z</kbd> Undo &nbsp;
                 <kbd>Esc</kbd> Deselect &nbsp;
                 <kbd>Del</kbd> Delete
             </div>
@@ -1209,6 +1213,86 @@
             heatmapMax: 2000 // cd/m² maximum for heatmap scale
         };
         
+        // Undo history system
+        const undoHistory = [];
+        const MAX_UNDO_HISTORY = 50;
+        
+        function saveStateForUndo(description = 'Change') {
+            // Deep clone current projector and surface transforms
+            const snapshot = {
+                description,
+                timestamp: Date.now(),
+                projectors: state.projectors.map(p => ({
+                    id: p.id,
+                    position: { ...p.position },
+                    rotation: { ...p.rotation }
+                })),
+                surfaces: state.surfaces.map(s => ({
+                    id: s.id,
+                    position: { ...s.position },
+                    rotation: { ...s.rotation },
+                    dimensions: { ...s.dimensions },
+                    scale: s.scale
+                }))
+            };
+            
+            undoHistory.push(snapshot);
+            
+            // Limit history size
+            if (undoHistory.length > MAX_UNDO_HISTORY) {
+                undoHistory.shift();
+            }
+            
+            updateUndoButton();
+        }
+        
+        function undo() {
+            if (undoHistory.length === 0) {
+                showToast('Nothing to undo', 'error');
+                return;
+            }
+            
+            const snapshot = undoHistory.pop();
+            
+            // Restore projector transforms
+            snapshot.projectors.forEach(snapProj => {
+                const proj = state.projectors.find(p => p.id === snapProj.id);
+                if (proj) {
+                    proj.position = { ...snapProj.position };
+                    proj.rotation = { ...snapProj.rotation };
+                    updateProjectorMesh(proj);
+                }
+            });
+            
+            // Restore surface transforms
+            snapshot.surfaces.forEach(snapSurf => {
+                const surf = state.surfaces.find(s => s.id === snapSurf.id);
+                if (surf) {
+                    surf.position = { ...snapSurf.position };
+                    surf.rotation = { ...snapSurf.rotation };
+                    surf.dimensions = { ...snapSurf.dimensions };
+                    if (snapSurf.scale !== undefined) surf.scale = snapSurf.scale;
+                    updateSurfaceMesh(surf);
+                }
+            });
+            
+            // Update UI
+            updatePropertiesPanel();
+            updateGizmoPosition();
+            updateUndoButton();
+            showToast(`Undid: ${snapshot.description}`);
+        }
+        
+        function updateUndoButton() {
+            const btn = document.getElementById('undo-btn');
+            if (btn) {
+                btn.disabled = undoHistory.length === 0;
+                btn.title = undoHistory.length > 0 
+                    ? `Undo: ${undoHistory[undoHistory.length - 1].description} (Ctrl+Z)`
+                    : 'Nothing to undo (Ctrl+Z)';
+            }
+        }
+        
         // ==========================================
         // SECURITY MODULE - DO NOT MODIFY
         // ==========================================
@@ -1652,6 +1736,13 @@
                     gizmoState.activeAxis = hit.userData.axis;
                     gizmoState.isDragging = true;
                     gizmoState.startPoint.copy(intersects[0].point);
+                    
+                    // Save state for undo before making changes
+                    const actionType = gizmoState.mode === 'translate' ? 'Move' : 'Rotate';
+                    const objectName = state.selectedType === 'projector' 
+                        ? state.projectors.find(x => x.id === state.selectedObject)?.name 
+                        : state.surfaces.find(x => x.id === state.selectedObject)?.name;
+                    saveStateForUndo(`${actionType} ${objectName || 'object'}`);
                     
                     // Store starting value
                     if (state.selectedType === 'projector') {
@@ -2414,6 +2505,13 @@
                 const key = e.key.toLowerCase();
                 const tag = document.activeElement.tagName;
                 const isTyping = tag === 'INPUT' || tag === 'TEXTAREA' || document.activeElement.isContentEditable;
+                
+                // Ctrl+Z for undo - works even when typing
+                if ((e.ctrlKey || e.metaKey) && key === 'z') {
+                    e.preventDefault();
+                    undo();
+                    return;
+                }
                 
                 // Skip all hotkeys if user is typing in an input field
                 if (isTyping) {
@@ -3440,13 +3538,8 @@
             // Enable/disable transform tools based on selection
             enableTransformTools(!!id);
             
-            // Update gizmo position
+            // Update gizmo position (gizmo visibility depends on current mode)
             updateGizmoPosition();
-            
-            // Default to translate mode when selecting
-            if (id && gizmoState.mode === 'select') {
-                setTransformMode('translate');
-            }
         }
         
         function updatePropertiesPanel() {
@@ -3614,12 +3707,20 @@
         
         function updateProjectorPos(id, axis, val) {
             const p = state.projectors.find(x => x.id === id);
-            if (p) { p.position[axis] = val; updateProjectorMesh(p); }
+            if (p) {
+                saveStateForUndo(`Move ${p.name} (panel)`);
+                p.position[axis] = val;
+                updateProjectorMesh(p);
+            }
         }
         
         function updateProjectorRot(id, axis, val) {
             const p = state.projectors.find(x => x.id === id);
-            if (p) { p.rotation[axis] = val; updateProjectorMesh(p); }
+            if (p) {
+                saveStateForUndo(`Rotate ${p.name} (panel)`);
+                p.rotation[axis] = val;
+                updateProjectorMesh(p);
+            }
         }
         
         function toggleProjectorEnabled(id) {
@@ -3650,17 +3751,26 @@
         
         function updateSurfacePos(id, axis, val) {
             const s = state.surfaces.find(x => x.id === id);
-            if (s) { s.position[axis] = val; updateSurfaceMesh(s); }
+            if (s) {
+                saveStateForUndo(`Move ${s.name} (panel)`);
+                s.position[axis] = val;
+                updateSurfaceMesh(s);
+            }
         }
         
         function updateSurfaceRot(id, axis, val) {
             const s = state.surfaces.find(x => x.id === id);
-            if (s) { s.rotation[axis] = val; updateSurfaceMesh(s); }
+            if (s) {
+                saveStateForUndo(`Rotate ${s.name} (panel)`);
+                s.rotation[axis] = val;
+                updateSurfaceMesh(s);
+            }
         }
         
         function updateSurfaceDim(id, dim, val) {
             const s = state.surfaces.find(x => x.id === id);
             if (s) {
+                saveStateForUndo(`Resize ${s.name}`);
                 // Validate dimensions - must be positive
                 val = Math.max(0.1, Math.min(100, val));
                 s.dimensions[dim] = val;
@@ -3970,7 +4080,7 @@
             const filename = document.getElementById('export-filename').value.trim() || 'projection-config';
             
             const config = {
-                version: '2.4',
+                version: '2.5',
                 exportDate: new Date().toISOString(),
                 metadata: {
                     projectorCount: state.projectors.length,
@@ -4201,7 +4311,7 @@
             const timestamp = `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}_${String(date.getHours()).padStart(2,'0')}-${String(date.getMinutes()).padStart(2,'0')}`;
             
             const config = {
-                version: '2.4',
+                version: '2.5',
                 exportDate: date.toISOString(),
                 metadata: {
                     projectorCount: state.projectors.length,
