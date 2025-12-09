@@ -208,6 +208,23 @@
         .texture-upload input { display: none; }
         .texture-upload p { font-size: 11px; color: var(--text-muted); margin: 0; }
         .texture-preview { width: 100%; height: 80px; border-radius: 4px; background-size: contain; background-repeat: no-repeat; background-position: center; background-color: var(--bg-primary); margin-bottom: 8px; border: 1px solid var(--border-color); }
+        
+        /* Video controls */
+        .video-preview { background: var(--bg-primary); border-radius: 6px; padding: 10px; border: 1px solid var(--border-color); margin-bottom: 8px; }
+        .video-info { display: flex; align-items: center; gap: 6px; color: var(--accent-primary); font-size: 11px; margin-bottom: 8px; }
+        .video-controls { display: flex; gap: 4px; margin-bottom: 8px; }
+        .video-btn { width: 32px; height: 28px; border-radius: 4px; border: 1px solid var(--border-color); background: var(--bg-secondary); color: var(--text-secondary); cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.15s ease; }
+        .video-btn:hover { border-color: var(--accent-primary); color: var(--text-primary); }
+        .video-btn.active { border-color: var(--accent-primary); color: var(--accent-primary); background: rgba(0, 212, 170, 0.1); }
+        .video-seek { margin-bottom: 4px; }
+        .video-seek input[type="range"] { width: 100%; height: 4px; -webkit-appearance: none; background: var(--border-color); border-radius: 2px; outline: none; }
+        .video-seek input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 12px; height: 12px; border-radius: 50%; background: var(--accent-primary); cursor: pointer; }
+        .video-time { font-size: 10px; color: var(--text-muted); text-align: center; margin-top: 4px; }
+        
+        /* Pattern scroll controls */
+        .scroll-controls { background: var(--bg-primary); border-radius: 6px; padding: 10px; border: 1px solid var(--border-color); margin-top: 8px; }
+        .scroll-controls-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+        .scroll-controls-title { font-size: 11px; color: var(--text-secondary); font-weight: 500; }
         .clear-texture-btn { margin-top: 8px; width: 100%; padding: 6px; font-size: 11px; }
         
         .luminance-legend { 
@@ -622,7 +639,7 @@
                 <button class="tool-btn" id="undo-btn" onclick="undo()" title="Nothing to undo (Ctrl+Z)" disabled>
                     <svg viewBox="0 0 24 24"><path d="M12.5 8c-2.65 0-5.05.99-6.9 2.6L2 7v9h9l-3.62-3.62c1.39-1.16 3.16-1.88 5.12-1.88 3.54 0 6.55 2.31 7.6 5.5l2.37-.78C21.08 11.03 17.15 8 12.5 8z"/></svg>
                 </button>
-                <button class="tool-btn" id="tool-local" onclick="toggleCoordSpace()" title="Local/World Space">
+                <button class="tool-btn" id="tool-local" onclick="toggleCoordSpace()" title="World Space (click for Local)">
                     <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/></svg>
                 </button>
             </div>
@@ -686,6 +703,29 @@
                         <button class="pattern-btn" onclick="setPattern('cross')" title="Focus Cross"><div class="pattern-preview pattern-cross"></div></button>
                         <button class="pattern-btn" onclick="setPattern('white')" title="White"><div class="pattern-preview pattern-white"></div></button>
                         <button class="pattern-btn" onclick="setPattern('blend')" title="Blend Zones"><div class="pattern-preview pattern-blend"></div></button>
+                    </div>
+                    <div class="scroll-controls" id="pattern-scroll-controls">
+                        <div class="scroll-controls-header">
+                            <span class="scroll-controls-title">Pattern Animation</span>
+                            <div class="toggle" id="toggle-pattern-scroll" onclick="togglePatternScroll()"></div>
+                        </div>
+                        <div class="slider-row" style="margin-top: 8px;">
+                            <span class="slider-label">Speed</span>
+                            <div class="slider-container">
+                                <input type="range" class="slider" min="0.1" max="2" step="0.1" value="0.5" id="pattern-scroll-speed" oninput="updatePatternScrollSpeed(+this.value); this.nextElementSibling.textContent=Number(this.value).toFixed(1)+'x'">
+                                <span class="slider-value">0.5x</span>
+                            </div>
+                        </div>
+                        <div class="property-row" style="margin-top: 8px;">
+                            <span class="property-label">Direction</span>
+                            <div class="single-input">
+                                <select id="pattern-scroll-direction" onchange="updatePatternScrollDirection(this.value)">
+                                    <option value="horizontal">Horizontal →</option>
+                                    <option value="vertical">Vertical ↑</option>
+                                    <option value="diagonal">Diagonal ↗</option>
+                                </select>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -1411,6 +1451,15 @@
         const projectionTextures = new Map();
         const projectorMatrixData = new Map();
         const customTextureData = new Map();
+        const videoTextureData = new Map(); // projector ID -> { video, texture, playing, loop, resolution }
+        
+        // Pattern scroll animation state
+        const patternScrollState = {
+            enabled: false,
+            speed: 0.5,
+            direction: 'horizontal', // 'horizontal', 'vertical', 'diagonal'
+            offset: { x: 0, y: 0 }
+        };
         
         // Shadow map system for occlusion
         const shadowMaps = new Map(); // projector ID -> { renderTarget, camera }
@@ -1690,7 +1739,9 @@
         
         function toggleCoordSpace() {
             gizmoState.localSpace = !gizmoState.localSpace;
-            document.getElementById('tool-local').classList.toggle('active', gizmoState.localSpace);
+            const btn = document.getElementById('tool-local');
+            btn.classList.toggle('active', gizmoState.localSpace);
+            btn.title = gizmoState.localSpace ? 'Local Space (click for World)' : 'World Space (click for Local)';
             updateGizmoPosition();
         }
         
@@ -1820,23 +1871,46 @@
         function updateTranslation(mouse, obj, data) {
             const axis = gizmoState.activeAxis;
             
+            // Get the object's world matrix for local space transformations
+            const objectQuaternion = obj.quaternion.clone();
+            
+            // Define axis directions (will be transformed if in local space)
+            let axisX = new THREE.Vector3(1, 0, 0);
+            let axisY = new THREE.Vector3(0, 1, 0);
+            let axisZ = new THREE.Vector3(0, 0, 1);
+            
+            if (gizmoState.localSpace) {
+                axisX.applyQuaternion(objectQuaternion);
+                axisY.applyQuaternion(objectQuaternion);
+                axisZ.applyQuaternion(objectQuaternion);
+            }
+            
             // Create a plane for intersection based on camera view and axis
             const planeNormal = new THREE.Vector3();
             const cameraDir = new THREE.Vector3();
             camera.getWorldDirection(cameraDir);
             
-            if (axis === 'x') {
-                planeNormal.set(0, Math.abs(cameraDir.y) > Math.abs(cameraDir.z) ? 0 : 1, Math.abs(cameraDir.y) > Math.abs(cameraDir.z) ? 1 : 0);
-            } else if (axis === 'y') {
-                planeNormal.set(Math.abs(cameraDir.x) > Math.abs(cameraDir.z) ? 0 : 1, 0, Math.abs(cameraDir.x) > Math.abs(cameraDir.z) ? 1 : 0);
-            } else if (axis === 'z') {
-                planeNormal.set(Math.abs(cameraDir.x) > Math.abs(cameraDir.y) ? 0 : 1, Math.abs(cameraDir.x) > Math.abs(cameraDir.y) ? 1 : 0, 0);
+            // Get the primary axis direction for this drag
+            let primaryAxis;
+            if (axis === 'x') primaryAxis = axisX;
+            else if (axis === 'y') primaryAxis = axisY;
+            else if (axis === 'z') primaryAxis = axisZ;
+            
+            if (axis === 'x' || axis === 'y' || axis === 'z') {
+                // For single-axis movement, create a plane that contains the axis
+                // Choose the plane normal to be perpendicular to both the axis and camera direction
+                planeNormal.crossVectors(primaryAxis, cameraDir);
+                if (planeNormal.lengthSq() < 0.001) {
+                    // Axis is parallel to camera, use alternative
+                    planeNormal.crossVectors(primaryAxis, camera.up);
+                }
+                planeNormal.crossVectors(planeNormal, primaryAxis).normalize();
             } else if (axis === 'xy') {
-                planeNormal.set(0, 0, 1);
+                planeNormal.copy(axisZ);
             } else if (axis === 'xz') {
-                planeNormal.set(0, 1, 0);
+                planeNormal.copy(axisY);
             } else if (axis === 'yz') {
-                planeNormal.set(1, 0, 0);
+                planeNormal.copy(axisX);
             }
             
             const plane = new THREE.Plane();
@@ -1852,22 +1926,31 @@
             if (intersection) {
                 let delta = intersection.clone().sub(gizmoState.startPoint);
                 
-                // Constrain to axis
+                // Project delta onto the allowed axes
                 if (axis === 'x') {
-                    delta.y = 0; delta.z = 0;
+                    const proj = delta.dot(axisX);
+                    delta.copy(axisX).multiplyScalar(proj);
                 } else if (axis === 'y') {
-                    delta.x = 0; delta.z = 0;
+                    const proj = delta.dot(axisY);
+                    delta.copy(axisY).multiplyScalar(proj);
                 } else if (axis === 'z') {
-                    delta.x = 0; delta.y = 0;
+                    const proj = delta.dot(axisZ);
+                    delta.copy(axisZ).multiplyScalar(proj);
                 } else if (axis === 'xy') {
-                    delta.z = 0;
+                    // Remove Z component in local space
+                    const projZ = delta.dot(axisZ);
+                    delta.sub(axisZ.clone().multiplyScalar(projZ));
                 } else if (axis === 'xz') {
-                    delta.y = 0;
+                    // Remove Y component in local space
+                    const projY = delta.dot(axisY);
+                    delta.sub(axisY.clone().multiplyScalar(projY));
                 } else if (axis === 'yz') {
-                    delta.x = 0;
+                    // Remove X component in local space
+                    const projX = delta.dot(axisX);
+                    delta.sub(axisX.clone().multiplyScalar(projX));
                 }
                 
-                // Apply to position
+                // Apply to position (delta is now in world space)
                 let newX = gizmoState.startValue.x + delta.x;
                 let newY = gizmoState.startValue.y + delta.y;
                 let newZ = gizmoState.startValue.z + delta.z;
@@ -1915,12 +1998,23 @@
             
             let deltaAngle = (currentAngle - gizmoState.startAngle) * (180 / Math.PI);
             
+            // Get the actual axis direction (local or world)
+            let axisDir = new THREE.Vector3();
+            if (axis === 'x') axisDir.set(1, 0, 0);
+            else if (axis === 'y') axisDir.set(0, 1, 0);
+            else if (axis === 'z') axisDir.set(0, 0, 1);
+            
+            // Transform axis to world space for camera comparison (in local mode)
+            let worldAxisDir = axisDir.clone();
+            if (gizmoState.localSpace) {
+                worldAxisDir.applyQuaternion(obj.quaternion);
+            }
+            
             // Invert based on camera orientation for intuitive rotation
             const camDir = new THREE.Vector3();
             camera.getWorldDirection(camDir);
-            if (axis === 'x' && camDir.x < 0) deltaAngle = -deltaAngle;
-            if (axis === 'y' && camDir.y > 0) deltaAngle = -deltaAngle;
-            if (axis === 'z' && camDir.z < 0) deltaAngle = -deltaAngle;
+            const dotProduct = camDir.dot(worldAxisDir);
+            if (dotProduct < 0) deltaAngle = -deltaAngle;
             
             // Snap
             if (gizmoState.snap.enabled) {
@@ -1928,14 +2022,36 @@
                 deltaAngle = Math.round(deltaAngle / snap) * snap;
             }
             
-            // Apply rotation
-            if (axis === 'x') {
-                data.rotation.x = gizmoState.startValue.x + deltaAngle;
-            } else if (axis === 'y') {
-                data.rotation.y = gizmoState.startValue.y + deltaAngle;
-            } else if (axis === 'z') {
-                data.rotation.z = gizmoState.startValue.z + deltaAngle;
+            const deltaRad = THREE.MathUtils.degToRad(deltaAngle);
+            
+            // Create start quaternion from initial rotation values
+            const startQuat = new THREE.Quaternion().setFromEuler(new THREE.Euler(
+                THREE.MathUtils.degToRad(gizmoState.startValue.x),
+                THREE.MathUtils.degToRad(gizmoState.startValue.y),
+                THREE.MathUtils.degToRad(gizmoState.startValue.z),
+                'YXZ'
+            ));
+            
+            let resultQuat;
+            
+            if (gizmoState.localSpace) {
+                // Local space: post-multiply (result = startQuat * deltaQuat)
+                // This applies rotation in the object's local coordinate system
+                const deltaQuat = new THREE.Quaternion().setFromAxisAngle(axisDir, deltaRad);
+                resultQuat = startQuat.clone().multiply(deltaQuat);
+            } else {
+                // World space: pre-multiply (result = deltaQuat * startQuat)
+                // This applies rotation in the world coordinate system
+                const deltaQuat = new THREE.Quaternion().setFromAxisAngle(axisDir, deltaRad);
+                resultQuat = deltaQuat.clone().multiply(startQuat);
             }
+            
+            // Convert back to Euler angles
+            const resultEuler = new THREE.Euler().setFromQuaternion(resultQuat, 'YXZ');
+            
+            data.rotation.x = THREE.MathUtils.radToDeg(resultEuler.x);
+            data.rotation.y = THREE.MathUtils.radToDeg(resultEuler.y);
+            data.rotation.z = THREE.MathUtils.radToDeg(resultEuler.z);
             
             obj.rotation.set(
                 THREE.MathUtils.degToRad(data.rotation.x),
@@ -2062,6 +2178,10 @@
             uniform float projFar1;
             uniform float projFar2;
             uniform float projFar3;
+            uniform vec2 texOffset0;
+            uniform vec2 texOffset1;
+            uniform vec2 texOffset2;
+            uniform vec2 texOffset3;
             uniform int numProjectors;
             uniform bool showCoverage;
             uniform bool showOverlap;
@@ -2106,7 +2226,7 @@
             // Sample projector with physically accurate occlusion
             // - Back-face rejection: surfaces facing away from projector receive no light
             // - Shadow occlusion: surfaces behind other geometry receive no light
-            vec4 sampleProjector(mat4 projMat, sampler2D projTex, sampler2D shadowMap, vec3 projPos, float lumens, float throwRatio, float nearPlane, float farPlane) {
+            vec4 sampleProjector(mat4 projMat, sampler2D projTex, sampler2D shadowMap, vec3 projPos, float lumens, float throwRatio, float nearPlane, float farPlane, vec2 texOffset) {
                 vec4 projCoord = projMat * vWorldPosition;
                 
                 // Behind the projector - no light
@@ -2160,7 +2280,9 @@
                 float edgeFalloff = 1.0 - smoothstep(0.85, 1.0, edgeDist);
                 cdm2 *= edgeFalloff;
                 
-                vec4 texColor = texture2D(projTex, uv);
+                // Apply texture offset for scrolling patterns (use fract for wrapping)
+                vec2 scrolledUV = fract(uv + texOffset);
+                vec4 texColor = texture2D(projTex, scrolledUV);
                 float displayIntensity = cdm2 / 1500.0;
                 
                 return vec4(texColor.rgb * displayIntensity * facing, cdm2);
@@ -2172,19 +2294,19 @@
                 int hitCount = 0;
                 
                 if (numProjectors > 0) {
-                    vec4 result = sampleProjector(projMat0, projTex0, shadowMap0, projPos0, projLumens0, projThrow0, projNear0, projFar0);
+                    vec4 result = sampleProjector(projMat0, projTex0, shadowMap0, projPos0, projLumens0, projThrow0, projNear0, projFar0, texOffset0);
                     if (result.a > 0.0) { color += result.rgb; totalCdm2 += result.a; hitCount++; }
                 }
                 if (numProjectors > 1) {
-                    vec4 result = sampleProjector(projMat1, projTex1, shadowMap1, projPos1, projLumens1, projThrow1, projNear1, projFar1);
+                    vec4 result = sampleProjector(projMat1, projTex1, shadowMap1, projPos1, projLumens1, projThrow1, projNear1, projFar1, texOffset1);
                     if (result.a > 0.0) { color += result.rgb; totalCdm2 += result.a; hitCount++; }
                 }
                 if (numProjectors > 2) {
-                    vec4 result = sampleProjector(projMat2, projTex2, shadowMap2, projPos2, projLumens2, projThrow2, projNear2, projFar2);
+                    vec4 result = sampleProjector(projMat2, projTex2, shadowMap2, projPos2, projLumens2, projThrow2, projNear2, projFar2, texOffset2);
                     if (result.a > 0.0) { color += result.rgb; totalCdm2 += result.a; hitCount++; }
                 }
                 if (numProjectors > 3) {
-                    vec4 result = sampleProjector(projMat3, projTex3, shadowMap3, projPos3, projLumens3, projThrow3, projNear3, projFar3);
+                    vec4 result = sampleProjector(projMat3, projTex3, shadowMap3, projPos3, projLumens3, projThrow3, projNear3, projFar3, texOffset3);
                     if (result.a > 0.0) { color += result.rgb; totalCdm2 += result.a; hitCount++; }
                 }
                 
@@ -2902,6 +3024,18 @@
                 shadowMaps.delete(id);
             }
             
+            // Clean up video data
+            const videoData = videoTextureData.get(id);
+            if (videoData) {
+                if (videoData.updateInterval) {
+                    clearInterval(videoData.updateInterval);
+                }
+                videoData.video.pause();
+                videoData.video.src = '';
+                if (videoData.texture) videoData.texture.dispose();
+                videoTextureData.delete(id);
+            }
+            
             // Clean up textures
             const tex = projectionTextures.get(id);
             if (tex && !customTextureData.has(id)) {
@@ -2926,31 +3060,223 @@
         function loadCustomTexture(projectorId, file) {
             if (!file) return;
             
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                const img = new Image();
-                img.onload = function() {
-                    const texture = new THREE.Texture(img);
-                    texture.needsUpdate = true;
+            const projector = state.projectors.find(p => p.id === projectorId);
+            if (!projector) return;
+            
+            const isVideo = file.type.startsWith('video/');
+            
+            if (isVideo) {
+                // Handle video file
+                const video = document.createElement('video');
+                video.crossOrigin = 'anonymous';
+                video.loop = true;
+                video.muted = true; // Muted to allow autoplay
+                video.playsInline = true;
+                
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    video.src = e.target.result;
                     
-                    const projector = state.projectors.find(p => p.id === projectorId);
-                    if (projector) {
-                        projector.customTextureUrl = e.target.result;
+                    video.onloadedmetadata = function() {
+                        // Store video data
+                        const resolution = projector.videoResolution || 'native';
+                        const texture = createVideoTexture(video, resolution);
+                        
+                        videoTextureData.set(projectorId, {
+                            video: video,
+                            texture: texture,
+                            playing: false,
+                            loop: true,
+                            resolution: resolution,
+                            nativeWidth: video.videoWidth,
+                            nativeHeight: video.videoHeight
+                        });
+                        
+                        projector.customTextureUrl = 'video';
+                        projector.customTextureType = 'video';
+                        projector.videoResolution = resolution;
                         customTextureData.set(projectorId, texture);
                         projectionTextures.set(projectorId, texture);
                         updateAllSurfaceMaterials();
                         updatePropertiesPanel();
-                    }
+                    };
                 };
-                img.src = e.target.result;
+                reader.readAsDataURL(file);
+            } else {
+                // Handle image file (original behavior)
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const img = new Image();
+                    img.onload = function() {
+                        const texture = new THREE.Texture(img);
+                        texture.needsUpdate = true;
+                        
+                        projector.customTextureUrl = e.target.result;
+                        projector.customTextureType = 'image';
+                        customTextureData.set(projectorId, texture);
+                        projectionTextures.set(projectorId, texture);
+                        updateAllSurfaceMaterials();
+                        updatePropertiesPanel();
+                    };
+                    img.src = e.target.result;
+                };
+                reader.readAsDataURL(file);
+            }
+        }
+        
+        function createVideoTexture(video, resolution) {
+            // Get target resolution
+            const resolutions = {
+                'native': { w: video.videoWidth, h: video.videoHeight },
+                '1080p': { w: 1920, h: 1080 },
+                '720p': { w: 1280, h: 720 },
+                '480p': { w: 854, h: 480 },
+                '360p': { w: 640, h: 360 }
             };
-            reader.readAsDataURL(file);
+            
+            const target = resolutions[resolution] || resolutions['native'];
+            
+            // Create a canvas for downsampling if needed
+            if (resolution !== 'native' && (video.videoWidth > target.w || video.videoHeight > target.h)) {
+                const canvas = document.createElement('canvas');
+                canvas.width = target.w;
+                canvas.height = target.h;
+                
+                // Create canvas texture that we'll update from video
+                const texture = new THREE.CanvasTexture(canvas);
+                texture.minFilter = THREE.LinearFilter;
+                texture.magFilter = THREE.LinearFilter;
+                texture.userData = { 
+                    canvas: canvas, 
+                    ctx: canvas.getContext('2d'),
+                    video: video,
+                    isDownsampled: true
+                };
+                return texture;
+            } else {
+                // Use native video texture
+                const texture = new THREE.VideoTexture(video);
+                texture.minFilter = THREE.LinearFilter;
+                texture.magFilter = THREE.LinearFilter;
+                return texture;
+            }
+        }
+        
+        function updateVideoResolution(projectorId, resolution) {
+            const videoData = videoTextureData.get(projectorId);
+            const projector = state.projectors.find(p => p.id === projectorId);
+            if (!videoData || !projector) return;
+            
+            const wasPlaying = videoData.playing;
+            
+            // Create new texture with new resolution
+            const newTexture = createVideoTexture(videoData.video, resolution);
+            
+            // Clean up old texture
+            if (videoData.texture) {
+                videoData.texture.dispose();
+            }
+            
+            videoData.texture = newTexture;
+            videoData.resolution = resolution;
+            projector.videoResolution = resolution;
+            
+            customTextureData.set(projectorId, newTexture);
+            projectionTextures.set(projectorId, newTexture);
+            updateAllSurfaceMaterials();
+            
+            if (wasPlaying) {
+                playVideo(projectorId);
+            }
+        }
+        
+        function playVideo(projectorId) {
+            const videoData = videoTextureData.get(projectorId);
+            if (!videoData) return;
+            
+            videoData.video.play();
+            videoData.playing = true;
+            
+            // Start interval to update seek bar
+            if (!videoData.updateInterval) {
+                videoData.updateInterval = setInterval(() => {
+                    // Only update if this projector is selected
+                    if (state.selectedType === 'projector' && state.selectedObject === projectorId) {
+                        const seekInput = document.querySelector('.video-seek input[type="range"]');
+                        const timeDisplay = document.querySelector('.video-time');
+                        if (seekInput && timeDisplay) {
+                            seekInput.value = videoData.video.currentTime;
+                            seekInput.max = videoData.video.duration;
+                            timeDisplay.textContent = `${formatTime(videoData.video.currentTime)} / ${formatTime(videoData.video.duration)}`;
+                        }
+                    }
+                }, 250);
+            }
+            
+            updatePropertiesPanel();
+        }
+        
+        function pauseVideo(projectorId) {
+            const videoData = videoTextureData.get(projectorId);
+            if (!videoData) return;
+            
+            videoData.video.pause();
+            videoData.playing = false;
+            
+            // Clear update interval
+            if (videoData.updateInterval) {
+                clearInterval(videoData.updateInterval);
+                videoData.updateInterval = null;
+            }
+            
+            updatePropertiesPanel();
+        }
+        
+        function toggleVideoLoop(projectorId) {
+            const videoData = videoTextureData.get(projectorId);
+            if (!videoData) return;
+            
+            videoData.loop = !videoData.loop;
+            videoData.video.loop = videoData.loop;
+            updatePropertiesPanel();
+        }
+        
+        function seekVideo(projectorId, time) {
+            const videoData = videoTextureData.get(projectorId);
+            if (!videoData) return;
+            
+            videoData.video.currentTime = time;
+        }
+        
+        function restartVideo(projectorId) {
+            const videoData = videoTextureData.get(projectorId);
+            if (!videoData) return;
+            
+            videoData.video.currentTime = 0;
+            if (!videoData.playing) {
+                playVideo(projectorId);
+            }
         }
         
         function clearCustomTexture(projectorId) {
             const projector = state.projectors.find(p => p.id === projectorId);
             if (projector) {
                 projector.customTextureUrl = null;
+                projector.customTextureType = null;
+                projector.videoResolution = null;
+                
+                // Clean up video if present
+                const videoData = videoTextureData.get(projectorId);
+                if (videoData) {
+                    if (videoData.updateInterval) {
+                        clearInterval(videoData.updateInterval);
+                    }
+                    videoData.video.pause();
+                    videoData.video.src = '';
+                    if (videoData.texture) videoData.texture.dispose();
+                    videoTextureData.delete(projectorId);
+                }
+                
                 customTextureData.delete(projectorId);
                 projectionTextures.set(projectorId, createPatternTexture(state.currentPattern));
                 updateAllSurfaceMaterials();
@@ -2967,25 +3293,40 @@
                 return;
             }
             
-            list.innerHTML = state.projectors.map(p => `
+            list.innerHTML = state.projectors.map(p => {
+                let textureInfo = '';
+                if (p.customTextureType === 'video') {
+                    textureInfo = ' • Video';
+                } else if (p.customTextureUrl) {
+                    textureInfo = ' • Image';
+                }
+                return `
                 <div class="object-item ${state.selectedType === 'projector' && state.selectedObject === p.id ? 'selected' : ''}" onclick="selectObject('projector', ${p.id})">
                     <div class="object-icon projector"><svg viewBox="0 0 24 24"><path d="M21 3H3c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h5v2h8v-2h5c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 14H3V5h18v12z"/></svg></div>
                     <div class="object-info">
                         <div class="object-name">${p.name}</div>
-                        <div class="object-type">${(p.lumens/1000).toFixed(0)}K lm${p.customTextureUrl ? ' • Custom' : ''}</div>
+                        <div class="object-type">${(p.lumens/1000).toFixed(0)}K lm${textureInfo}</div>
                     </div>
                     <div class="object-actions">
                         <button class="icon-btn" onclick="event.stopPropagation(); duplicateProjector(${p.id})"><svg viewBox="0 0 24 24"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg></button>
                         <button class="icon-btn danger" onclick="event.stopPropagation(); removeProjector(${p.id})"><svg viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg></button>
                     </div>
                 </div>
-            `).join('');
+            `}).join('');
         }
         
         function duplicateProjector(id) {
             const orig = state.projectors.find(p => p.id === id);
             if (!orig) return;
-            const dup = { ...JSON.parse(JSON.stringify(orig)), id: Date.now(), name: orig.name + ' (Copy)', position: { ...orig.position, x: orig.position.x + 2 }, customTextureUrl: null };
+            const dup = { 
+                ...JSON.parse(JSON.stringify(orig)), 
+                id: Date.now(), 
+                name: orig.name + ' (Copy)', 
+                position: { ...orig.position, x: orig.position.x + 2 }, 
+                customTextureUrl: null,
+                customTextureType: null,
+                videoResolution: null
+            };
             state.projectors.push(dup);
             createProjectorMesh(dup);
             updateProjectorMatrix(dup);
@@ -3184,6 +3525,8 @@
                 projNear2: { value: 0.1 }, projNear3: { value: 0.1 },
                 projFar0: { value: 100 }, projFar1: { value: 100 },
                 projFar2: { value: 100 }, projFar3: { value: 100 },
+                texOffset0: { value: new THREE.Vector2(0, 0) }, texOffset1: { value: new THREE.Vector2(0, 0) },
+                texOffset2: { value: new THREE.Vector2(0, 0) }, texOffset3: { value: new THREE.Vector2(0, 0) },
                 numProjectors: { value: 0 },
                 showCoverage: { value: state.displayOptions.coverage },
                 showOverlap: { value: state.displayOptions.overlap },
@@ -3210,6 +3553,13 @@
                 }
                 if (tex) uniforms[`projTex${i}`].value = tex;
                 if (shadow) uniforms[`shadowMap${i}`].value = shadow.renderTarget.texture;
+                
+                // Apply pattern scroll offset only for projectors without custom textures
+                if (!proj.customTextureUrl && patternScrollState.enabled) {
+                    uniforms[`texOffset${i}`].value.set(patternScrollState.offset.x, patternScrollState.offset.y);
+                } else {
+                    uniforms[`texOffset${i}`].value.set(0, 0);
+                }
             });
             
             return new THREE.ShaderMaterial({
@@ -3542,6 +3892,84 @@
             updateGizmoPosition();
         }
         
+        function buildTextureControlsHtml(p) {
+            const videoData = videoTextureData.get(p.id);
+            
+            if (p.customTextureType === 'video' && videoData) {
+                // Video controls
+                const duration = videoData.video.duration || 0;
+                const currentTime = videoData.video.currentTime || 0;
+                const isPlaying = videoData.playing;
+                const isLooping = videoData.loop;
+                const resolution = videoData.resolution || 'native';
+                const nativeRes = `${videoData.nativeWidth}×${videoData.nativeHeight}`;
+                
+                return `
+                    <div class="video-preview">
+                        <div class="video-info">
+                            <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M17 10.5V7c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.55 0 1-.45 1-1v-3.5l4 4v-11l-4 4z"/></svg>
+                            <span>Video (${nativeRes})</span>
+                        </div>
+                        <div class="video-controls">
+                            <button class="video-btn" onclick="${isPlaying ? 'pauseVideo' : 'playVideo'}(${p.id})" title="${isPlaying ? 'Pause' : 'Play'}">
+                                <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+                                    ${isPlaying 
+                                        ? '<path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/>' 
+                                        : '<path d="M8 5v14l11-7z"/>'}
+                                </svg>
+                            </button>
+                            <button class="video-btn" onclick="restartVideo(${p.id})" title="Restart">
+                                <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M12 5V1L7 6l5 5V7c3.31 0 6 2.69 6 6s-2.69 6-6 6-6-2.69-6-6H4c0 4.42 3.58 8 8 8s8-3.58 8-8-3.58-8-8-8z"/></svg>
+                            </button>
+                            <button class="video-btn ${isLooping ? 'active' : ''}" onclick="toggleVideoLoop(${p.id})" title="Loop">
+                                <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><path d="M12 4V1L8 5l4 4V6c3.31 0 6 2.69 6 6 0 1.01-.25 1.97-.7 2.8l1.46 1.46C19.54 15.03 20 13.57 20 12c0-4.42-3.58-8-8-8zm0 14c-3.31 0-6-2.69-6-6 0-1.01.25-1.97.7-2.8L5.24 7.74C4.46 8.97 4 10.43 4 12c0 4.42 3.58 8 8 8v3l4-4-4-4v3z"/></svg>
+                            </button>
+                        </div>
+                        <div class="video-seek">
+                            <input type="range" min="0" max="${duration}" step="0.1" value="${currentTime}" 
+                                oninput="seekVideo(${p.id}, +this.value)" 
+                                style="width: 100%;">
+                            <div class="video-time">${formatTime(currentTime)} / ${formatTime(duration)}</div>
+                        </div>
+                        <div class="property-row" style="margin-top: 8px;">
+                            <span class="property-label">Quality</span>
+                            <div class="single-input">
+                                <select onchange="updateVideoResolution(${p.id}, this.value)">
+                                    <option value="native" ${resolution === 'native' ? 'selected' : ''}>Native (${nativeRes})</option>
+                                    <option value="1080p" ${resolution === '1080p' ? 'selected' : ''}>1080p</option>
+                                    <option value="720p" ${resolution === '720p' ? 'selected' : ''}>720p</option>
+                                    <option value="480p" ${resolution === '480p' ? 'selected' : ''}>480p</option>
+                                    <option value="360p" ${resolution === '360p' ? 'selected' : ''}>360p</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                    <button class="btn clear-texture-btn" onclick="clearCustomTexture(${p.id})">Clear Video</button>
+                `;
+            } else if (p.customTextureUrl && p.customTextureType !== 'video') {
+                // Image preview
+                return `
+                    <div class="texture-preview" style="background-image: url('${p.customTextureUrl}')"></div>
+                    <button class="btn clear-texture-btn" onclick="clearCustomTexture(${p.id})">Clear Image</button>
+                `;
+            } else {
+                // Upload prompt
+                return `
+                    <div class="texture-upload" onclick="document.getElementById('tex-upload-${p.id}').click()">
+                        <input type="file" id="tex-upload-${p.id}" accept="image/*,video/*" onchange="loadCustomTexture(${p.id}, this.files[0])">
+                        <p>Click to upload image or video</p>
+                    </div>
+                `;
+            }
+        }
+        
+        function formatTime(seconds) {
+            if (!seconds || isNaN(seconds)) return '0:00';
+            const mins = Math.floor(seconds / 60);
+            const secs = Math.floor(seconds % 60);
+            return `${mins}:${secs.toString().padStart(2, '0')}`;
+        }
+        
         function updatePropertiesPanel() {
             const panel = document.getElementById('properties-panel');
             
@@ -3595,15 +4023,7 @@
                         </div>
                         <div class="property-group">
                             <div class="property-group-title">Custom Texture</div>
-                            ${p.customTextureUrl ? `
-                                <div class="texture-preview" style="background-image: url('${p.customTextureUrl}')"></div>
-                                <button class="btn clear-texture-btn" onclick="clearCustomTexture(${p.id})">Clear Custom Texture</button>
-                            ` : `
-                                <div class="texture-upload" onclick="document.getElementById('tex-upload-${p.id}').click()">
-                                    <input type="file" id="tex-upload-${p.id}" accept="image/*" onchange="loadCustomTexture(${p.id}, this.files[0])">
-                                    <p>Click to upload image</p>
-                                </div>
-                            `}
+                            ${buildTextureControlsHtml(p)}
                         </div>
                         <div class="property-group">
                             <div class="property-group-title">Range</div>
@@ -3957,7 +4377,39 @@
             state.currentPattern = pattern;
             document.querySelectorAll('.pattern-btn').forEach(b => b.classList.remove('active'));
             event.currentTarget.classList.add('active');
+            
+            // Reset scroll offset when changing pattern
+            patternScrollState.offset = { x: 0, y: 0 };
+            
             updateAllSurfaceMaterials();
+        }
+        
+        function togglePatternScroll() {
+            patternScrollState.enabled = !patternScrollState.enabled;
+            document.getElementById('toggle-pattern-scroll').classList.toggle('active', patternScrollState.enabled);
+            
+            // Reset offset when disabling
+            if (!patternScrollState.enabled) {
+                patternScrollState.offset = { x: 0, y: 0 };
+                // Reset shader uniforms on all surfaces
+                surfaceGroup.children.forEach(mesh => {
+                    if (mesh.material && mesh.material.uniforms) {
+                        for (let i = 0; i < 4; i++) {
+                            if (mesh.material.uniforms[`texOffset${i}`]) {
+                                mesh.material.uniforms[`texOffset${i}`].value.set(0, 0);
+                            }
+                        }
+                    }
+                });
+            }
+        }
+        
+        function updatePatternScrollSpeed(speed) {
+            patternScrollState.speed = speed;
+        }
+        
+        function updatePatternScrollDirection(direction) {
+            patternScrollState.direction = direction;
         }
         
         // ==========================================
@@ -4080,7 +4532,7 @@
             const filename = document.getElementById('export-filename').value.trim() || 'projection-config';
             
             const config = {
-                version: '2.5',
+                version: '2.6',
                 exportDate: new Date().toISOString(),
                 metadata: {
                     projectorCount: state.projectors.length,
@@ -4311,7 +4763,7 @@
             const timestamp = `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}_${String(date.getHours()).padStart(2,'0')}-${String(date.getMinutes()).padStart(2,'0')}`;
             
             const config = {
-                version: '2.5',
+                version: '2.6',
                 exportDate: date.toISOString(),
                 metadata: {
                     projectorCount: state.projectors.length,
@@ -4363,6 +4815,79 @@
         function animate() {
             requestAnimationFrame(animate);
             updateCameraMovement();
+            
+            const deltaTime = 1/60; // Approximate delta time
+            
+            // Update video textures (for downsampled videos that need canvas updates)
+            videoTextureData.forEach((videoData, projectorId) => {
+                if (videoData.playing && videoData.texture) {
+                    // For downsampled textures, copy video frame to canvas
+                    if (videoData.texture.userData && videoData.texture.userData.isDownsampled) {
+                        const { ctx, canvas, video } = videoData.texture.userData;
+                        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                        videoData.texture.needsUpdate = true;
+                    } else {
+                        // For native VideoTexture, just mark as needs update
+                        videoData.texture.needsUpdate = true;
+                    }
+                }
+            });
+            
+            // Update pattern scroll animation
+            if (patternScrollState.enabled && state.currentPattern !== 'none') {
+                const speed = patternScrollState.speed * deltaTime;
+                
+                switch (patternScrollState.direction) {
+                    case 'horizontal':
+                        patternScrollState.offset.x += speed;
+                        break;
+                    case 'vertical':
+                        patternScrollState.offset.y += speed;
+                        break;
+                    case 'diagonal':
+                        patternScrollState.offset.x += speed * 0.707;
+                        patternScrollState.offset.y += speed * 0.707;
+                        break;
+                }
+                
+                // Wrap offsets
+                patternScrollState.offset.x %= 1;
+                patternScrollState.offset.y %= 1;
+                
+                // Update shader uniforms on all surface materials
+                const enabled = state.projectors.filter(p => p.enabled);
+                surfaceGroup.children.forEach(mesh => {
+                    if (mesh.material && mesh.material.uniforms) {
+                        // Update all 4 possible projector texture offsets
+                        for (let i = 0; i < Math.min(enabled.length, 4); i++) {
+                            const proj = enabled[i];
+                            // Only scroll patterns, not custom textures/videos
+                            if (!proj.customTextureUrl) {
+                                mesh.material.uniforms[`texOffset${i}`].value.set(
+                                    patternScrollState.offset.x, 
+                                    patternScrollState.offset.y
+                                );
+                            } else {
+                                // Reset offset for custom textures
+                                mesh.material.uniforms[`texOffset${i}`].value.set(0, 0);
+                            }
+                        }
+                    }
+                });
+            } else if (patternScrollState.offset.x !== 0 || patternScrollState.offset.y !== 0) {
+                // Reset offsets when disabled
+                patternScrollState.offset.x = 0;
+                patternScrollState.offset.y = 0;
+                surfaceGroup.children.forEach(mesh => {
+                    if (mesh.material && mesh.material.uniforms) {
+                        for (let i = 0; i < 4; i++) {
+                            if (mesh.material.uniforms[`texOffset${i}`]) {
+                                mesh.material.uniforms[`texOffset${i}`].value.set(0, 0);
+                            }
+                        }
+                    }
+                });
+            }
             
             // Update gizmo scale based on camera distance (only if not dragging)
             if (gizmoGroup && gizmoGroup.visible && !gizmoState.isDragging) {
