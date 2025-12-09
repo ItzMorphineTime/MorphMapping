@@ -580,6 +580,144 @@
         .password-error.visible {
             display: block;
         }
+        
+        /* Contact Me Button & Panel */
+        .contact-wrapper {
+            position: relative;
+            display: inline-block;
+        }
+        .contact-btn {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 12px;
+            border-radius: 6px;
+            border: 1px solid var(--border-color);
+            background: linear-gradient(135deg, rgba(255, 107, 107, 0.1), rgba(138, 43, 226, 0.1));
+            color: var(--text-secondary);
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 500;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .contact-btn:hover {
+            border-color: #ff6b6b;
+            color: #ff6b6b;
+            background: linear-gradient(135deg, rgba(255, 107, 107, 0.2), rgba(138, 43, 226, 0.2));
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(255, 107, 107, 0.2);
+        }
+        .contact-btn svg {
+            width: 14px;
+            height: 14px;
+            fill: currentColor;
+        }
+        .contact-btn .heart {
+            animation: heartbeat 1.5s ease-in-out infinite;
+        }
+        @keyframes heartbeat {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.15); }
+        }
+        .contact-panel {
+            position: absolute;
+            top: calc(100% + 12px);
+            right: 0;
+            width: 320px;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 0;
+            opacity: 0;
+            visibility: hidden;
+            transform: translateY(-10px) scale(0.95);
+            transform-origin: top right;
+            transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 1000;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
+            overflow: hidden;
+        }
+        .contact-panel.active {
+            opacity: 1;
+            visibility: visible;
+            transform: translateY(0) scale(1);
+        }
+        .contact-panel-gradient {
+            height: 4px;
+            background: linear-gradient(90deg, #ff6b6b, #feca57, #48dbfb, #ff9ff3, #a55eea);
+            animation: gradientSlide 3s linear infinite;
+            background-size: 200% 100%;
+        }
+        @keyframes gradientSlide {
+            0% { background-position: 0% 50%; }
+            100% { background-position: 200% 50%; }
+        }
+        .contact-panel-content {
+            padding: 20px;
+        }
+        .contact-panel-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .contact-panel-title svg {
+            width: 18px;
+            height: 18px;
+            fill: #feca57;
+        }
+        .contact-panel-message {
+            font-size: 13px;
+            color: var(--text-secondary);
+            line-height: 1.6;
+            margin-bottom: 16px;
+        }
+        .contact-links {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .contact-link {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 12px 14px;
+            border-radius: 8px;
+            background: var(--bg-primary);
+            border: 1px solid var(--border-color);
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 12px;
+            font-weight: 500;
+            transition: all 0.2s ease;
+        }
+        .contact-link:hover {
+            border-color: var(--accent-primary);
+            background: var(--accent-glow);
+            color: var(--text-primary);
+            transform: translateX(4px);
+        }
+        .contact-link svg {
+            width: 20px;
+            height: 20px;
+            flex-shrink: 0;
+        }
+        .contact-link.github svg { fill: #f0f0f0; }
+        .contact-link.discord svg { fill: #5865F2; }
+        .contact-link.github:hover svg { fill: #fff; }
+        .contact-link.discord:hover svg { fill: #7289da; }
+        .contact-link-text {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+        .contact-link-label {
+            font-size: 11px;
+            color: var(--text-muted);
+        }
     </style>
 </head>
 <body>
@@ -587,7 +725,7 @@
         <header class="header">
             <div class="logo">
                 <div class="logo-icon"><svg viewBox="0 0 24 24"><path d="M21 3H3c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h5v2h8v-2h5c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 14H3V5h18v12z"/></svg></div>
-                <span class="logo-text">Projection Studio <span>v2.3</span></span>
+                <span class="logo-text">Projection Studio <span>v2.6</span></span>
             </div>
             <div class="header-actions">
                 <button class="btn" onclick="confirmNewProject()"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>New</button>
@@ -595,6 +733,40 @@
                 <input type="file" id="import-file" accept=".json" style="display:none" onchange="importConfig(this.files[0])">
                 <button class="btn" onclick="showExportModal()"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>Export</button>
                 <button class="btn btn-primary" onclick="quickSave()"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M17 3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V7l-4-4zm-5 16c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3zm3-10H5V5h10v4z"/></svg>Save</button>
+                <div class="contact-wrapper">
+                    <button class="contact-btn" onclick="toggleContactPanel()">
+                        <svg class="heart" viewBox="0 0 24 24"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
+                        Support
+                    </button>
+                    <div class="contact-panel" id="contact-panel">
+                        <div class="contact-panel-gradient"></div>
+                        <div class="contact-panel-content">
+                            <div class="contact-panel-title">
+                                <svg viewBox="0 0 24 24"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>
+                                Hey there!
+                            </div>
+                            <div class="contact-panel-message">
+                                Please consider buying me a Coffee if you want to export/import your projects! Your support helps keep this tool free and improving.
+                            </div>
+                            <div class="contact-links">
+                                <a href="https://github.com/ItzMorphineTime/MorphMapping/issues" target="_blank" class="contact-link github">
+                                    <svg viewBox="0 0 24 24"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
+                                    <div class="contact-link-text">
+                                        <span class="contact-link-label">Feature Requests & Issues</span>
+                                        GitHub
+                                    </div>
+                                </a>
+                                <a href="https://discord.com/users/211604375380951050" target="_blank" class="contact-link discord">
+                                    <svg viewBox="0 0 24 24"><path d="M20.317 4.3698a19.7913 19.7913 0 00-4.8851-1.5152.0741.0741 0 00-.0785.0371c-.211.3753-.4447.8648-.6083 1.2495-1.8447-.2762-3.68-.2762-5.4868 0-.1636-.3933-.4058-.8742-.6177-1.2495a.077.077 0 00-.0785-.037 19.7363 19.7363 0 00-4.8852 1.515.0699.0699 0 00-.0321.0277C.5334 9.0458-.319 13.5799.0992 18.0578a.0824.0824 0 00.0312.0561c2.0528 1.5076 4.0413 2.4228 5.9929 3.0294a.0777.0777 0 00.0842-.0276c.4616-.6304.8731-1.2952 1.226-1.9942a.076.076 0 00-.0416-.1057c-.6528-.2476-1.2743-.5495-1.8722-.8923a.077.077 0 01-.0076-.1277c.1258-.0943.2517-.1923.3718-.2914a.0743.0743 0 01.0776-.0105c3.9278 1.7933 8.18 1.7933 12.0614 0a.0739.0739 0 01.0785.0095c.1202.099.246.1981.3728.2924a.077.077 0 01-.0066.1276 12.2986 12.2986 0 01-1.873.8914.0766.0766 0 00-.0407.1067c.3604.698.7719 1.3628 1.225 1.9932a.076.076 0 00.0842.0286c1.961-.6067 3.9495-1.5219 6.0023-3.0294a.077.077 0 00.0313-.0552c.5004-5.177-.8382-9.6739-3.5485-13.6604a.061.061 0 00-.0312-.0286zM8.02 15.3312c-1.1825 0-2.1569-1.0857-2.1569-2.419 0-1.3332.9555-2.4189 2.157-2.4189 1.2108 0 2.1757 1.0952 2.1568 2.419 0 1.3332-.9555 2.4189-2.1569 2.4189zm7.9748 0c-1.1825 0-2.1569-1.0857-2.1569-2.419 0-1.3332.9554-2.4189 2.1569-2.4189 1.2108 0 2.1757 1.0952 2.1568 2.419 0 1.3332-.946 2.4189-2.1568 2.4189z"/></svg>
+                                    <div class="contact-link-text">
+                                        <span class="contact-link-label">Chat with me</span>
+                                        Discord
+                                    </div>
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </header>
         
@@ -4424,6 +4596,16 @@
         function resetScene() {
             while (projectorGroup.children.length) projectorGroup.remove(projectorGroup.children[0]);
             while (surfaceGroup.children.length) { const m = surfaceGroup.children[0]; m.material?.dispose(); m.geometry?.dispose(); surfaceGroup.remove(m); }
+            
+            // Clean up video textures
+            videoTextureData.forEach((videoData) => {
+                if (videoData.updateInterval) clearInterval(videoData.updateInterval);
+                videoData.video.pause();
+                videoData.video.src = '';
+                if (videoData.texture) videoData.texture.dispose();
+            });
+            videoTextureData.clear();
+            
             state.projectors = []; state.surfaces = []; state.selectedObject = null; state.selectedType = null;
             projectorMatrixData.clear(); projectionTextures.clear(); customTextureData.clear();
             updateProjectorList(); updateSurfaceList(); updatePropertiesPanel(); updateStatus();
@@ -4466,12 +4648,24 @@
             // Update counts
             document.getElementById('export-projector-count').textContent = 
                 `${state.projectors.length} projector${state.projectors.length !== 1 ? 's' : ''} with settings`;
-            document.getElementById('export-surface-count').textContent = 
-                `${state.surfaces.length} surface${state.surfaces.length !== 1 ? 's' : ''} with settings`;
             
-            const textureCount = state.projectors.filter(p => p.customTextureUrl).length;
-            document.getElementById('export-texture-count').textContent = 
-                textureCount > 0 ? `${textureCount} custom texture${textureCount !== 1 ? 's' : ''} (increases file size)` : 'No custom textures';
+            // Show surface count with custom OBJ info
+            const customObjCount = state.surfaces.filter(s => s.type === 'custom' && s.objData).length;
+            let surfaceText = `${state.surfaces.length} surface${state.surfaces.length !== 1 ? 's' : ''} with settings`;
+            if (customObjCount > 0) {
+                surfaceText += ` (${customObjCount} custom OBJ)`;
+            }
+            document.getElementById('export-surface-count').textContent = surfaceText;
+            
+            const imageCount = state.projectors.filter(p => p.customTextureUrl && p.customTextureType !== 'video').length;
+            const videoCount = state.projectors.filter(p => p.customTextureType === 'video').length;
+            let textureText = imageCount > 0 
+                ? `${imageCount} image${imageCount !== 1 ? 's' : ''} (increases file size)` 
+                : 'No image textures';
+            if (videoCount > 0) {
+                textureText += ` • ${videoCount} video${videoCount !== 1 ? 's' : ''} (not exportable)`;
+            }
+            document.getElementById('export-texture-count').textContent = textureText;
             
             // Set default filename with timestamp
             const date = new Date();
@@ -4505,6 +4699,27 @@
             document.getElementById(id).classList.remove('active');
             if (id === 'import-modal') {
                 pendingImportData = null;
+            }
+        }
+        
+        function toggleContactPanel() {
+            const panel = document.getElementById('contact-panel');
+            panel.classList.toggle('active');
+            
+            // Close when clicking outside
+            if (panel.classList.contains('active')) {
+                setTimeout(() => {
+                    document.addEventListener('click', closeContactPanelOutside);
+                }, 10);
+            }
+        }
+        
+        function closeContactPanelOutside(e) {
+            const panel = document.getElementById('contact-panel');
+            const wrapper = e.target.closest('.contact-wrapper');
+            if (!wrapper && panel.classList.contains('active')) {
+                panel.classList.remove('active');
+                document.removeEventListener('click', closeContactPanelOutside);
             }
         }
         
@@ -4543,15 +4758,33 @@
             if (exportOptions.projectors) {
                 config.projectors = state.projectors.map(p => {
                     const proj = { ...p };
-                    if (!exportOptions.textures) {
+                    // Skip video textures (can't be embedded)
+                    if (p.customTextureType === 'video') {
                         proj.customTextureUrl = null;
+                        proj.customTextureType = null;
+                        proj.videoResolution = null;
+                    } else if (!exportOptions.textures) {
+                        proj.customTextureUrl = null;
+                        proj.customTextureType = null;
                     }
                     return proj;
                 });
             }
             
             if (exportOptions.surfaces) {
-                config.surfaces = [...state.surfaces];
+                config.surfaces = state.surfaces.map(s => ({
+                    id: s.id,
+                    name: s.name,
+                    type: s.type,
+                    position: { ...s.position },
+                    rotation: { ...s.rotation },
+                    dimensions: { ...s.dimensions },
+                    curvature: s.curvature,
+                    color: s.color,
+                    gain: s.gain,
+                    scale: s.scale || 1.0,
+                    objData: s.objData || null // Include custom OBJ data
+                }));
             }
             
             if (exportOptions.settings) {
@@ -4591,12 +4824,18 @@
                     document.getElementById('import-version').textContent = data.version || 'Unknown';
                     document.getElementById('import-projectors').textContent = 
                         data.projectors ? `${data.projectors.length} projector${data.projectors.length !== 1 ? 's' : ''}` : 'None';
-                    document.getElementById('import-surfaces').textContent = 
-                        data.surfaces ? `${data.surfaces.length} surface${data.surfaces.length !== 1 ? 's' : ''}` : 'None';
                     
-                    const textureCount = data.projectors ? data.projectors.filter(p => p.customTextureUrl).length : 0;
+                    // Show surface count with custom OBJ info
+                    const customObjCount = data.surfaces ? data.surfaces.filter(s => s.type === 'custom' && s.objData).length : 0;
+                    let surfaceText = data.surfaces ? `${data.surfaces.length} surface${data.surfaces.length !== 1 ? 's' : ''}` : 'None';
+                    if (customObjCount > 0) {
+                        surfaceText += ` (${customObjCount} custom OBJ)`;
+                    }
+                    document.getElementById('import-surfaces').textContent = surfaceText;
+                    
+                    const imageCount = data.projectors ? data.projectors.filter(p => p.customTextureUrl && p.customTextureType !== 'video').length : 0;
                     document.getElementById('import-textures').textContent = 
-                        textureCount > 0 ? `${textureCount} embedded` : 'None';
+                        imageCount > 0 ? `${imageCount} image${imageCount !== 1 ? 's' : ''} embedded` : 'None';
                     
                     document.getElementById('import-settings').textContent = 
                         data.settings ? 'Included' : 'Not included';
@@ -4651,6 +4890,8 @@
                         zoom: projData.zoom || 1.0,
                         enabled: projData.enabled !== false,
                         customTextureUrl: projData.customTextureUrl || null,
+                        customTextureType: projData.customTextureType || null,
+                        videoResolution: projData.videoResolution || null,
                         nearPlane: projData.nearPlane || 0.1,
                         farPlane: projData.farPlane || 100,
                         frustumDistance: projData.frustumDistance || 20
@@ -4659,8 +4900,8 @@
                     state.projectors.push(projector);
                     createProjectorMesh(projector);
                     
-                    // Load custom texture if present
-                    if (projector.customTextureUrl) {
+                    // Load custom texture if present (only images, not videos)
+                    if (projector.customTextureUrl && projector.customTextureType !== 'video') {
                         const img = new Image();
                         img.onload = function() {
                             const texture = new THREE.Texture(img);
@@ -4670,6 +4911,11 @@
                             updateAllSurfaceMaterials();
                         };
                         img.src = projector.customTextureUrl;
+                    } else if (projector.customTextureType === 'video') {
+                        // Video textures can't be embedded - clear the reference
+                        projector.customTextureUrl = null;
+                        projector.customTextureType = null;
+                        projector.videoResolution = null;
                     }
                     
                     updateProjectorMatrix(projector);
@@ -4690,7 +4936,9 @@
                         dimensions: surfData.dimensions || { width: 8, height: 4.5 },
                         curvature: surfData.curvature || 30,
                         color: surfData.color || '#555555',
-                        gain: surfData.gain || 1.0
+                        gain: surfData.gain || 1.0,
+                        scale: surfData.scale || 1.0,
+                        objData: surfData.objData || null // Preserve custom OBJ data
                     };
                     
                     state.surfaces.push(surface);
