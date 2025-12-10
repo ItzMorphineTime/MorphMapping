@@ -103,6 +103,9 @@
         .slider { flex: 1; -webkit-appearance: none; height: 4px; border-radius: 2px; background: var(--border-color); outline: none; }
         .slider::-webkit-slider-thumb { -webkit-appearance: none; width: 14px; height: 14px; border-radius: 50%; background: var(--accent-primary); cursor: pointer; }
         .slider-value { width: 50px; font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--text-secondary); text-align: right; }
+        .slider-input { width: 55px; font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--text-primary); background: var(--bg-tertiary); border: 1px solid var(--border-color); border-radius: 3px; }
+        .slider-input:focus { outline: none; border-color: var(--accent-color); }
+        .slider-input::-webkit-inner-spin-button, .slider-input::-webkit-outer-spin-button { opacity: 0.5; }
         
         .toggle-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
         .toggle-label { font-size: 12px; color: var(--text-secondary); }
@@ -118,6 +121,9 @@
         .viewport-overlay { position: absolute; top: 12px; left: 12px; display: flex; gap: 8px; }
         .view-btn { padding: 6px 12px; border-radius: 4px; border: 1px solid var(--border-color); background: rgba(17, 17, 20, 0.85); backdrop-filter: blur(8px); color: var(--text-secondary); font-family: 'Outfit', sans-serif; font-size: 11px; font-weight: 500; cursor: pointer; transition: all 0.15s ease; }
         .view-btn:hover, .view-btn.active { border-color: var(--accent-primary); color: var(--accent-primary); }
+        .view-btn.pilot-btn { margin-left: 8px; border-color: #e67e22; color: #e67e22; }
+        .view-btn.pilot-btn.active { background: #e67e22; color: #111114; border-color: #e67e22; }
+        .view-btn.pilot-btn:hover { background: rgba(230, 126, 34, 0.2); }
         
         .transform-tools { position: absolute; top: 12px; right: 12px; display: flex; gap: 4px; }
         .tool-btn { width: 36px; height: 36px; border-radius: 6px; border: 1px solid var(--border-color); background: rgba(17, 17, 20, 0.85); backdrop-filter: blur(8px); color: var(--text-secondary); cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.15s ease; }
@@ -127,15 +133,24 @@
         .tool-btn.disabled, .tool-btn:disabled { opacity: 0.4; pointer-events: none; cursor: not-allowed; }
         .tool-divider { width: 1px; background: var(--border-color); margin: 4px 4px; }
         
-        .gizmo-info { position: absolute; top: 60px; right: 12px; background: rgba(17, 17, 20, 0.9); backdrop-filter: blur(8px); padding: 10px 14px; border-radius: 6px; border: 1px solid var(--border-color); font-size: 11px; display: none; }
-        .gizmo-info.visible { display: block; }
-        .gizmo-info-title { color: var(--text-muted); margin-bottom: 6px; text-transform: uppercase; font-size: 9px; letter-spacing: 0.05em; }
+        .gizmo-info { position: absolute; top: 60px; right: 12px; background: rgba(17, 17, 20, 0.95); backdrop-filter: blur(12px); padding: 12px 16px; border-radius: 8px; border: 1px solid var(--border-color); font-size: 11px; display: none; min-width: 180px; box-shadow: 0 4px 20px rgba(0,0,0,0.4); }
+        .gizmo-info.visible { display: block; animation: gizmoInfoSlide 0.2s ease-out; }
+        @keyframes gizmoInfoSlide { from { opacity: 0; transform: translateX(10px); } to { opacity: 1; transform: translateX(0); } }
+        .gizmo-info-title { color: var(--text-muted); margin-bottom: 8px; text-transform: uppercase; font-size: 9px; letter-spacing: 0.08em; display: flex; align-items: center; gap: 6px; }
+        .gizmo-info-title::before { content: ''; width: 8px; height: 8px; border-radius: 50%; background: var(--accent-primary); animation: gizmoPulse 1.5s ease-in-out infinite; }
+        @keyframes gizmoPulse { 0%, 100% { opacity: 0.5; transform: scale(1); } 50% { opacity: 1; transform: scale(1.2); } }
         .gizmo-info-value { font-family: 'JetBrains Mono', monospace; color: var(--text-primary); }
-        .gizmo-info-row { display: flex; gap: 12px; margin-top: 4px; }
-        .gizmo-info-axis { display: flex; align-items: center; gap: 4px; }
-        .gizmo-info-axis.x { color: #ff4444; }
-        .gizmo-info-axis.y { color: #44ff44; }
-        .gizmo-info-axis.z { color: #4488ff; }
+        .gizmo-info-row { display: flex; gap: 16px; margin-top: 6px; }
+        .gizmo-info-axis { display: flex; align-items: center; gap: 4px; padding: 4px 8px; border-radius: 4px; transition: all 0.15s ease; }
+        .gizmo-info-axis.x { color: #ff5555; }
+        .gizmo-info-axis.y { color: #55ff55; }
+        .gizmo-info-axis.z { color: #55aaff; }
+        .gizmo-info-axis.active { background: rgba(255,255,255,0.1); transform: scale(1.05); }
+        .gizmo-info-axis.active.x { background: rgba(255,85,85,0.2); box-shadow: 0 0 8px rgba(255,85,85,0.3); }
+        .gizmo-info-axis.active.y { background: rgba(85,255,85,0.2); box-shadow: 0 0 8px rgba(85,255,85,0.3); }
+        .gizmo-info-axis.active.z { background: rgba(85,170,255,0.2); box-shadow: 0 0 8px rgba(85,170,255,0.3); }
+        .gizmo-info-delta { font-size: 10px; color: var(--text-muted); margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--border-color); }
+        .gizmo-info-delta span { color: var(--accent-primary); font-weight: 600; }
         
         .distance-label { position: absolute; background: rgba(0, 0, 0, 0.85); backdrop-filter: blur(4px); color: #00ff00; padding: 6px 10px; border-radius: 4px; font-size: 11px; font-family: 'JetBrains Mono', monospace; pointer-events: none; white-space: nowrap; border: 1px solid rgba(0, 255, 0, 0.3); z-index: 100; transform: translate(-50%, -50%); }
         .distance-label strong { color: #fff; font-weight: 500; }
@@ -584,7 +599,7 @@
         /* Contact Me Button & Panel */
         .contact-wrapper {
             position: relative;
-            display: inline-block;
+            display: flex;
         }
         .contact-btn {
             display: flex;
@@ -752,14 +767,14 @@
                                 <a href="https://github.com/ItzMorphineTime/MorphMapping/issues" target="_blank" class="contact-link github">
                                     <svg viewBox="0 0 24 24"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
                                     <div class="contact-link-text">
-                                        <span class="contact-link-label">Feature Requests & Issues</span>
+                                        <span class="contact-link-label">ItzMorphineTime</span>
                                         GitHub
                                     </div>
                                 </a>
                                 <a href="https://discord.com/users/211604375380951050" target="_blank" class="contact-link discord">
                                     <svg viewBox="0 0 24 24"><path d="M20.317 4.3698a19.7913 19.7913 0 00-4.8851-1.5152.0741.0741 0 00-.0785.0371c-.211.3753-.4447.8648-.6083 1.2495-1.8447-.2762-3.68-.2762-5.4868 0-.1636-.3933-.4058-.8742-.6177-1.2495a.077.077 0 00-.0785-.037 19.7363 19.7363 0 00-4.8852 1.515.0699.0699 0 00-.0321.0277C.5334 9.0458-.319 13.5799.0992 18.0578a.0824.0824 0 00.0312.0561c2.0528 1.5076 4.0413 2.4228 5.9929 3.0294a.0777.0777 0 00.0842-.0276c.4616-.6304.8731-1.2952 1.226-1.9942a.076.076 0 00-.0416-.1057c-.6528-.2476-1.2743-.5495-1.8722-.8923a.077.077 0 01-.0076-.1277c.1258-.0943.2517-.1923.3718-.2914a.0743.0743 0 01.0776-.0105c3.9278 1.7933 8.18 1.7933 12.0614 0a.0739.0739 0 01.0785.0095c.1202.099.246.1981.3728.2924a.077.077 0 01-.0066.1276 12.2986 12.2986 0 01-1.873.8914.0766.0766 0 00-.0407.1067c.3604.698.7719 1.3628 1.225 1.9932a.076.076 0 00.0842.0286c1.961-.6067 3.9495-1.5219 6.0023-3.0294a.077.077 0 00.0313-.0552c.5004-5.177-.8382-9.6739-3.5485-13.6604a.061.061 0 00-.0312-.0286zM8.02 15.3312c-1.1825 0-2.1569-1.0857-2.1569-2.419 0-1.3332.9555-2.4189 2.157-2.4189 1.2108 0 2.1757 1.0952 2.1568 2.419 0 1.3332-.9555 2.4189-2.1569 2.4189zm7.9748 0c-1.1825 0-2.1569-1.0857-2.1569-2.419 0-1.3332.9554-2.4189 2.1569-2.4189 1.2108 0 2.1757 1.0952 2.1568 2.419 0 1.3332-.946 2.4189-2.1568 2.4189z"/></svg>
                                     <div class="contact-link-text">
-                                        <span class="contact-link-label">Chat with me</span>
+                                        <span class="contact-link-label">morph_remembers</span>
                                         Discord
                                     </div>
                                 </a>
@@ -772,7 +787,7 @@
         
         <aside class="sidebar-left">
             <div class="panel-section">
-                <div class="panel-header"><span class="panel-title">Projectors</span><span class="panel-badge" id="projector-count">0</span></div>
+                <div class="panel-header" title="Maximum 8 simultaneous projectors supported"><span class="panel-title">Projectors</span><span class="panel-badge" id="projector-count">0</span></div>
                 <div class="panel-content"><div class="object-list" id="projector-list"><div class="empty-state"><p>No projectors added yet.</p></div></div></div>
             </div>
             <div class="panel-section">
@@ -795,6 +810,7 @@
                 <button class="view-btn" onclick="setView('front')">Front</button>
                 <button class="view-btn" onclick="setView('side')">Side</button>
                 <button class="view-btn" onclick="setView('projector')">Projector POV</button>
+                <button class="view-btn pilot-btn" id="pilot-mode-btn" onclick="togglePilotMode()" style="display: none;" title="When enabled, camera movement controls projector position/rotation">🎮 Pilot</button>
             </div>
             
             <div class="transform-tools">
@@ -819,10 +835,11 @@
             <div class="gizmo-info" id="gizmo-info">
                 <div class="gizmo-info-title" id="gizmo-info-title">Position</div>
                 <div class="gizmo-info-row">
-                    <span class="gizmo-info-axis x">X: <span id="gizmo-x">0.00</span></span>
-                    <span class="gizmo-info-axis y">Y: <span id="gizmo-y">0.00</span></span>
-                    <span class="gizmo-info-axis z">Z: <span id="gizmo-z">0.00</span></span>
+                    <span class="gizmo-info-axis x" id="gizmo-axis-x">X: <span id="gizmo-x">0.00</span></span>
+                    <span class="gizmo-info-axis y" id="gizmo-axis-y">Y: <span id="gizmo-y">0.00</span></span>
+                    <span class="gizmo-info-axis z" id="gizmo-axis-z">Z: <span id="gizmo-z">0.00</span></span>
                 </div>
+                <div class="gizmo-info-delta" id="gizmo-delta">Change: <span id="gizmo-delta-value">0.00</span></div>
             </div>
             
             <div class="snap-controls">
@@ -884,8 +901,8 @@
                         <div class="slider-row" style="margin-top: 8px;">
                             <span class="slider-label">Speed</span>
                             <div class="slider-container">
-                                <input type="range" class="slider" min="0.1" max="2" step="0.1" value="0.5" id="pattern-scroll-speed" oninput="updatePatternScrollSpeed(+this.value); this.nextElementSibling.textContent=Number(this.value).toFixed(1)+'x'">
-                                <span class="slider-value">0.5x</span>
+                                <input type="range" class="slider" min="0.1" max="2" step="0.1" value="0.5" id="pattern-scroll-speed" oninput="updatePatternScrollSpeed(+this.value); this.nextElementSibling.value=Number(this.value).toFixed(1)">
+                                <input type="number" class="slider-input" step="0.1" min="0.1" max="5" value="0.5" onchange="updatePatternScrollSpeed(+this.value); document.getElementById('pattern-scroll-speed').value=this.value">x
                             </div>
                         </div>
                         <div class="property-row" style="margin-top: 8px;">
@@ -923,8 +940,8 @@
                         <div class="slider-row">
                             <span class="slider-label">Max Value</span>
                             <div class="slider-container">
-                                <input type="range" class="slider" min="100" max="10000" step="100" value="2000" id="heatmap-max-slider" oninput="updateHeatmapMax(+this.value); document.getElementById('heatmap-max-value').textContent=this.value">
-                                <span class="slider-value" id="heatmap-max-value">2000</span>
+                                <input type="range" class="slider" min="100" max="10000" step="100" value="2000" id="heatmap-max-slider" oninput="updateHeatmapMax(+this.value); document.getElementById('heatmap-max-input').value=this.value">
+                                <input type="number" class="slider-input" id="heatmap-max-input" step="100" min="100" max="20000" value="2000" onchange="updateHeatmapMax(+this.value); document.getElementById('heatmap-max-slider').value=this.value">
                             </div>
                         </div>
                     </div>
@@ -1641,6 +1658,12 @@
         // Keyboard state for WASD controls
         const keys = { w: false, a: false, s: false, d: false, q: false, e: false };
         
+        // Pilot mode - when true, camera movement controls the projector
+        let pilotMode = {
+            enabled: false,
+            projectorId: null
+        };
+        
         // ==========================================
         // TRANSFORM GIZMO SYSTEM
         // ==========================================
@@ -1662,6 +1685,8 @@
         let gizmoGroup = null;
         let translateGizmo = null;
         let rotateGizmo = null;
+        let dragGuideLine = null;
+        let rotationArcLine = null;
         const gizmoRaycaster = new THREE.Raycaster();
         gizmoRaycaster.params.Line.threshold = 0.15;
         
@@ -1673,6 +1698,104 @@
             
             createTranslateGizmo();
             createRotateGizmo();
+            createDragGuides();
+        }
+        
+        function createDragGuides() {
+            // Create drag guide line for translation
+            const lineGeom = new THREE.BufferGeometry();
+            lineGeom.setFromPoints([new THREE.Vector3(), new THREE.Vector3()]);
+            const lineMat = new THREE.LineDashedMaterial({
+                color: 0xffff00,
+                dashSize: 0.1,
+                gapSize: 0.05,
+                depthTest: false,
+                transparent: true,
+                opacity: 0.8
+            });
+            dragGuideLine = new THREE.Line(lineGeom, lineMat);
+            dragGuideLine.visible = false;
+            dragGuideLine.computeLineDistances();
+            dragGuideLine.renderOrder = 998;
+            scene.add(dragGuideLine);
+            
+            // Create rotation arc indicator
+            const arcGeom = new THREE.BufferGeometry();
+            const arcPoints = [];
+            for (let i = 0; i <= 32; i++) {
+                arcPoints.push(new THREE.Vector3());
+            }
+            arcGeom.setFromPoints(arcPoints);
+            const arcMat = new THREE.LineBasicMaterial({
+                color: 0xffff00,
+                depthTest: false,
+                transparent: true,
+                opacity: 0.8,
+                linewidth: 2
+            });
+            rotationArcLine = new THREE.Line(arcGeom, arcMat);
+            rotationArcLine.visible = false;
+            rotationArcLine.renderOrder = 998;
+            scene.add(rotationArcLine);
+        }
+        
+        function updateDragGuide(startPos, endPos, axis) {
+            if (!dragGuideLine) return;
+            
+            const positions = dragGuideLine.geometry.attributes.position;
+            positions.setXYZ(0, startPos.x, startPos.y, startPos.z);
+            positions.setXYZ(1, endPos.x, endPos.y, endPos.z);
+            positions.needsUpdate = true;
+            
+            // Update color based on axis
+            const axisColors = {
+                x: 0xff5555, y: 0x55ff55, z: 0x55aaff,
+                xy: 0xffff55, xz: 0xff55ff, yz: 0x55ffff
+            };
+            dragGuideLine.material.color.setHex(axisColors[axis] || 0xffff00);
+            
+            dragGuideLine.computeLineDistances();
+            dragGuideLine.visible = true;
+        }
+        
+        function updateRotationArc(center, axis, startAngle, endAngle, radius) {
+            if (!rotationArcLine) return;
+            
+            const positions = rotationArcLine.geometry.attributes.position;
+            const segments = 32;
+            const angleRange = endAngle - startAngle;
+            
+            for (let i = 0; i <= segments; i++) {
+                const angle = startAngle + (angleRange * i / segments);
+                let x, y, z;
+                
+                if (axis === 'y') {
+                    x = center.x + Math.cos(angle) * radius;
+                    y = center.y;
+                    z = center.z + Math.sin(angle) * radius;
+                } else if (axis === 'x') {
+                    x = center.x;
+                    y = center.y + Math.cos(angle) * radius;
+                    z = center.z + Math.sin(angle) * radius;
+                } else { // z
+                    x = center.x + Math.cos(angle) * radius;
+                    y = center.y + Math.sin(angle) * radius;
+                    z = center.z;
+                }
+                
+                positions.setXYZ(i, x, y, z);
+            }
+            positions.needsUpdate = true;
+            
+            // Update color based on axis
+            const axisColors = { x: 0xff5555, y: 0x55ff55, z: 0x55aaff };
+            rotationArcLine.material.color.setHex(axisColors[axis] || 0xffff00);
+            rotationArcLine.visible = true;
+        }
+        
+        function hideDragGuides() {
+            if (dragGuideLine) dragGuideLine.visible = false;
+            if (rotationArcLine) rotationArcLine.visible = false;
         }
         
         function createTranslateGizmo() {
@@ -1680,67 +1803,98 @@
             translateGizmo.name = 'translateGizmo';
             
             const axisLength = 1.5;
-            const coneHeight = 0.25;
-            const coneRadius = 0.08;
-            const lineWidth = 3;
+            const coneHeight = 0.3;
+            const coneRadius = 0.1;
+            const lineRadius = 0.025;
             
+            // More vibrant, distinct colors
             const colors = {
-                x: 0xff4444,
-                y: 0x44ff44,
-                z: 0x4488ff
+                x: 0xff3333, // Red
+                y: 0x33ff33, // Green  
+                z: 0x3399ff  // Blue
             };
             
-            // Create axes
+            const hoverColors = {
+                x: 0xff6666,
+                y: 0x66ff66,
+                z: 0x66bbff
+            };
+            
+            // Center sphere for reference
+            const centerGeom = new THREE.SphereGeometry(0.08, 16, 16);
+            const centerMat = new THREE.MeshBasicMaterial({ 
+                color: 0xffffff,
+                depthTest: false,
+                transparent: true,
+                opacity: 0.5
+            });
+            const centerSphere = new THREE.Mesh(centerGeom, centerMat);
+            centerSphere.userData.isCenter = true;
+            translateGizmo.add(centerSphere);
+            
+            // Create axes with cylinder bodies (thicker than lines)
             ['x', 'y', 'z'].forEach(axis => {
                 const group = new THREE.Group();
                 group.userData.axis = axis;
                 group.userData.gizmoType = 'translate';
                 
-                // Line
-                const lineGeom = new THREE.BufferGeometry();
-                const start = new THREE.Vector3();
-                const end = new THREE.Vector3();
-                if (axis === 'x') end.x = axisLength;
-                if (axis === 'y') end.y = axisLength;
-                if (axis === 'z') end.z = axisLength;
-                lineGeom.setFromPoints([start, end]);
-                
-                const lineMat = new THREE.LineBasicMaterial({ 
-                    color: colors[axis], 
-                    linewidth: lineWidth,
+                // Cylinder body (instead of thin line)
+                const bodyGeom = new THREE.CylinderGeometry(lineRadius, lineRadius, axisLength - coneHeight * 0.5, 8);
+                const bodyMat = new THREE.MeshBasicMaterial({ 
+                    color: colors[axis],
                     depthTest: false,
-                    transparent: true
+                    transparent: true,
+                    opacity: 0.5
                 });
-                const line = new THREE.Line(lineGeom, lineMat);
-                line.userData.axis = axis;
-                line.userData.gizmoType = 'translate';
-                group.add(line);
+                const body = new THREE.Mesh(bodyGeom, bodyMat);
+                body.userData.axis = axis;
+                body.userData.gizmoType = 'translate';
+                body.userData.originalColor = colors[axis];
+                body.userData.hoverColor = hoverColors[axis];
+                body.userData.originalOpacity = 0.5;
                 
-                // Cone (arrow head)
-                const coneGeom = new THREE.ConeGeometry(coneRadius, coneHeight, 12);
+                // Position body
+                const halfLength = (axisLength - coneHeight * 0.5) / 2;
+                if (axis === 'x') {
+                    body.rotation.z = -Math.PI / 2;
+                    body.position.x = halfLength;
+                } else if (axis === 'y') {
+                    body.position.y = halfLength;
+                } else if (axis === 'z') {
+                    body.rotation.x = Math.PI / 2;
+                    body.position.z = halfLength;
+                }
+                group.add(body);
+                
+                // Cone (arrow head) - larger and more visible
+                const coneGeom = new THREE.ConeGeometry(coneRadius, coneHeight, 16);
                 const coneMat = new THREE.MeshBasicMaterial({ 
                     color: colors[axis],
                     depthTest: false,
-                    transparent: true
+                    transparent: true,
+                    opacity: 0.6
                 });
                 const cone = new THREE.Mesh(coneGeom, coneMat);
                 cone.userData.axis = axis;
                 cone.userData.gizmoType = 'translate';
+                cone.userData.originalColor = colors[axis];
+                cone.userData.hoverColor = hoverColors[axis];
+                cone.userData.originalOpacity = 0.6;
                 
                 // Position and rotate cone
                 if (axis === 'x') {
-                    cone.position.x = axisLength;
+                    cone.position.x = axisLength - coneHeight / 2;
                     cone.rotation.z = -Math.PI / 2;
                 } else if (axis === 'y') {
-                    cone.position.y = axisLength;
+                    cone.position.y = axisLength - coneHeight / 2;
                 } else if (axis === 'z') {
-                    cone.position.z = axisLength;
+                    cone.position.z = axisLength - coneHeight / 2;
                     cone.rotation.x = Math.PI / 2;
                 }
                 group.add(cone);
                 
-                // Invisible cylinder for easier picking
-                const pickGeom = new THREE.CylinderGeometry(0.1, 0.1, axisLength, 8);
+                // Invisible cylinder for easier picking (larger hit area)
+                const pickGeom = new THREE.CylinderGeometry(0.12, 0.12, axisLength + 0.2, 8);
                 const pickMat = new THREE.MeshBasicMaterial({ visible: false });
                 const picker = new THREE.Mesh(pickGeom, pickMat);
                 picker.userData.axis = axis;
@@ -1761,42 +1915,128 @@
                 translateGizmo.add(group);
             });
             
-            // Plane handles for 2-axis movement
-            const planeSize = 0.35;
-            const planeOffset = 0.5;
-            const planeColors = {
-                xy: 0x4488ff,
-                xz: 0x44ff44,
-                yz: 0xff4444
-            };
+            // Plane handles for 2-axis movement (improved with border)
+            const planeSize = 0.4;
+            const planeOffset = 0.55;
             
             [['xy', 'z'], ['xz', 'y'], ['yz', 'x']].forEach(([plane, normal]) => {
+                const planeGroup = new THREE.Group();
+                planeGroup.userData.axis = plane;
+                planeGroup.userData.gizmoType = 'translate';
+                
+                // Filled plane
                 const planeGeom = new THREE.PlaneGeometry(planeSize, planeSize);
+                const planeColor = plane === 'xy' ? 0x3399ff : plane === 'xz' ? 0x33ff33 : 0xff3333;
                 const planeMat = new THREE.MeshBasicMaterial({ 
-                    color: planeColors[plane],
+                    color: planeColor,
                     transparent: true,
-                    opacity: 0.3,
+                    opacity: 0.15,
                     side: THREE.DoubleSide,
                     depthTest: false
                 });
                 const planeMesh = new THREE.Mesh(planeGeom, planeMat);
                 planeMesh.userData.axis = plane;
                 planeMesh.userData.gizmoType = 'translate';
+                planeMesh.userData.originalOpacity = 0.15;
+                planeMesh.userData.hoverOpacity = 0.45;
+                planeMesh.userData.originalColor = planeColor;
+                planeGroup.add(planeMesh);
+                
+                // Border lines for the plane
+                const borderGeom = new THREE.BufferGeometry();
+                const s = planeSize / 2;
+                borderGeom.setFromPoints([
+                    new THREE.Vector3(-s, -s, 0),
+                    new THREE.Vector3(s, -s, 0),
+                    new THREE.Vector3(s, s, 0),
+                    new THREE.Vector3(-s, s, 0),
+                    new THREE.Vector3(-s, -s, 0)
+                ]);
+                const borderMat = new THREE.LineBasicMaterial({
+                    color: planeColor,
+                    depthTest: false,
+                    transparent: true,
+                    opacity: 0.3
+                });
+                const border = new THREE.Line(borderGeom, borderMat);
+                border.userData.axis = plane;
+                border.userData.gizmoType = 'translate';
+                border.userData.originalOpacity = 0.3;
+                border.userData.originalColor = planeColor;
+                planeGroup.add(border);
                 
                 if (plane === 'xy') {
-                    planeMesh.position.set(planeOffset, planeOffset, 0);
+                    planeGroup.position.set(planeOffset, planeOffset, 0);
                 } else if (plane === 'xz') {
-                    planeMesh.position.set(planeOffset, 0, planeOffset);
-                    planeMesh.rotation.x = Math.PI / 2;
+                    planeGroup.position.set(planeOffset, 0, planeOffset);
+                    planeGroup.rotation.x = Math.PI / 2;
                 } else if (plane === 'yz') {
-                    planeMesh.position.set(0, planeOffset, planeOffset);
-                    planeMesh.rotation.y = Math.PI / 2;
+                    planeGroup.position.set(0, planeOffset, planeOffset);
+                    planeGroup.rotation.y = Math.PI / 2;
                 }
                 
-                translateGizmo.add(planeMesh);
+                translateGizmo.add(planeGroup);
+            });
+            
+            // Add axis text labels
+            const labelOffset = axisLength + 0.35;
+            const labelColors = { x: '#ff5555', y: '#55ff55', z: '#55aaff' };
+            
+            ['x', 'y', 'z'].forEach(axis => {
+                const label = createAxisLabel(axis.toUpperCase(), labelColors[axis]);
+                label.userData.axis = axis;
+                label.userData.gizmoType = 'translate';
+                label.userData.isLabel = true;
+                
+                if (axis === 'x') label.position.set(labelOffset, 0, 0);
+                else if (axis === 'y') label.position.set(0, labelOffset, 0);
+                else label.position.set(0, 0, labelOffset);
+                
+                translateGizmo.add(label);
             });
             
             gizmoGroup.add(translateGizmo);
+        }
+        
+        // Helper function to create axis text label sprites
+        function createAxisLabel(text, color) {
+            const canvas = document.createElement('canvas');
+            canvas.width = 64;
+            canvas.height = 64;
+            const ctx = canvas.getContext('2d');
+            
+            // Draw circle background
+            ctx.beginPath();
+            ctx.arc(32, 32, 28, 0, Math.PI * 2);
+            ctx.fillStyle = 'rgba(17, 17, 20, 0.85)';
+            ctx.fill();
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 3;
+            ctx.stroke();
+            
+            // Draw text
+            ctx.font = 'bold 32px Arial';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillStyle = color;
+            ctx.fillText(text, 32, 34);
+            
+            const texture = new THREE.CanvasTexture(canvas);
+            texture.needsUpdate = true;
+            
+            const material = new THREE.SpriteMaterial({
+                map: texture,
+                depthTest: false,
+                transparent: true,
+                opacity: 0.5
+            });
+            
+            const sprite = new THREE.Sprite(material);
+            sprite.scale.set(0.35, 0.35, 1);
+            sprite.renderOrder = 1000;
+            sprite.userData.originalOpacity = 0.5;
+            
+            return sprite;
         }
         
         function createRotateGizmo() {
@@ -1804,47 +2044,114 @@
             rotateGizmo.name = 'rotateGizmo';
             rotateGizmo.visible = false;
             
-            const ringRadius = 1.2;
-            const tubeRadius = 0.02;
+            const ringRadius = 1.3;
+            const tubeRadius = 0.035;
             const segments = 64;
             
+            // More vibrant colors matching translate gizmo
             const colors = {
-                x: 0xff4444,
-                y: 0x44ff44,
-                z: 0x4488ff
+                x: 0xff3333,
+                y: 0x33ff33,
+                z: 0x3399ff
             };
             
+            const hoverColors = {
+                x: 0xff6666,
+                y: 0x66ff66,
+                z: 0x66bbff
+            };
+            
+            // Center sphere for reference
+            const centerGeom = new THREE.SphereGeometry(0.06, 16, 16);
+            const centerMat = new THREE.MeshBasicMaterial({ 
+                color: 0xffffff,
+                depthTest: false,
+                transparent: true,
+                opacity: 0.4
+            });
+            const centerSphere = new THREE.Mesh(centerGeom, centerMat);
+            centerSphere.userData.isCenter = true;
+            rotateGizmo.add(centerSphere);
+            
             ['x', 'y', 'z'].forEach(axis => {
-                // Torus ring
-                const torusGeom = new THREE.TorusGeometry(ringRadius, tubeRadius, 8, segments);
+                const axisGroup = new THREE.Group();
+                axisGroup.userData.axis = axis;
+                axisGroup.userData.gizmoType = 'rotate';
+                
+                // Main torus ring - thicker tube for better visibility
+                const torusGeom = new THREE.TorusGeometry(ringRadius, tubeRadius, 12, segments);
                 const torusMat = new THREE.MeshBasicMaterial({ 
                     color: colors[axis],
                     depthTest: false,
-                    transparent: true
+                    transparent: true,
+                    opacity: 0.5
                 });
                 const torus = new THREE.Mesh(torusGeom, torusMat);
                 torus.userData.axis = axis;
                 torus.userData.gizmoType = 'rotate';
+                torus.userData.originalColor = colors[axis];
+                torus.userData.hoverColor = hoverColors[axis];
+                torus.userData.originalOpacity = 0.5;
                 
-                // Invisible torus for easier picking
-                const pickGeom = new THREE.TorusGeometry(ringRadius, 0.12, 8, segments);
+                // Add small spheres at cardinal points for visual reference
+                const markerRadius = 0.06;
+                const markerPositions = [0, Math.PI/2, Math.PI, Math.PI * 1.5];
+                markerPositions.forEach(angle => {
+                    const markerGeom = new THREE.SphereGeometry(markerRadius, 8, 8);
+                    const markerMat = new THREE.MeshBasicMaterial({
+                        color: colors[axis],
+                        depthTest: false,
+                        transparent: true,
+                        opacity: 0.5
+                    });
+                    const marker = new THREE.Mesh(markerGeom, markerMat);
+                    marker.position.x = Math.cos(angle) * ringRadius;
+                    marker.position.y = Math.sin(angle) * ringRadius;
+                    marker.userData.axis = axis;
+                    marker.userData.gizmoType = 'rotate';
+                    marker.userData.originalColor = colors[axis];
+                    marker.userData.hoverColor = hoverColors[axis];
+                    marker.userData.originalOpacity = 0.5;
+                    torus.add(marker);
+                });
+                
+                axisGroup.add(torus);
+                
+                // Invisible torus for easier picking (wider hit area)
+                const pickGeom = new THREE.TorusGeometry(ringRadius, 0.1, 8, segments);
                 const pickMat = new THREE.MeshBasicMaterial({ visible: false });
                 const picker = new THREE.Mesh(pickGeom, pickMat);
                 picker.userData.axis = axis;
                 picker.userData.gizmoType = 'rotate';
                 picker.userData.isPicker = true;
+                axisGroup.add(picker);
                 
+                // Rotate the group to align with the correct axis
                 if (axis === 'x') {
-                    torus.rotation.y = Math.PI / 2;
-                    picker.rotation.y = Math.PI / 2;
+                    axisGroup.rotation.y = Math.PI / 2;
                 } else if (axis === 'y') {
-                    torus.rotation.x = Math.PI / 2;
-                    picker.rotation.x = Math.PI / 2;
+                    axisGroup.rotation.x = Math.PI / 2;
                 }
                 // z axis is default orientation
                 
-                rotateGizmo.add(torus);
-                rotateGizmo.add(picker);
+                rotateGizmo.add(axisGroup);
+            });
+            
+            // Add axis text labels for rotate gizmo
+            const labelOffset = ringRadius + 0.35;
+            const labelColors = { x: '#ff5555', y: '#55ff55', z: '#55aaff' };
+            
+            ['x', 'y', 'z'].forEach(axis => {
+                const label = createAxisLabel(axis.toUpperCase(), labelColors[axis]);
+                label.userData.axis = axis;
+                label.userData.gizmoType = 'rotate';
+                label.userData.isLabel = true;
+                
+                if (axis === 'x') label.position.set(labelOffset, 0, 0);
+                else if (axis === 'y') label.position.set(0, labelOffset, 0);
+                else label.position.set(0, 0, labelOffset);
+                
+                rotateGizmo.add(label);
             });
             
             gizmoGroup.add(rotateGizmo);
@@ -1895,13 +2202,21 @@
         function setTransformMode(mode) {
             gizmoState.mode = mode;
             
-            // Update tool buttons
-            document.querySelectorAll('.tool-btn').forEach(btn => {
-                btn.classList.remove('active');
-                if (!state.selectedObject) {
-                    btn.classList.add('disabled');
+            // Update transform mode buttons only (not undo or local space)
+            const transformBtns = ['tool-select', 'tool-translate', 'tool-rotate'];
+            transformBtns.forEach(id => {
+                const btn = document.getElementById(id);
+                if (btn) {
+                    btn.classList.remove('active');
+                    btn.classList.toggle('disabled', !state.selectedObject);
                 }
             });
+            
+            // Also update local space button disabled state
+            const localBtn = document.getElementById('tool-local');
+            if (localBtn) {
+                localBtn.classList.toggle('disabled', !state.selectedObject);
+            }
             
             const activeBtn = document.getElementById(`tool-${mode}`);
             if (activeBtn) activeBtn.classList.add('active');
@@ -1924,13 +2239,16 @@
         }
         
         function enableTransformTools(enabled) {
-            const tools = ['tool-select', 'tool-translate', 'tool-rotate'];
+            const tools = ['tool-select', 'tool-translate', 'tool-rotate', 'tool-local'];
             tools.forEach(id => {
                 const btn = document.getElementById(id);
                 if (btn) {
                     btn.classList.toggle('disabled', !enabled);
                 }
             });
+            // Undo button uses disabled attribute, not class - don't disable it based on selection
+            // It should only be disabled when there's nothing to undo
+            updateUndoButton();
         }
         
         function handleGizmoInteraction(event, phase) {
@@ -1945,8 +2263,15 @@
             gizmoRaycaster.setFromCamera(mouse, camera);
             
             if (phase === 'down') {
+                // Only allow grabbing if we're already hovering over an axis
+                // This ensures you can only grab handles you can visually see highlighted
+                if (!hoveredAxis) {
+                    return false;
+                }
+                
                 const gizmoObjects = [];
-                gizmoGroup.traverse(child => {
+                const currentGizmo = gizmoState.mode === 'translate' ? translateGizmo : rotateGizmo;
+                currentGizmo.traverse(child => {
                     if (child.isMesh && (child.userData.gizmoType === gizmoState.mode || child.userData.isPicker)) {
                         gizmoObjects.push(child);
                     }
@@ -1956,9 +2281,20 @@
                 
                 if (intersects.length > 0) {
                     const hit = intersects[0].object;
+                    
+                    // Only grab if the hit axis matches what we're hovering over
+                    if (hit.userData.axis !== hoveredAxis) {
+                        return false;
+                    }
+                    
+                    // Clear hover state before starting drag
+                    highlightAxis(hoveredAxis, false);
+                    hideAxisLabel();
+                    
                     gizmoState.activeAxis = hit.userData.axis;
                     gizmoState.isDragging = true;
                     gizmoState.startPoint.copy(intersects[0].point);
+                    hoveredAxis = null;
                     
                     // Save state for undo before making changes
                     const actionType = gizmoState.mode === 'translate' ? 'Move' : 'Rotate';
@@ -1980,8 +2316,9 @@
                             : { ...s.rotation };
                     }
                     
-                    // Highlight active axis
-                    highlightAxis(gizmoState.activeAxis, true);
+                    // Highlight active axis (not hover, but drag state)
+                    highlightAxis(gizmoState.activeAxis, true, false);
+                    renderer.domElement.style.cursor = 'grabbing';
                     showGizmoInfo(true);
                     
                     return true;
@@ -1994,7 +2331,11 @@
                     gizmoState.isDragging = false;
                     highlightAxis(gizmoState.activeAxis, false);
                     gizmoState.activeAxis = null;
+                    gizmoState.startAngle = null; // Clear rotation start angle
+                    renderer.domElement.style.cursor = 'default';
                     showGizmoInfo(false);
+                    hideAxisLabel();
+                    hideDragGuides();
                     calculateCoverage();
                     return true;
                 }
@@ -2141,6 +2482,11 @@
                 
                 obj.position.set(newX, newY, newZ);
                 
+                // Update drag guide line
+                const startPos = new THREE.Vector3(gizmoState.startValue.x, gizmoState.startValue.y, gizmoState.startValue.z);
+                const endPos = new THREE.Vector3(newX, newY, newZ);
+                updateDragGuide(startPos, endPos, axis);
+                
                 // Update shadow maps when any object moves
                 if (state.selectedType === 'projector') {
                     updateProjectorMatrix(data);
@@ -2225,6 +2571,8 @@
             data.rotation.y = THREE.MathUtils.radToDeg(resultEuler.y);
             data.rotation.z = THREE.MathUtils.radToDeg(resultEuler.z);
             
+            // Set rotation with consistent YXZ order to avoid gimbal lock
+            obj.rotation.order = 'YXZ';
             obj.rotation.set(
                 THREE.MathUtils.degToRad(data.rotation.x),
                 THREE.MathUtils.degToRad(data.rotation.y),
@@ -2238,27 +2586,166 @@
             updateAllSurfaceMaterials();
         }
         
-        function highlightAxis(axis, highlight) {
+        function highlightAxis(axis, highlight, isHover = false) {
             const gizmo = gizmoState.mode === 'translate' ? translateGizmo : rotateGizmo;
-            const highlightColor = 0xffff00;
+            const highlightColor = 0xffff00; // Yellow for active drag
             
             gizmo.traverse(child => {
-                if (child.material && child.userData.axis === axis && !child.userData.isPicker) {
+                if (child.userData.axis === axis && !child.userData.isPicker && !child.userData.isCenter) {
+                    // Handle labels (sprites) - only change opacity, no scale
+                    if (child.userData.isLabel && child.material) {
+                        child.material.opacity = highlight ? 1.0 : (child.userData.originalOpacity || 0.5);
+                        return;
+                    }
+                    
                     if (highlight) {
-                        child.userData.originalColor = child.material.color.getHex();
-                        child.material.color.setHex(highlightColor);
-                        if (child.material.opacity !== undefined) {
-                            child.userData.originalOpacity = child.material.opacity;
-                            child.material.opacity = Math.min(1, child.material.opacity + 0.4);
+                        // Store original values if not already stored
+                        if (child.userData.originalColor === undefined && child.material) {
+                            child.userData.originalColor = child.material.color.getHex();
                         }
-                    } else if (child.userData.originalColor !== undefined) {
-                        child.material.color.setHex(child.userData.originalColor);
-                        if (child.userData.originalOpacity !== undefined) {
+                        if (child.userData.originalOpacity === undefined && child.material && child.material.opacity !== undefined) {
+                            child.userData.originalOpacity = child.material.opacity;
+                        }
+                        
+                        // Apply highlight - brightness only, no scale
+                        if (child.material) {
+                            if (isHover && child.userData.hoverColor) {
+                                // Hover: use brighter version of axis color
+                                child.material.color.setHex(child.userData.hoverColor);
+                            } else {
+                                // Active drag: yellow highlight
+                                child.material.color.setHex(highlightColor);
+                            }
+                            
+                            // Use hoverOpacity if defined (for planes), otherwise full opacity
+                            if (isHover && child.userData.hoverOpacity !== undefined) {
+                                child.material.opacity = child.userData.hoverOpacity;
+                            } else {
+                                child.material.opacity = 1.0;
+                            }
+                        }
+                    } else {
+                        // Restore original values
+                        if (child.material && child.userData.originalColor !== undefined) {
+                            child.material.color.setHex(child.userData.originalColor);
+                        }
+                        if (child.material && child.userData.originalOpacity !== undefined) {
                             child.material.opacity = child.userData.originalOpacity;
                         }
                     }
                 }
             });
+            
+            // Update cursor
+            if (highlight) {
+                renderer.domElement.style.cursor = 'grab';
+            }
+        }
+        
+        // Track currently hovered axis for hover effects
+        let hoveredAxis = null;
+        
+        function updateGizmoHover(mouse) {
+            if (!gizmoGroup || !gizmoGroup.visible || gizmoState.isDragging) return;
+            
+            gizmoRaycaster.setFromCamera(mouse, camera);
+            
+            const gizmoObjects = [];
+            const currentGizmo = gizmoState.mode === 'translate' ? translateGizmo : rotateGizmo;
+            currentGizmo.traverse(child => {
+                if (child.isMesh && (child.userData.gizmoType === gizmoState.mode || child.userData.isPicker)) {
+                    gizmoObjects.push(child);
+                }
+            });
+            
+            const intersects = gizmoRaycaster.intersectObjects(gizmoObjects);
+            
+            let newHoveredAxis = null;
+            if (intersects.length > 0) {
+                newHoveredAxis = intersects[0].object.userData.axis;
+            }
+            
+            // Update hover state if changed
+            if (newHoveredAxis !== hoveredAxis) {
+                // Remove old hover
+                if (hoveredAxis) {
+                    highlightAxis(hoveredAxis, false);
+                }
+                
+                // Apply new hover
+                if (newHoveredAxis) {
+                    highlightAxis(newHoveredAxis, true, true);
+                    renderer.domElement.style.cursor = 'grab';
+                    showAxisLabel(newHoveredAxis);
+                } else {
+                    renderer.domElement.style.cursor = 'default';
+                    hideAxisLabel();
+                }
+                
+                hoveredAxis = newHoveredAxis;
+            }
+        }
+        
+        function showAxisLabel(axis) {
+            let label = document.getElementById('gizmo-axis-label');
+            if (!label) {
+                label = document.createElement('div');
+                label.id = 'gizmo-axis-label';
+                label.style.cssText = `
+                    position: absolute;
+                    padding: 4px 10px;
+                    border-radius: 4px;
+                    font-size: 12px;
+                    font-weight: 600;
+                    pointer-events: none;
+                    z-index: 1000;
+                    transition: opacity 0.15s ease;
+                    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+                `;
+                document.querySelector('.viewport').appendChild(label);
+            }
+            
+            // Set label text and color based on axis
+            const axisNames = {
+                'x': 'X Axis',
+                'y': 'Y Axis', 
+                'z': 'Z Axis',
+                'xy': 'XY Plane',
+                'xz': 'XZ Plane',
+                'yz': 'YZ Plane'
+            };
+            
+            const axisColors = {
+                'x': { bg: '#ff3333', text: '#fff' },
+                'y': { bg: '#33ff33', text: '#000' },
+                'z': { bg: '#3399ff', text: '#fff' },
+                'xy': { bg: '#3399ff', text: '#fff' },
+                'xz': { bg: '#33ff33', text: '#000' },
+                'yz': { bg: '#ff3333', text: '#fff' }
+            };
+            
+            const colors = axisColors[axis] || { bg: '#666', text: '#fff' };
+            label.textContent = axisNames[axis] || axis.toUpperCase();
+            label.style.backgroundColor = colors.bg;
+            label.style.color = colors.text;
+            label.style.opacity = '1';
+            
+            // Position near the gizmo
+            const gizmoScreenPos = gizmoGroup.position.clone().project(camera);
+            const container = document.querySelector('.viewport');
+            const rect = container.getBoundingClientRect();
+            const x = (gizmoScreenPos.x * 0.5 + 0.5) * rect.width + 30;
+            const y = (-gizmoScreenPos.y * 0.5 + 0.5) * rect.height - 20;
+            
+            label.style.left = x + 'px';
+            label.style.top = y + 'px';
+        }
+        
+        function hideAxisLabel() {
+            const label = document.getElementById('gizmo-axis-label');
+            if (label) {
+                label.style.opacity = '0';
+            }
         }
         
         function showGizmoInfo(visible) {
@@ -2268,6 +2755,16 @@
             if (visible) {
                 document.getElementById('gizmo-info-title').textContent = 
                     gizmoState.mode === 'translate' ? 'Position' : 'Rotation';
+                
+                // Highlight active axis
+                ['x', 'y', 'z'].forEach(axis => {
+                    const el = document.getElementById(`gizmo-axis-${axis}`);
+                    if (el) {
+                        const isActive = gizmoState.activeAxis && 
+                            (gizmoState.activeAxis === axis || gizmoState.activeAxis.includes(axis));
+                        el.classList.toggle('active', isActive);
+                    }
+                });
             }
         }
         
@@ -2276,11 +2773,41 @@
                 document.getElementById('gizmo-x').textContent = data.position.x.toFixed(2);
                 document.getElementById('gizmo-y').textContent = data.position.y.toFixed(2);
                 document.getElementById('gizmo-z').textContent = data.position.z.toFixed(2);
+                
+                // Calculate and display delta
+                if (gizmoState.startValue) {
+                    const dx = data.position.x - gizmoState.startValue.x;
+                    const dy = data.position.y - gizmoState.startValue.y;
+                    const dz = data.position.z - gizmoState.startValue.z;
+                    const delta = Math.sqrt(dx*dx + dy*dy + dz*dz);
+                    document.getElementById('gizmo-delta-value').textContent = 
+                        (delta >= 0 ? '+' : '') + delta.toFixed(2) + 'm';
+                }
             } else {
                 document.getElementById('gizmo-x').textContent = data.rotation.x.toFixed(1) + '°';
                 document.getElementById('gizmo-y').textContent = data.rotation.y.toFixed(1) + '°';
                 document.getElementById('gizmo-z').textContent = data.rotation.z.toFixed(1) + '°';
+                
+                // Calculate and display delta for rotation
+                if (gizmoState.startValue) {
+                    const dx = data.rotation.x - gizmoState.startValue.x;
+                    const dy = data.rotation.y - gizmoState.startValue.y;
+                    const dz = data.rotation.z - gizmoState.startValue.z;
+                    const maxDelta = Math.max(Math.abs(dx), Math.abs(dy), Math.abs(dz));
+                    document.getElementById('gizmo-delta-value').textContent = 
+                        (maxDelta >= 0 ? '+' : '') + maxDelta.toFixed(1) + '°';
+                }
             }
+            
+            // Update active axis highlighting during drag
+            ['x', 'y', 'z'].forEach(axis => {
+                const el = document.getElementById(`gizmo-axis-${axis}`);
+                if (el) {
+                    const isActive = gizmoState.activeAxis && 
+                        (gizmoState.activeAxis === axis || gizmoState.activeAxis.includes(axis));
+                    el.classList.toggle('active', isActive);
+                }
+            });
         }
         
         // ==========================================
@@ -2318,52 +2845,145 @@
         
         // Fragment shader with shadow mapping for occlusion
         const projectionFragmentShader = `
-            uniform sampler2D projTex0;
-            uniform sampler2D projTex1;
-            uniform sampler2D projTex2;
-            uniform sampler2D projTex3;
-            uniform sampler2D shadowMap0;
-            uniform sampler2D shadowMap1;
-            uniform sampler2D shadowMap2;
-            uniform sampler2D shadowMap3;
-            uniform mat4 projMat0;
-            uniform mat4 projMat1;
-            uniform mat4 projMat2;
-            uniform mat4 projMat3;
-            uniform vec3 projPos0;
-            uniform vec3 projPos1;
-            uniform vec3 projPos2;
-            uniform vec3 projPos3;
-            uniform float projLumens0;
-            uniform float projLumens1;
-            uniform float projLumens2;
-            uniform float projLumens3;
-            uniform float projThrow0;
-            uniform float projThrow1;
-            uniform float projThrow2;
-            uniform float projThrow3;
-            uniform float projNear0;
-            uniform float projNear1;
-            uniform float projNear2;
-            uniform float projNear3;
-            uniform float projFar0;
-            uniform float projFar1;
-            uniform float projFar2;
-            uniform float projFar3;
-            uniform vec2 texOffset0;
-            uniform vec2 texOffset1;
-            uniform vec2 texOffset2;
-            uniform vec2 texOffset3;
+            // Projector textures (supports up to 8 projectors)
+            uniform sampler2D projTex0, projTex1, projTex2, projTex3;
+            uniform sampler2D projTex4, projTex5, projTex6, projTex7;
+            uniform sampler2D shadowMap0, shadowMap1, shadowMap2, shadowMap3;
+            uniform sampler2D shadowMap4, shadowMap5, shadowMap6, shadowMap7;
+            
+            // Projector matrices
+            uniform mat4 projMat0, projMat1, projMat2, projMat3;
+            uniform mat4 projMat4, projMat5, projMat6, projMat7;
+            // Shadow camera matrices (may differ from projMat for fisheye)
+            uniform mat4 shadowMat0, shadowMat1, shadowMat2, shadowMat3;
+            uniform mat4 shadowMat4, shadowMat5, shadowMat6, shadowMat7;
+            
+            // Projector positions
+            uniform vec3 projPos0, projPos1, projPos2, projPos3;
+            uniform vec3 projPos4, projPos5, projPos6, projPos7;
+            
+            // Projector rotation matrices (inverse) for fisheye calculation
+            uniform mat3 projRotInv0, projRotInv1, projRotInv2, projRotInv3;
+            uniform mat3 projRotInv4, projRotInv5, projRotInv6, projRotInv7;
+            
+            // Projector properties
+            uniform float projLumens0, projLumens1, projLumens2, projLumens3;
+            uniform float projLumens4, projLumens5, projLumens6, projLumens7;
+            uniform float projThrow0, projThrow1, projThrow2, projThrow3;
+            uniform float projThrow4, projThrow5, projThrow6, projThrow7;
+            uniform float projNear0, projNear1, projNear2, projNear3;
+            uniform float projNear4, projNear5, projNear6, projNear7;
+            uniform float projFar0, projFar1, projFar2, projFar3;
+            uniform float projFar4, projFar5, projFar6, projFar7;
+            uniform vec2 texOffset0, texOffset1, texOffset2, texOffset3;
+            uniform vec2 texOffset4, texOffset5, texOffset6, texOffset7;
+            
+            // Lens uniforms: x=type, y=k1, z=k2, w=k3
+            uniform vec4 lensParams0, lensParams1, lensParams2, lensParams3;
+            uniform vec4 lensParams4, lensParams5, lensParams6, lensParams7;
+            // Lens uniforms: x=p1, y=p2, z=cx, w=cy
+            uniform vec4 lensParams2_0, lensParams2_1, lensParams2_2, lensParams2_3;
+            uniform vec4 lensParams2_4, lensParams2_5, lensParams2_6, lensParams2_7;
+            
+            // Fisheye FOV in degrees (half-angle, so 90 = 180° total FOV)
+            uniform float fisheyeFov0, fisheyeFov1, fisheyeFov2, fisheyeFov3;
+            uniform float fisheyeFov4, fisheyeFov5, fisheyeFov6, fisheyeFov7;
+            
             uniform int numProjectors;
             uniform bool showCoverage;
             uniform bool showOverlap;
             uniform bool showHeatmap;
+            uniform bool debugLensType;  // Debug: show lens type as color
             uniform float surfaceGain;
             uniform vec3 baseColor;
             uniform float heatmapMax;
             
             varying vec4 vWorldPosition;
             varying vec3 vWorldNormal;
+            
+            #define LENS_RECTILINEAR 0
+            #define LENS_FISHEYE_EQUIDISTANT 1
+            #define LENS_FISHEYE_EQUISOLID 2
+            #define LENS_FISHEYE_STEREOGRAPHIC 3
+            #define LENS_FISHEYE_ORTHOGRAPHIC 4
+            
+            // Apply lens distortion (Brown-Conrady model)
+            vec2 applyDistortion(vec2 uv, float k1, float k2, float k3, float p1, float p2, float cx, float cy) {
+                // Center UV around principal point
+                vec2 centered = uv - vec2(0.5 + cx * 0.5, 0.5 + cy * 0.5);
+                float r2 = dot(centered, centered);
+                float r4 = r2 * r2;
+                float r6 = r4 * r2;
+                
+                // Radial distortion
+                float radialFactor = 1.0 + k1 * r2 + k2 * r4 + k3 * r6;
+                
+                // Tangential distortion
+                vec2 tangential = vec2(
+                    2.0 * p1 * centered.x * centered.y + p2 * (r2 + 2.0 * centered.x * centered.x),
+                    p1 * (r2 + 2.0 * centered.y * centered.y) + 2.0 * p2 * centered.x * centered.y
+                );
+                
+                vec2 distorted = centered * radialFactor + tangential;
+                return distorted + vec2(0.5 + cx * 0.5, 0.5 + cy * 0.5);
+            }
+            
+            // Calculate fisheye UV from 3D direction in projector-local space
+            // localDir: normalized direction from projector to surface point in projector's coordinate system
+            // In projector-local space, +Z is the forward/optical axis direction
+            vec2 calculateFisheyeUV(vec3 localDir, int lensType, float cx, float cy) {
+                // Calculate angle from optical axis (+Z in local space)
+                // theta is the angle between the direction and the forward axis
+                float cosTheta = localDir.z;  // dot(localDir, vec3(0,0,1))
+                float theta = acos(clamp(cosTheta, -1.0, 1.0));
+                
+                // Calculate the direction in the XY plane (perpendicular to optical axis)
+                vec2 xyDir = localDir.xy;
+                float xyLen = length(xyDir);
+                
+                // Handle case when looking straight down the optical axis
+                if (xyLen < 0.0001) {
+                    return vec2(0.5 + cx * 0.5, 0.5 + cy * 0.5);
+                }
+                
+                // Normalize the XY direction
+                vec2 xyNorm = xyDir / xyLen;
+                
+                // Calculate fisheye radius based on projection type
+                // All formulas: r = f(θ), normalized so that θ=90° (π/2) gives r=1
+                float halfPi = 1.5707963;
+                float radius;
+                
+                if (lensType == LENS_FISHEYE_EQUIDISTANT) {
+                    // r = θ, linear mapping (most common for planetarium)
+                    radius = theta / halfPi;
+                } else if (lensType == LENS_FISHEYE_EQUISOLID) {
+                    // r = 2·sin(θ/2), preserves solid angle (area)
+                    // At θ=90°: r = 2·sin(45°) = 2·0.707 = 1.414
+                    radius = 2.0 * sin(theta * 0.5) / 1.4142;
+                } else if (lensType == LENS_FISHEYE_STEREOGRAPHIC) {
+                    // r = 2·tan(θ/2), preserves angles (conformal)
+                    // At θ=90°: r = 2·tan(45°) = 2·1 = 2
+                    radius = tan(theta * 0.5);
+                } else if (lensType == LENS_FISHEYE_ORTHOGRAPHIC) {
+                    // r = sin(θ), hemispheric projection
+                    // At θ=90°: r = sin(90°) = 1
+                    radius = sin(theta);
+                } else {
+                    // Rectilinear fallback: r = tan(θ)
+                    radius = tan(theta);
+                }
+                
+                // Clamp radius to valid range (0 to 1 for 180° FOV)
+                radius = clamp(radius, 0.0, 1.5);
+                
+                // Convert to UV coordinates
+                // Radius of 1 should map to edge of circular image (0.5 in UV space from center)
+                vec2 principalPoint = vec2(0.5 + cx * 0.5, 0.5 + cy * 0.5);
+                vec2 uv = principalPoint + xyNorm * radius * 0.5;
+                
+                return uv;
+            }
             
             // Unpack linear depth from RGBA
             float unpackLinearDepth(vec4 rgbaDepth) {
@@ -2395,65 +3015,176 @@
                 }
             }
             
-            // Sample projector with physically accurate occlusion
+            // Sample projector with physically accurate occlusion and lens distortion
             // - Back-face rejection: surfaces facing away from projector receive no light
-            // - Shadow occlusion: surfaces behind other geometry receive no light
-            vec4 sampleProjector(mat4 projMat, sampler2D projTex, sampler2D shadowMap, vec3 projPos, float lumens, float throwRatio, float nearPlane, float farPlane, vec2 texOffset) {
-                vec4 projCoord = projMat * vWorldPosition;
+            // - Shadow occlusion: surfaces behind other geometry receive no light  
+            // - Lens distortion: applies radial/tangential distortion and fisheye projection
+            vec4 sampleProjectorWithLens(mat4 projMat, mat4 shadowMat, sampler2D projTex, sampler2D shadowMap, vec3 projPos, mat3 projRotInv, float lumens, float throwRatio, float nearPlane, float farPlane, vec2 texOffset, vec4 lensParams, vec4 lensParams2, float fisheyeFov) {
+                // Extract lens parameters
+                int lensType = int(lensParams.x + 0.5); // Round to int
+                float k1 = lensParams.y;
+                float k2 = lensParams.z;
+                float k3 = lensParams.w;
+                float p1 = lensParams2.x;
+                float p2 = lensParams2.y;
+                float cx = lensParams2.z;
+                float cy = lensParams2.w;
                 
-                // Behind the projector - no light
-                if (projCoord.w <= 0.0) return vec4(0.0);
+                // Calculate distance and direction to surface point
+                vec3 worldDir = vWorldPosition.xyz - projPos;
+                float dist = length(worldDir);
+                vec3 worldDirNorm = worldDir / dist;
                 
-                vec3 ndc = projCoord.xyz / projCoord.w;
-                vec2 uv = ndc.xy * 0.5 + 0.5;
-                
-                // Outside projector frustum - no light
-                if (uv.x < 0.0 || uv.x > 1.0 || uv.y < 0.0 || uv.y > 1.0) return vec4(0.0);
-                if (ndc.z < -1.0 || ndc.z > 1.0) return vec4(0.0);
-                
-                // Back-face rejection - surface facing away from projector receives no light
-                vec3 toProj = normalize(projPos - vWorldPosition.xyz);
-                float facing = dot(vWorldNormal, toProj);
-                if (facing <= 0.0) return vec4(0.0);
-                
-                // Shadow occlusion using LINEAR depth for precision at distance
-                // Calculate actual distance from projector to this fragment
-                float fragDist = length(projPos - vWorldPosition.xyz);
-                
-                // Normalize to [0,1] using same formula as shadow map
-                float fragDepthNormalized = (fragDist - nearPlane) / (farPlane - nearPlane);
-                
-                // Sample shadow map (contains linear depth)
-                vec4 shadowSample = texture2D(shadowMap, uv);
-                float shadowDepth = unpackLinearDepth(shadowSample);
-                
-                // Bias based on surface angle and distance to prevent shadow acne
-                float distanceBias = 0.001 + (fragDist * 0.0005); // Scale bias with distance
-                float angleBias = 0.002 * (1.0 - facing);
-                float bias = distanceBias + angleBias;
-                
-                // If something is closer to the projector, this point is occluded
-                if (fragDepthNormalized > shadowDepth + bias) {
+                // Check distance bounds
+                if (dist < nearPlane || dist > farPlane) {
+                    if (debugLensType) return vec4(0.1, 0.0, 0.0, 0.01); // Dark red = distance reject
                     return vec4(0.0);
                 }
                 
-                // Calculate illumination using actual distance
-                float dist = length(projPos - vWorldPosition.xyz);
+                // Back-face rejection - surface must face the projector
+                vec3 toProj = -worldDirNorm;
+                float facing = dot(vWorldNormal, toProj);
+                if (facing <= 0.0) {
+                    if (debugLensType) return vec4(0.1, 0.1, 0.0, 0.01); // Dark yellow = backface reject
+                    return vec4(0.0);
+                }
+                
+                // Calculate UV based on lens type
+                vec2 lensUV;
+                vec2 shadowUV;
+                
+                // === RECTILINEAR LENS (type 0) ===
+                if (lensType == LENS_RECTILINEAR) {
+                    // Use perspective projection matrix
+                    vec4 projCoord = projMat * vWorldPosition;
+                    if (projCoord.w <= 0.0) {
+                        if (debugLensType) return vec4(0.1, 0.0, 0.1, 0.01); // Dark magenta = behind camera
+                        return vec4(0.0);
+                    }
+                    
+                    vec3 ndc = projCoord.xyz / projCoord.w;
+                    lensUV = ndc.xy * 0.5 + 0.5;
+                    
+                    // RECTANGULAR bounds check for rectilinear
+                    if (lensUV.x < 0.0 || lensUV.x > 1.0 || lensUV.y < 0.0 || lensUV.y > 1.0) {
+                        if (debugLensType) return vec4(0.0, 0.1, 0.0, 0.01); // Dark green = UV bounds reject
+                        return vec4(0.0);
+                    }
+                    if (ndc.z < -1.0 || ndc.z > 1.0) {
+                        if (debugLensType) return vec4(0.0, 0.1, 0.1, 0.01); // Dark cyan = NDC Z reject
+                        return vec4(0.0);
+                    }
+                    
+                    // Shadow UV is same as lens UV for rectilinear (same projection)
+                    shadowUV = lensUV;
+                }
+                // === FISHEYE LENSES (types 1-4) ===
+                else {
+                    // Transform direction to projector-local space
+                    vec3 localDir = projRotInv * worldDirNorm;
+                    
+                    // Check if point is behind the projector (localDir.z should be positive for forward)
+                    if (localDir.z <= 0.0) {
+                        if (debugLensType) return vec4(0.1, 0.0, 0.1, 0.01); // Dark magenta = behind projector
+                        return vec4(0.0);
+                    }
+                    
+                    // Calculate fisheye UV from 3D angle
+                    lensUV = calculateFisheyeUV(localDir, lensType, cx, cy);
+                    
+                    // CIRCULAR bounds check for fisheye based on FOV
+                    // calculateFisheyeUV maps: 90° from axis -> radius 1.0 -> UV distance 0.5 from center
+                    // So for 180° FOV (±90°), maxRadius in UV space = 0.5
+                    vec2 principalPoint = vec2(0.5 + cx * 0.5, 0.5 + cy * 0.5);
+                    float distFromCenter = length(lensUV - principalPoint);
+                    float maxRadius = fisheyeFov / 360.0;
+                    
+                    if (distFromCenter > maxRadius) {
+                        if (debugLensType) return vec4(0.0, 0.0, 0.1, 0.01); // Dark blue = FOV bounds reject
+                        return vec4(0.0);
+                    }
+                    
+                    // Calculate shadow UV from shadow camera matrix (has wider FOV for fisheye)
+                    vec4 shadowCoord = shadowMat * vWorldPosition;
+                    if (shadowCoord.w > 0.0) {
+                        vec3 shadowNdc = shadowCoord.xyz / shadowCoord.w;
+                        shadowUV = shadowNdc.xy * 0.5 + 0.5;
+                    } else {
+                        shadowUV = vec2(-1.0); // Outside shadow frustum
+                    }
+                }
+                
+                // Apply lens distortion (Brown-Conrady model) if any coefficients are non-zero
+                if (abs(k1) > 0.0001 || abs(k2) > 0.0001 || abs(k3) > 0.0001 || abs(p1) > 0.0001 || abs(p2) > 0.0001) {
+                    lensUV = applyDistortion(lensUV, k1, k2, k3, p1, p2, cx, cy);
+                }
+                
+                // Shadow occlusion check
+                // CRITICAL: Shadow map stores VIEW-SPACE Z depth (along optical axis), not 3D Euclidean distance
+                // We must use the shadow camera's view-space depth for comparison
+                bool inShadow = false;
+                if (shadowUV.x >= 0.0 && shadowUV.x <= 1.0 && shadowUV.y >= 0.0 && shadowUV.y <= 1.0) {
+                    // Get the view-space depth from the shadow projection
+                    // shadowCoord.w contains the view-space Z (for perspective cameras)
+                    // For rectilinear, we calculated projCoord earlier; for fisheye, we have shadowCoord
+                    vec4 shadowProjCoord = shadowMat * vWorldPosition;
+                    float viewSpaceZ = shadowProjCoord.w; // Distance along shadow camera's optical axis
+                    
+                    // Normalize to 0-1 range using near/far planes
+                    float fragDepthNormalized = (viewSpaceZ - nearPlane) / (farPlane - nearPlane);
+                    
+                    vec4 shadowSample = texture2D(shadowMap, shadowUV);
+                    float shadowDepth = unpackLinearDepth(shadowSample);
+                    
+                    // Bias to prevent shadow acne
+                    float distanceBias = 0.001 + (viewSpaceZ * 0.0005);
+                    float angleBias = 0.002 * (1.0 - facing);
+                    float bias = distanceBias + angleBias;
+                    
+                    if (fragDepthNormalized > shadowDepth + bias) {
+                        inShadow = true;
+                    }
+                }
+                
+                if (inShadow) {
+                    if (debugLensType) return vec4(0.2, 0.0, 0.2, 0.01); // Purple = shadow reject
+                    return vec4(0.0);
+                }
+                
+                // Debug mode: show lens type as bright color
+                if (debugLensType) {
+                    if (lensType == LENS_RECTILINEAR) {
+                        return vec4(0.0, 1.0, 0.0, 1.0); // Bright green = rectilinear
+                    } else {
+                        return vec4(0.0, 0.5, 1.0, 1.0); // Bright blue = fisheye
+                    }
+                }
+                
+                // Calculate illumination
                 float projWidth = dist / throwRatio;
                 float projHeight = projWidth / (16.0/9.0);
                 float projArea = projWidth * projHeight;
                 
-                // Illuminance (lux) and Luminance (cd/m²)
                 float lux = lumens / projArea;
                 float cdm2 = (lux * surfaceGain / 3.14159) * facing;
                 
-                // Edge falloff for soft blending at frustum edges
-                float edgeDist = max(abs(uv.x - 0.5), abs(uv.y - 0.5)) * 2.0;
-                float edgeFalloff = 1.0 - smoothstep(0.85, 1.0, edgeDist);
+                // Edge falloff for soft blending
+                float edgeFalloff;
+                if (lensType == LENS_RECTILINEAR) {
+                    // Rectangular falloff for rectilinear
+                    float edgeDist = max(abs(lensUV.x - 0.5), abs(lensUV.y - 0.5)) * 2.0;
+                    edgeFalloff = 1.0 - smoothstep(0.85, 1.0, edgeDist);
+                } else {
+                    // Circular falloff for fisheye
+                    vec2 principalPoint = vec2(0.5 + cx * 0.5, 0.5 + cy * 0.5);
+                    float maxRadius = fisheyeFov / 360.0;
+                    float radialDist = length(lensUV - principalPoint) / maxRadius;
+                    edgeFalloff = 1.0 - smoothstep(0.85, 1.0, radialDist);
+                }
                 cdm2 *= edgeFalloff;
                 
-                // Apply texture offset for scrolling patterns (use fract for wrapping)
-                vec2 scrolledUV = fract(uv + texOffset);
+                // Sample texture
+                vec2 scrolledUV = fract(lensUV + texOffset);
                 vec4 texColor = texture2D(projTex, scrolledUV);
                 float displayIntensity = cdm2 / 1500.0;
                 
@@ -2466,19 +3197,35 @@
                 int hitCount = 0;
                 
                 if (numProjectors > 0) {
-                    vec4 result = sampleProjector(projMat0, projTex0, shadowMap0, projPos0, projLumens0, projThrow0, projNear0, projFar0, texOffset0);
+                    vec4 result = sampleProjectorWithLens(projMat0, shadowMat0, projTex0, shadowMap0, projPos0, projRotInv0, projLumens0, projThrow0, projNear0, projFar0, texOffset0, lensParams0, lensParams2_0, fisheyeFov0);
                     if (result.a > 0.0) { color += result.rgb; totalCdm2 += result.a; hitCount++; }
                 }
                 if (numProjectors > 1) {
-                    vec4 result = sampleProjector(projMat1, projTex1, shadowMap1, projPos1, projLumens1, projThrow1, projNear1, projFar1, texOffset1);
+                    vec4 result = sampleProjectorWithLens(projMat1, shadowMat1, projTex1, shadowMap1, projPos1, projRotInv1, projLumens1, projThrow1, projNear1, projFar1, texOffset1, lensParams1, lensParams2_1, fisheyeFov1);
                     if (result.a > 0.0) { color += result.rgb; totalCdm2 += result.a; hitCount++; }
                 }
                 if (numProjectors > 2) {
-                    vec4 result = sampleProjector(projMat2, projTex2, shadowMap2, projPos2, projLumens2, projThrow2, projNear2, projFar2, texOffset2);
+                    vec4 result = sampleProjectorWithLens(projMat2, shadowMat2, projTex2, shadowMap2, projPos2, projRotInv2, projLumens2, projThrow2, projNear2, projFar2, texOffset2, lensParams2, lensParams2_2, fisheyeFov2);
                     if (result.a > 0.0) { color += result.rgb; totalCdm2 += result.a; hitCount++; }
                 }
                 if (numProjectors > 3) {
-                    vec4 result = sampleProjector(projMat3, projTex3, shadowMap3, projPos3, projLumens3, projThrow3, projNear3, projFar3, texOffset3);
+                    vec4 result = sampleProjectorWithLens(projMat3, shadowMat3, projTex3, shadowMap3, projPos3, projRotInv3, projLumens3, projThrow3, projNear3, projFar3, texOffset3, lensParams3, lensParams2_3, fisheyeFov3);
+                    if (result.a > 0.0) { color += result.rgb; totalCdm2 += result.a; hitCount++; }
+                }
+                if (numProjectors > 4) {
+                    vec4 result = sampleProjectorWithLens(projMat4, shadowMat4, projTex4, shadowMap4, projPos4, projRotInv4, projLumens4, projThrow4, projNear4, projFar4, texOffset4, lensParams4, lensParams2_4, fisheyeFov4);
+                    if (result.a > 0.0) { color += result.rgb; totalCdm2 += result.a; hitCount++; }
+                }
+                if (numProjectors > 5) {
+                    vec4 result = sampleProjectorWithLens(projMat5, shadowMat5, projTex5, shadowMap5, projPos5, projRotInv5, projLumens5, projThrow5, projNear5, projFar5, texOffset5, lensParams5, lensParams2_5, fisheyeFov5);
+                    if (result.a > 0.0) { color += result.rgb; totalCdm2 += result.a; hitCount++; }
+                }
+                if (numProjectors > 6) {
+                    vec4 result = sampleProjectorWithLens(projMat6, shadowMat6, projTex6, shadowMap6, projPos6, projRotInv6, projLumens6, projThrow6, projNear6, projFar6, texOffset6, lensParams6, lensParams2_6, fisheyeFov6);
+                    if (result.a > 0.0) { color += result.rgb; totalCdm2 += result.a; hitCount++; }
+                }
+                if (numProjectors > 7) {
+                    vec4 result = sampleProjectorWithLens(projMat7, shadowMat7, projTex7, shadowMap7, projPos7, projRotInv7, projLumens7, projThrow7, projNear7, projFar7, texOffset7, lensParams7, lensParams2_7, fisheyeFov7);
                     if (result.a > 0.0) { color += result.rgb; totalCdm2 += result.a; hitCount++; }
                 }
                 
@@ -2601,8 +3348,23 @@
         
         // Create or update shadow map for a projector
         function updateShadowMap(projector) {
-            // Use same vertical FOV calculation as projection matrix
-            const verticalFov = 2 * Math.atan(1 / (2 * projector.throwRatio * projector.zoom * projector.aspectRatio)) * (180 / Math.PI);
+            // Determine FOV based on lens type
+            // Fisheye lenses need a much wider shadow map to cover their FOV
+            const lens = projector.lens || { type: 'rectilinear' };
+            const isFisheye = lens.type && lens.type.startsWith('fisheye');
+            
+            let verticalFov, aspectRatio;
+            if (isFisheye) {
+                // Use the projector's fisheye FOV for shadow map (clamped to practical limit)
+                // Perspective cameras can't truly do 180°, so clamp to 170° max
+                const fisheyeFov = lens.fisheyeFov || 180;
+                verticalFov = Math.min(fisheyeFov, 170);
+                aspectRatio = 1.0; // Square shadow map for omnidirectional coverage
+            } else {
+                // Use same vertical FOV calculation as projection matrix for rectilinear
+                verticalFov = 2 * Math.atan(1 / (2 * projector.throwRatio * projector.zoom * projector.aspectRatio)) * (180 / Math.PI);
+                aspectRatio = projector.aspectRatio;
+            }
             
             const nearPlane = projector.nearPlane || 0.1;
             const farPlane = projector.farPlane || 100;
@@ -2617,30 +3379,32 @@
                     format: THREE.RGBAFormat
                 });
                 
-                const shadowCamera = new THREE.PerspectiveCamera(verticalFov, projector.aspectRatio, nearPlane, farPlane);
+                const shadowCamera = new THREE.PerspectiveCamera(verticalFov, aspectRatio, nearPlane, farPlane);
                 
-                shadowData = { renderTarget, camera: shadowCamera };
+                shadowData = { renderTarget, camera: shadowCamera, isFisheye };
                 shadowMaps.set(projector.id, shadowData);
             }
             
             // Update shadow camera
             const shadowCamera = shadowData.camera;
             shadowCamera.fov = verticalFov;
-            shadowCamera.aspect = projector.aspectRatio;
+            shadowCamera.aspect = aspectRatio;
             shadowCamera.near = nearPlane;
             shadowCamera.far = farPlane;
+            shadowData.isFisheye = isFisheye;
             shadowCamera.position.set(projector.position.x, projector.position.y, projector.position.z);
             
-            const euler = new THREE.Euler(
+            // Use same quaternion composition as projection matrix
+            const flipQuat = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI);
+            const userEuler = new THREE.Euler(
                 THREE.MathUtils.degToRad(projector.rotation.x),
                 THREE.MathUtils.degToRad(projector.rotation.y),
                 THREE.MathUtils.degToRad(projector.rotation.z),
                 'YXZ'
             );
-            
-            const forward = new THREE.Vector3(0, 0, 1).applyEuler(euler);
-            const target = new THREE.Vector3().copy(shadowCamera.position).add(forward);
-            shadowCamera.lookAt(target);
+            const userQuat = new THREE.Quaternion().setFromEuler(userEuler);
+            const finalQuat = new THREE.Quaternion().multiplyQuaternions(userQuat, flipQuat);
+            shadowCamera.quaternion.copy(finalQuat);
             
             shadowCamera.updateMatrixWorld(true);
             shadowCamera.updateProjectionMatrix();
@@ -2654,6 +3418,10 @@
         function renderShadowMap(projectorId) {
             const shadowData = shadowMaps.get(projectorId);
             if (!shadowData || !depthMaterial) return;
+            
+            // Update depth material uniforms to match this projector's shadow camera
+            depthMaterial.uniforms.cameraNear.value = shadowData.camera.near;
+            depthMaterial.uniforms.cameraFar.value = shadowData.camera.far;
             
             const currentBackground = scene.background;
             const currentOverrideMaterial = scene.overrideMaterial;
@@ -2766,11 +3534,24 @@
                 
                 prevMouseX = e.clientX;
                 prevMouseY = e.clientY;
+                
+                // Sync projector if in pilot mode
+                if (pilotMode.enabled) {
+                    syncProjectorToCamera();
+                }
             });
             
             // Gizmo hover effect
             renderer.domElement.addEventListener('mousemove', e => {
-                if (isGizmoActive || !gizmoGroup || !gizmoGroup.visible) return;
+                if (isGizmoActive || !gizmoGroup || !gizmoGroup.visible) {
+                    // Clear hover state when dragging
+                    if (hoveredAxis && !gizmoState.isDragging) {
+                        highlightAxis(hoveredAxis, false);
+                        hoveredAxis = null;
+                        hideAxisLabel();
+                    }
+                    return;
+                }
                 
                 const rect = renderer.domElement.getBoundingClientRect();
                 const mouse = new THREE.Vector2(
@@ -2778,19 +3559,7 @@
                     -((e.clientY - rect.top) / rect.height) * 2 + 1
                 );
                 
-                gizmoRaycaster.setFromCamera(mouse, camera);
-                
-                const gizmoObjects = [];
-                gizmoGroup.traverse(child => {
-                    if (child.isMesh && child.userData.gizmoType) {
-                        gizmoObjects.push(child);
-                    }
-                });
-                
-                const intersects = gizmoRaycaster.intersectObjects(gizmoObjects);
-                
-                // Reset cursor
-                renderer.domElement.style.cursor = intersects.length > 0 ? 'pointer' : 'default';
+                updateGizmoHover(mouse);
             });
         }
         
@@ -2804,6 +3573,13 @@
                 if ((e.ctrlKey || e.metaKey) && key === 'z') {
                     e.preventDefault();
                     undo();
+                    return;
+                }
+                
+                // Ctrl+D for debug lens type visualization
+                if ((e.ctrlKey || e.metaKey) && key === 'd') {
+                    e.preventDefault();
+                    toggleDebugLensType();
                     return;
                 }
                 
@@ -2876,12 +3652,18 @@
             const forward = new THREE.Vector3(cameraDirection.x, 0, cameraDirection.z).normalize();
             const rightHoriz = new THREE.Vector3(right.x, 0, right.z).normalize();
             
-            if (keys.w) camera.position.addScaledVector(forward, speed);
-            if (keys.s) camera.position.addScaledVector(forward, -speed);
-            if (keys.a) camera.position.addScaledVector(rightHoriz, -speed);
-            if (keys.d) camera.position.addScaledVector(rightHoriz, speed);
-            if (keys.e) camera.position.y += speed;
-            if (keys.q) camera.position.y -= speed;
+            let moved = false;
+            if (keys.w) { camera.position.addScaledVector(forward, speed); moved = true; }
+            if (keys.s) { camera.position.addScaledVector(forward, -speed); moved = true; }
+            if (keys.a) { camera.position.addScaledVector(rightHoriz, -speed); moved = true; }
+            if (keys.d) { camera.position.addScaledVector(rightHoriz, speed); moved = true; }
+            if (keys.e) { camera.position.y += speed; moved = true; }
+            if (keys.q) { camera.position.y -= speed; moved = true; }
+            
+            // Sync projector if in pilot mode
+            if (moved && pilotMode.enabled) {
+                syncProjectorToCamera();
+            }
         }
         
         function handleCanvasClick(e) {
@@ -3007,12 +3789,27 @@
                 customTextureUrl: null,
                 nearPlane: 0.1,
                 farPlane: 100,
-                frustumDistance: 20
+                frustumDistance: 20,
+                // Lens/Optics properties
+                lens: {
+                    type: 'rectilinear',  // rectilinear, fisheye_equidistant, fisheye_equisolid, fisheye_stereographic, fisheye_orthographic
+                    fisheyeFov: 180,      // FOV in degrees for fisheye lenses (90-220, typical 180)
+                    // Distortion coefficients (Brown-Conrady model)
+                    k1: 0,                // Radial distortion coefficient 1
+                    k2: 0,                // Radial distortion coefficient 2
+                    k3: 0,                // Radial distortion coefficient 3
+                    p1: 0,                // Tangential distortion coefficient 1
+                    p2: 0,                // Tangential distortion coefficient 2
+                    // Principal point offset (normalized -1 to 1)
+                    cx: 0,                // Horizontal principal point offset
+                    cy: 0                 // Vertical principal point offset (lens shift)
+                }
             };
             
             state.projectors.push(projector);
             createProjectorMesh(projector);
             updateProjectorMatrix(projector);
+            updateShadowMap(projector);  // Create shadow map for new projector
             updateAllSurfaceMaterials();
             updateProjectorList();
             updateStatus();
@@ -3045,6 +3842,8 @@
             group.add(createFrustum(projector));
             
             group.position.set(projector.position.x, projector.position.y, projector.position.z);
+            // Use YXZ order to match updateProjectorMatrix
+            group.rotation.order = 'YXZ';
             group.rotation.set(
                 THREE.MathUtils.degToRad(projector.rotation.x),
                 THREE.MathUtils.degToRad(projector.rotation.y),
@@ -3094,16 +3893,22 @@
             const projCam = new THREE.PerspectiveCamera(verticalFov, projector.aspectRatio, nearPlane, farPlane);
             projCam.position.set(projector.position.x, projector.position.y, projector.position.z);
             
-            const euler = new THREE.Euler(
+            // User rotation euler (this is what the mesh uses, +Z is forward)
+            const userEuler = new THREE.Euler(
                 THREE.MathUtils.degToRad(projector.rotation.x),
                 THREE.MathUtils.degToRad(projector.rotation.y),
                 THREE.MathUtils.degToRad(projector.rotation.z),
                 'YXZ'
             );
+            const userQuat = new THREE.Quaternion().setFromEuler(userEuler);
             
-            const forward = new THREE.Vector3(0, 0, 1).applyEuler(euler);
-            const target = new THREE.Vector3().copy(projCam.position).add(forward);
-            projCam.lookAt(target);
+            // For the projection camera, we need to flip since cameras look at -Z by default
+            // Create flip quaternion (180° around Y) to make camera face +Z instead of -Z
+            const flipQuat = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI);
+            
+            // Compose: first flip to face +Z, then apply user rotation
+            const finalQuat = new THREE.Quaternion().multiplyQuaternions(userQuat, flipQuat);
+            projCam.quaternion.copy(finalQuat);
             
             projCam.updateMatrixWorld(true);
             projCam.updateProjectionMatrix();
@@ -3111,11 +3916,20 @@
             const vpMatrix = new THREE.Matrix4();
             vpMatrix.multiplyMatrices(projCam.projectionMatrix, projCam.matrixWorldInverse);
             
+            // For fisheye calculation, use the USER rotation only (no flip)
+            // This matches the projector mesh orientation where +Z is forward
+            // The rotation matrix transforms from local to world space
+            const rotMatrix = new THREE.Matrix4().makeRotationFromQuaternion(userQuat);
+            const rotMatrix3 = new THREE.Matrix3().setFromMatrix4(rotMatrix);
+            // Inverse (transpose) transforms from world to local space
+            const rotMatrixInverse = rotMatrix3.clone().transpose();
+            
             projectorMatrixData.set(projector.id, {
                 matrix: vpMatrix,
                 position: new THREE.Vector3(projector.position.x, projector.position.y, projector.position.z),
+                rotationMatrixInverse: rotMatrixInverse,
                 lumens: projector.lumens,
-                throwRatio: projector.throwRatio * projector.zoom, // Effective throw ratio
+                throwRatio: projector.throwRatio * projector.zoom,
                 nearPlane: nearPlane,
                 farPlane: farPlane
             });
@@ -3131,6 +3945,8 @@
             const mesh = projectorGroup.children.find(c => c.userData.projectorId === projector.id);
             if (mesh) {
                 mesh.position.set(projector.position.x, projector.position.y, projector.position.z);
+                // Use YXZ order to match updateProjectorMatrix
+                mesh.rotation.order = 'YXZ';
                 mesh.rotation.set(
                     THREE.MathUtils.degToRad(projector.rotation.x),
                     THREE.MathUtils.degToRad(projector.rotation.y),
@@ -3662,6 +4478,8 @@
             mesh.userData.isCustomOBJ = true;
             
             mesh.position.set(surface.position.x, surface.position.y, surface.position.z);
+            // Use YXZ order consistently to avoid gimbal lock
+            mesh.rotation.order = 'YXZ';
             mesh.rotation.set(
                 THREE.MathUtils.degToRad(surface.rotation.x),
                 THREE.MathUtils.degToRad(surface.rotation.y),
@@ -3681,37 +4499,90 @@
             defaultShadowTex.needsUpdate = true;
             
             const uniforms = {
+                // Projector textures (supports up to 8 projectors)
                 projTex0: { value: defaultTex }, projTex1: { value: defaultTex },
                 projTex2: { value: defaultTex }, projTex3: { value: defaultTex },
+                projTex4: { value: defaultTex }, projTex5: { value: defaultTex },
+                projTex6: { value: defaultTex }, projTex7: { value: defaultTex },
                 shadowMap0: { value: defaultShadowTex }, shadowMap1: { value: defaultShadowTex },
                 shadowMap2: { value: defaultShadowTex }, shadowMap3: { value: defaultShadowTex },
+                shadowMap4: { value: defaultShadowTex }, shadowMap5: { value: defaultShadowTex },
+                shadowMap6: { value: defaultShadowTex }, shadowMap7: { value: defaultShadowTex },
                 projMat0: { value: new THREE.Matrix4() }, projMat1: { value: new THREE.Matrix4() },
                 projMat2: { value: new THREE.Matrix4() }, projMat3: { value: new THREE.Matrix4() },
+                projMat4: { value: new THREE.Matrix4() }, projMat5: { value: new THREE.Matrix4() },
+                projMat6: { value: new THREE.Matrix4() }, projMat7: { value: new THREE.Matrix4() },
+                // Shadow camera matrices (may differ from projMat for fisheye)
+                shadowMat0: { value: new THREE.Matrix4() }, shadowMat1: { value: new THREE.Matrix4() },
+                shadowMat2: { value: new THREE.Matrix4() }, shadowMat3: { value: new THREE.Matrix4() },
+                shadowMat4: { value: new THREE.Matrix4() }, shadowMat5: { value: new THREE.Matrix4() },
+                shadowMat6: { value: new THREE.Matrix4() }, shadowMat7: { value: new THREE.Matrix4() },
                 projPos0: { value: new THREE.Vector3() }, projPos1: { value: new THREE.Vector3() },
                 projPos2: { value: new THREE.Vector3() }, projPos3: { value: new THREE.Vector3() },
+                projPos4: { value: new THREE.Vector3() }, projPos5: { value: new THREE.Vector3() },
+                projPos6: { value: new THREE.Vector3() }, projPos7: { value: new THREE.Vector3() },
+                // Projector rotation matrices (inverse) for fisheye calculation
+                projRotInv0: { value: new THREE.Matrix3() }, projRotInv1: { value: new THREE.Matrix3() },
+                projRotInv2: { value: new THREE.Matrix3() }, projRotInv3: { value: new THREE.Matrix3() },
+                projRotInv4: { value: new THREE.Matrix3() }, projRotInv5: { value: new THREE.Matrix3() },
+                projRotInv6: { value: new THREE.Matrix3() }, projRotInv7: { value: new THREE.Matrix3() },
                 projLumens0: { value: 0 }, projLumens1: { value: 0 },
                 projLumens2: { value: 0 }, projLumens3: { value: 0 },
+                projLumens4: { value: 0 }, projLumens5: { value: 0 },
+                projLumens6: { value: 0 }, projLumens7: { value: 0 },
                 projThrow0: { value: 1.5 }, projThrow1: { value: 1.5 },
                 projThrow2: { value: 1.5 }, projThrow3: { value: 1.5 },
+                projThrow4: { value: 1.5 }, projThrow5: { value: 1.5 },
+                projThrow6: { value: 1.5 }, projThrow7: { value: 1.5 },
                 projNear0: { value: 0.1 }, projNear1: { value: 0.1 },
                 projNear2: { value: 0.1 }, projNear3: { value: 0.1 },
+                projNear4: { value: 0.1 }, projNear5: { value: 0.1 },
+                projNear6: { value: 0.1 }, projNear7: { value: 0.1 },
                 projFar0: { value: 100 }, projFar1: { value: 100 },
                 projFar2: { value: 100 }, projFar3: { value: 100 },
+                projFar4: { value: 100 }, projFar5: { value: 100 },
+                projFar6: { value: 100 }, projFar7: { value: 100 },
                 texOffset0: { value: new THREE.Vector2(0, 0) }, texOffset1: { value: new THREE.Vector2(0, 0) },
                 texOffset2: { value: new THREE.Vector2(0, 0) }, texOffset3: { value: new THREE.Vector2(0, 0) },
+                texOffset4: { value: new THREE.Vector2(0, 0) }, texOffset5: { value: new THREE.Vector2(0, 0) },
+                texOffset6: { value: new THREE.Vector2(0, 0) }, texOffset7: { value: new THREE.Vector2(0, 0) },
+                // Lens uniforms: x=type, y=k1, z=k2, w=k3
+                lensParams0: { value: new THREE.Vector4(0, 0, 0, 0) },
+                lensParams1: { value: new THREE.Vector4(0, 0, 0, 0) },
+                lensParams2: { value: new THREE.Vector4(0, 0, 0, 0) },
+                lensParams3: { value: new THREE.Vector4(0, 0, 0, 0) },
+                lensParams4: { value: new THREE.Vector4(0, 0, 0, 0) },
+                lensParams5: { value: new THREE.Vector4(0, 0, 0, 0) },
+                lensParams6: { value: new THREE.Vector4(0, 0, 0, 0) },
+                lensParams7: { value: new THREE.Vector4(0, 0, 0, 0) },
+                // Lens uniforms: x=p1, y=p2, z=cx, w=cy
+                lensParams2_0: { value: new THREE.Vector4(0, 0, 0, 0) },
+                lensParams2_1: { value: new THREE.Vector4(0, 0, 0, 0) },
+                lensParams2_2: { value: new THREE.Vector4(0, 0, 0, 0) },
+                lensParams2_3: { value: new THREE.Vector4(0, 0, 0, 0) },
+                lensParams2_4: { value: new THREE.Vector4(0, 0, 0, 0) },
+                lensParams2_5: { value: new THREE.Vector4(0, 0, 0, 0) },
+                lensParams2_6: { value: new THREE.Vector4(0, 0, 0, 0) },
+                lensParams2_7: { value: new THREE.Vector4(0, 0, 0, 0) },
+                // Fisheye FOV in degrees (180 = full hemisphere)
+                fisheyeFov0: { value: 180 }, fisheyeFov1: { value: 180 },
+                fisheyeFov2: { value: 180 }, fisheyeFov3: { value: 180 },
+                fisheyeFov4: { value: 180 }, fisheyeFov5: { value: 180 },
+                fisheyeFov6: { value: 180 }, fisheyeFov7: { value: 180 },
                 numProjectors: { value: 0 },
                 showCoverage: { value: state.displayOptions.coverage },
                 showOverlap: { value: state.displayOptions.overlap },
                 showHeatmap: { value: state.displayOptions.heatmap },
+                debugLensType: { value: false },  // Debug mode
                 surfaceGain: { value: surface.gain },
                 baseColor: { value: new THREE.Color(surface.color) },
                 heatmapMax: { value: state.heatmapMax }
             };
             
             const enabled = state.projectors.filter(p => p.enabled);
-            uniforms.numProjectors.value = enabled.length;
+            uniforms.numProjectors.value = Math.min(enabled.length, 8);
             
-            enabled.slice(0, 4).forEach((proj, i) => {
+            enabled.slice(0, 8).forEach((proj, i) => {
                 const data = projectorMatrixData.get(proj.id);
                 const tex = projectionTextures.get(proj.id);
                 const shadow = shadowMaps.get(proj.id);
@@ -3722,9 +4593,47 @@
                     uniforms[`projThrow${i}`].value = data.throwRatio;
                     uniforms[`projNear${i}`].value = data.nearPlane || 0.1;
                     uniforms[`projFar${i}`].value = data.farPlane || 100;
+                    // Copy rotation matrix inverse for fisheye calculation
+                    if (data.rotationMatrixInverse) {
+                        uniforms[`projRotInv${i}`].value.copy(data.rotationMatrixInverse);
+                    }
                 }
                 if (tex) uniforms[`projTex${i}`].value = tex;
-                if (shadow) uniforms[`shadowMap${i}`].value = shadow.renderTarget.texture;
+                if (shadow) {
+                    uniforms[`shadowMap${i}`].value = shadow.renderTarget.texture;
+                    // Compute and set shadow camera's view-projection matrix
+                    if (shadow.camera) {
+                        const shadowVPMatrix = new THREE.Matrix4();
+                        shadowVPMatrix.multiplyMatrices(shadow.camera.projectionMatrix, shadow.camera.matrixWorldInverse);
+                        uniforms[`shadowMat${i}`].value.copy(shadowVPMatrix);
+                    }
+                }
+                
+                // Set lens parameters
+                const lens = proj.lens || { type: 'rectilinear', k1: 0, k2: 0, k3: 0, p1: 0, p2: 0, cx: 0, cy: 0 };
+                const lensTypeMap = {
+                    'rectilinear': 0,
+                    'fisheye_equidistant': 1,
+                    'fisheye_equisolid': 2,
+                    'fisheye_stereographic': 3,
+                    'fisheye_orthographic': 4
+                };
+                const lensTypeValue = lensTypeMap[lens.type] !== undefined ? lensTypeMap[lens.type] : 0;
+                uniforms[`lensParams${i}`].value.set(
+                    lensTypeValue,
+                    lens.k1 || 0,
+                    lens.k2 || 0,
+                    lens.k3 || 0
+                );
+                uniforms[`lensParams2_${i}`].value.set(
+                    lens.p1 || 0,
+                    lens.p2 || 0,
+                    lens.cx || 0,
+                    lens.cy || 0
+                );
+                
+                // Set fisheye FOV (default 180°)
+                uniforms[`fisheyeFov${i}`].value = lens.fisheyeFov || 180;
                 
                 // Apply pattern scroll offset only for projectors without custom textures
                 if (!proj.customTextureUrl && patternScrollState.enabled) {
@@ -3770,6 +4679,8 @@
             mesh.userData.surfaceId = surface.id;
             mesh.userData.surface = surface; // Store reference for coverage calculation
             mesh.position.set(surface.position.x, surface.position.y, surface.position.z);
+            // Use YXZ order consistently to avoid gimbal lock
+            mesh.rotation.order = 'YXZ';
             mesh.rotation.set(
                 THREE.MathUtils.degToRad(surface.rotation.x),
                 THREE.MathUtils.degToRad(surface.rotation.y),
@@ -4188,10 +5099,27 @@
                         </div>
                         <div class="property-group">
                             <div class="property-group-title">Optics</div>
-                            <div class="slider-row"><span class="slider-label">Throw Ratio</span><div class="slider-container"><input type="range" class="slider" min="0.3" max="3" step="0.05" value="${p.throwRatio}" oninput="updateProjectorProp(${p.id}, 'throwRatio', +this.value); this.nextElementSibling.textContent=Number(this.value).toFixed(2)"><span class="slider-value">${p.throwRatio.toFixed(2)}</span></div></div>
-                            <div class="slider-row"><span class="slider-label">Zoom</span><div class="slider-container"><input type="range" class="slider" min="0.8" max="1.5" step="0.01" value="${p.zoom}" oninput="updateProjectorProp(${p.id}, 'zoom', +this.value); this.nextElementSibling.textContent=Number(this.value).toFixed(2)+'x'"><span class="slider-value">${p.zoom.toFixed(2)}x</span></div></div>
+                            <div class="slider-row"><span class="slider-label">Throw Ratio</span><div class="slider-container"><input type="range" class="slider" min="0.3" max="3" step="0.05" value="${p.throwRatio}" oninput="updateProjectorProp(${p.id}, 'throwRatio', +this.value); this.nextElementSibling.value=Number(this.value).toFixed(2)"><input type="number" class="slider-input" step="0.05" min="0.3" max="3" value="${p.throwRatio.toFixed(2)}" onchange="updateProjectorProp(${p.id}, 'throwRatio', +this.value); this.previousElementSibling.value=this.value"></div></div>
+                            <div class="slider-row"><span class="slider-label">Zoom</span><div class="slider-container"><input type="range" class="slider" min="0.8" max="1.5" step="0.01" value="${p.zoom}" oninput="updateProjectorProp(${p.id}, 'zoom', +this.value); this.nextElementSibling.value=Number(this.value).toFixed(2)"><input type="number" class="slider-input" step="0.01" min="0.8" max="1.5" value="${p.zoom.toFixed(2)}" onchange="updateProjectorProp(${p.id}, 'zoom', +this.value); this.previousElementSibling.value=this.value"></div></div>
                             <div class="property-row"><span class="property-label">Lumens</span><div class="single-input"><input type="number" step="1000" value="${p.lumens}" onchange="updateProjectorProp(${p.id}, 'lumens', +this.value)"></div></div>
                             <div class="property-row"><span class="property-label">Resolution</span><div class="single-input"><input type="text" value="${p.resolution || '1920×1080'}" readonly style="opacity: 0.6;"></div></div>
+                            <div class="property-row"><span class="property-label">Lens Type</span><div class="single-input"><select onchange="updateLensProp(${p.id}, 'type', this.value)">
+                                <option value="rectilinear" ${(p.lens?.type || 'rectilinear') === 'rectilinear' ? 'selected' : ''}>Rectilinear (Standard)</option>
+                                <option value="fisheye_equidistant" ${p.lens?.type === 'fisheye_equidistant' ? 'selected' : ''}>Fisheye - Equidistant</option>
+                                <option value="fisheye_equisolid" ${p.lens?.type === 'fisheye_equisolid' ? 'selected' : ''}>Fisheye - Equisolid</option>
+                                <option value="fisheye_stereographic" ${p.lens?.type === 'fisheye_stereographic' ? 'selected' : ''}>Fisheye - Stereographic</option>
+                                <option value="fisheye_orthographic" ${p.lens?.type === 'fisheye_orthographic' ? 'selected' : ''}>Fisheye - Orthographic</option>
+                            </select></div></div>
+                            ${(p.lens?.type && p.lens.type.startsWith('fisheye')) ? `<div class="slider-row"><span class="slider-label">Fisheye FOV (°)</span><div class="slider-container"><input type="range" class="slider" min="90" max="220" step="5" value="${p.lens?.fisheyeFov || 180}" oninput="updateLensProp(${p.id}, 'fisheyeFov', +this.value); this.nextElementSibling.value=this.value"><input type="number" class="slider-input" step="5" min="90" max="220" value="${p.lens?.fisheyeFov || 180}" onchange="updateLensProp(${p.id}, 'fisheyeFov', +this.value); this.previousElementSibling.value=this.value"></div></div>` : ''}
+                            <div class="slider-row"><span class="slider-label">Barrel/Pincushion (K1)</span><div class="slider-container"><input type="range" class="slider" min="-0.5" max="0.5" step="0.01" value="${p.lens?.k1 || 0}" oninput="updateLensProp(${p.id}, 'k1', +this.value); this.nextElementSibling.value=Number(this.value).toFixed(2)"><input type="number" class="slider-input" step="0.01" min="-0.5" max="0.5" value="${(p.lens?.k1 || 0).toFixed(2)}" onchange="updateLensProp(${p.id}, 'k1', +this.value); this.previousElementSibling.value=this.value"></div></div>
+                            <div class="slider-row"><span class="slider-label">Radial K2</span><div class="slider-container"><input type="range" class="slider" min="-0.3" max="0.3" step="0.01" value="${p.lens?.k2 || 0}" oninput="updateLensProp(${p.id}, 'k2', +this.value); this.nextElementSibling.value=Number(this.value).toFixed(2)"><input type="number" class="slider-input" step="0.01" min="-0.3" max="0.3" value="${(p.lens?.k2 || 0).toFixed(2)}" onchange="updateLensProp(${p.id}, 'k2', +this.value); this.previousElementSibling.value=this.value"></div></div>
+                            <div class="slider-row"><span class="slider-label">Radial K3</span><div class="slider-container"><input type="range" class="slider" min="-0.2" max="0.2" step="0.01" value="${p.lens?.k3 || 0}" oninput="updateLensProp(${p.id}, 'k3', +this.value); this.nextElementSibling.value=Number(this.value).toFixed(2)"><input type="number" class="slider-input" step="0.01" min="-0.2" max="0.2" value="${(p.lens?.k3 || 0).toFixed(2)}" onchange="updateLensProp(${p.id}, 'k3', +this.value); this.previousElementSibling.value=this.value"></div></div>
+                            <div class="slider-row"><span class="slider-label">Tangential P1</span><div class="slider-container"><input type="range" class="slider" min="-0.1" max="0.1" step="0.001" value="${p.lens?.p1 || 0}" oninput="updateLensProp(${p.id}, 'p1', +this.value); this.nextElementSibling.value=Number(this.value).toFixed(3)"><input type="number" class="slider-input" step="0.001" min="-0.1" max="0.1" value="${(p.lens?.p1 || 0).toFixed(3)}" onchange="updateLensProp(${p.id}, 'p1', +this.value); this.previousElementSibling.value=this.value"></div></div>
+                            <div class="slider-row"><span class="slider-label">Tangential P2</span><div class="slider-container"><input type="range" class="slider" min="-0.1" max="0.1" step="0.001" value="${p.lens?.p2 || 0}" oninput="updateLensProp(${p.id}, 'p2', +this.value); this.nextElementSibling.value=Number(this.value).toFixed(3)"><input type="number" class="slider-input" step="0.001" min="-0.1" max="0.1" value="${(p.lens?.p2 || 0).toFixed(3)}" onchange="updateLensProp(${p.id}, 'p2', +this.value); this.previousElementSibling.value=this.value"></div></div>
+                            <div class="slider-row"><span class="slider-label">Principal Point X</span><div class="slider-container"><input type="range" class="slider" min="-0.5" max="0.5" step="0.01" value="${p.lens?.cx || 0}" oninput="updateLensProp(${p.id}, 'cx', +this.value); this.nextElementSibling.value=Number(this.value).toFixed(2)"><input type="number" class="slider-input" step="0.01" min="-0.5" max="0.5" value="${(p.lens?.cx || 0).toFixed(2)}" onchange="updateLensProp(${p.id}, 'cx', +this.value); this.previousElementSibling.value=this.value"></div></div>
+                            <div class="slider-row"><span class="slider-label">Lens Shift (Y)</span><div class="slider-container"><input type="range" class="slider" min="-0.5" max="0.5" step="0.01" value="${p.lens?.cy || 0}" oninput="updateLensProp(${p.id}, 'cy', +this.value); this.nextElementSibling.value=Number(this.value).toFixed(2)"><input type="number" class="slider-input" step="0.01" min="-0.5" max="0.5" value="${(p.lens?.cy || 0).toFixed(2)}" onchange="updateLensProp(${p.id}, 'cy', +this.value); this.previousElementSibling.value=this.value"></div></div>
+                            <button class="btn btn-sm" style="width: 100%; margin-top: 8px;" onclick="resetLensParams(${p.id})">Reset Lens to Default</button>
+                            <p style="font-size: 10px; color: #666; margin: 4px 0 0 0;">K1-K3: Radial distortion. P1-P2: Tangential. CX/CY: Optical center offset.</p>
                         </div>
                         <div class="property-group">
                             <div class="property-group-title">Custom Texture</div>
@@ -4199,8 +5127,8 @@
                         </div>
                         <div class="property-group">
                             <div class="property-group-title">Range</div>
-                            <div class="slider-row"><span class="slider-label">Max Distance</span><div class="slider-container"><input type="range" class="slider" min="10" max="500" step="5" value="${p.farPlane || 100}" oninput="updateProjectorProp(${p.id}, 'farPlane', +this.value); this.nextElementSibling.textContent=this.value+'m'"><span class="slider-value">${(p.farPlane || 100)}m</span></div></div>
-                            <div class="slider-row"><span class="slider-label">Frustum Display</span><div class="slider-container"><input type="range" class="slider" min="5" max="100" step="1" value="${p.frustumDistance || 20}" oninput="updateProjectorProp(${p.id}, 'frustumDistance', +this.value); this.nextElementSibling.textContent=this.value+'m'"><span class="slider-value">${(p.frustumDistance || 20)}m</span></div></div>
+                            <div class="slider-row"><span class="slider-label">Max Distance</span><div class="slider-container"><input type="range" class="slider" min="10" max="500" step="5" value="${p.farPlane || 100}" oninput="updateProjectorProp(${p.id}, 'farPlane', +this.value); this.nextElementSibling.value=this.value"><input type="number" class="slider-input" step="5" min="10" max="500" value="${p.farPlane || 100}" onchange="updateProjectorProp(${p.id}, 'farPlane', +this.value); this.previousElementSibling.value=this.value">m</div></div>
+                            <div class="slider-row"><span class="slider-label">Frustum Display</span><div class="slider-container"><input type="range" class="slider" min="5" max="100" step="1" value="${p.frustumDistance || 20}" oninput="updateProjectorProp(${p.id}, 'frustumDistance', +this.value); this.nextElementSibling.value=this.value"><input type="number" class="slider-input" step="1" min="5" max="100" value="${p.frustumDistance || 20}" onchange="updateProjectorProp(${p.id}, 'frustumDistance', +this.value); this.previousElementSibling.value=this.value">m</div></div>
                             <p style="font-size: 10px; color: #666; margin: 4px 0 0 0;">Max Distance affects shadow occlusion range</p>
                         </div>
                         <div class="property-group">
@@ -4226,7 +5154,7 @@
                     dimensionsHtml = `
                         <div class="property-group">
                             <div class="property-group-title">Scale</div>
-                            <div class="slider-row"><span class="slider-label">Uniform Scale</span><div class="slider-container"><input type="range" class="slider" min="0.1" max="5" step="0.1" value="${scale}" oninput="updateSurfaceScale(${s.id}, +this.value); this.nextElementSibling.textContent=Number(this.value).toFixed(1)+'×'"><span class="slider-value">${scale.toFixed(1)}×</span></div></div>
+                            <div class="slider-row"><span class="slider-label">Uniform Scale</span><div class="slider-container"><input type="range" class="slider" min="0.1" max="5" step="0.1" value="${scale}" oninput="updateSurfaceScale(${s.id}, +this.value); this.nextElementSibling.value=Number(this.value).toFixed(1)"><input type="number" class="slider-input" step="0.1" min="0.1" max="10" value="${scale.toFixed(1)}" onchange="updateSurfaceScale(${s.id}, +this.value); this.previousElementSibling.value=this.value">×</div></div>
                             <div class="property-row" style="opacity: 0.6"><span class="property-label">Original Size</span><div class="single-input"><input type="text" value="${s.dimensions.width.toFixed(1)}m × ${s.dimensions.height.toFixed(1)}m" disabled></div></div>
                         </div>`;
                 } else {
@@ -4235,7 +5163,7 @@
                             <div class="property-group-title">Dimensions</div>
                             <div class="property-row"><span class="property-label">Width (m)</span><div class="single-input"><input type="number" step="0.1" value="${s.dimensions.width}" onchange="updateSurfaceDim(${s.id}, 'width', +this.value)"></div></div>
                             <div class="property-row"><span class="property-label">Height (m)</span><div class="single-input"><input type="number" step="0.1" value="${s.dimensions.height}" onchange="updateSurfaceDim(${s.id}, 'height', +this.value)"></div></div>
-                            ${s.type === 'curved' ? `<div class="slider-row"><span class="slider-label">Curvature</span><div class="slider-container"><input type="range" class="slider" min="5" max="180" value="${s.curvature}" oninput="updateSurfaceProp(${s.id}, 'curvature', +this.value); this.nextElementSibling.textContent=this.value+'°'"><span class="slider-value">${s.curvature}°</span></div></div>` : ''}
+                            ${s.type === 'curved' ? `<div class="slider-row"><span class="slider-label">Curvature</span><div class="slider-container"><input type="range" class="slider" min="5" max="180" value="${s.curvature}" oninput="updateSurfaceProp(${s.id}, 'curvature', +this.value); this.nextElementSibling.value=this.value"><input type="number" class="slider-input" step="1" min="5" max="180" value="${s.curvature}" onchange="updateSurfaceProp(${s.id}, 'curvature', +this.value); this.previousElementSibling.value=this.value">°</div></div>` : ''}
                         </div>`;
                 }
                 
@@ -4270,7 +5198,7 @@
                         ${dimensionsHtml}
                         <div class="property-group">
                             <div class="property-group-title">Screen Properties</div>
-                            <div class="slider-row"><span class="slider-label">Screen Gain</span><div class="slider-container"><input type="range" class="slider" min="0.5" max="2.5" step="0.1" value="${s.gain}" oninput="updateSurfaceProp(${s.id}, 'gain', +this.value); this.nextElementSibling.textContent=Number(this.value).toFixed(1)"><span class="slider-value">${s.gain.toFixed(1)}</span></div></div>
+                            <div class="slider-row"><span class="slider-label">Screen Gain</span><div class="slider-container"><input type="range" class="slider" min="0.5" max="2.5" step="0.1" value="${s.gain}" oninput="updateSurfaceProp(${s.id}, 'gain', +this.value); this.nextElementSibling.value=Number(this.value).toFixed(1)"><input type="number" class="slider-input" step="0.1" min="0.5" max="2.5" value="${s.gain.toFixed(1)}" onchange="updateSurfaceProp(${s.id}, 'gain', +this.value); this.previousElementSibling.value=this.value"></div></div>
                         </div>
                     </div></div>`;
             }
@@ -4321,6 +5249,52 @@
                 p.enabled = !p.enabled;
                 const mesh = projectorGroup.children.find(c => c.userData.projectorId === id);
                 if (mesh) mesh.visible = p.enabled;
+                updateAllSurfaceMaterials();
+                updatePropertiesPanel();
+                calculateCoverage();
+            }
+        }
+        
+        function updateLensProp(id, prop, val) {
+            const p = state.projectors.find(x => x.id === id);
+            if (p) {
+                // Initialize lens object if needed
+                if (!p.lens) {
+                    p.lens = {
+                        type: 'rectilinear',
+                        fisheyeFov: 180,
+                        k1: 0, k2: 0, k3: 0,
+                        p1: 0, p2: 0,
+                        cx: 0, cy: 0
+                    };
+                }
+                p.lens[prop] = val;
+                updateProjectorMatrix(p);
+                // Update shadow map when fisheyeFov or type changes (affects shadow frustum)
+                if (prop === 'fisheyeFov' || prop === 'type') {
+                    updateShadowMap(p);
+                }
+                updateAllSurfaceMaterials();
+                calculateCoverage();
+                // Refresh panel when type changes to show/hide fisheyeFov slider
+                if (prop === 'type') {
+                    updatePropertiesPanel();
+                }
+            }
+        }
+        
+        function resetLensParams(id) {
+            const p = state.projectors.find(x => x.id === id);
+            if (p) {
+                p.lens = {
+                    type: 'rectilinear',
+                    fisheyeFov: 180,
+                    k1: 0, k2: 0, k3: 0,
+                    p1: 0, p2: 0,
+                    cx: 0, cy: 0
+                };
+                updateProjectorMatrix(p);
+                updateShadowMap(p);
                 updateAllSurfaceMaterials();
                 updatePropertiesPanel();
                 calculateCoverage();
@@ -4399,8 +5373,22 @@
         
         function setView(view) {
             state.currentView = view;
-            document.querySelectorAll('.view-btn').forEach(b => b.classList.remove('active'));
+            document.querySelectorAll('.view-btn:not(.pilot-btn)').forEach(b => b.classList.remove('active'));
             event.currentTarget.classList.add('active');
+            
+            // Show/hide pilot button based on view
+            const pilotBtn = document.getElementById('pilot-mode-btn');
+            if (view === 'projector') {
+                pilotBtn.style.display = 'inline-block';
+            } else {
+                pilotBtn.style.display = 'none';
+                // Disable pilot mode when leaving projector POV
+                if (pilotMode.enabled) {
+                    pilotMode.enabled = false;
+                    pilotMode.projectorId = null;
+                    pilotBtn.classList.remove('active');
+                }
+            }
             
             const views = {
                 perspective: () => { camera.position.set(0, 8, -18); camera.rotation.set(0, Math.PI, 0); },
@@ -4414,6 +5402,7 @@
                     }
                     if (!p && state.projectors.length) p = state.projectors[0];
                     if (p) {
+                        pilotMode.projectorId = p.id;
                         camera.position.set(p.position.x, p.position.y, p.position.z);
                         const forward = new THREE.Vector3(0, 0, 1).applyEuler(new THREE.Euler(
                             THREE.MathUtils.degToRad(p.rotation.x),
@@ -4426,6 +5415,63 @@
             };
             views[view]?.();
             document.getElementById('camera-info').textContent = view.charAt(0).toUpperCase() + view.slice(1);
+        }
+        
+        function togglePilotMode() {
+            pilotMode.enabled = !pilotMode.enabled;
+            const pilotBtn = document.getElementById('pilot-mode-btn');
+            pilotBtn.classList.toggle('active', pilotMode.enabled);
+            
+            if (pilotMode.enabled && pilotMode.projectorId) {
+                // Save undo state before starting pilot mode
+                saveUndo();
+                // Select the projector we're piloting
+                selectObject('projector', pilotMode.projectorId);
+            }
+        }
+        
+        // Debounce timer for pilot mode undo saves
+        let pilotUndoTimer = null;
+        
+        function syncProjectorToCamera() {
+            if (!pilotMode.enabled || !pilotMode.projectorId) return;
+            
+            const p = state.projectors.find(x => x.id === pilotMode.projectorId);
+            if (!p) return;
+            
+            // Get camera position
+            p.position.x = camera.position.x;
+            p.position.y = camera.position.y;
+            p.position.z = camera.position.z;
+            
+            // Get camera rotation and convert to projector rotation
+            // Camera looks at -Z, projector looks at +Z
+            // A 180° Y flip also inverts X rotation behavior
+            camera.rotation.order = 'YXZ';
+            // Negate X rotation because 180° Y flip inverts pitch direction
+            p.rotation.x = -THREE.MathUtils.radToDeg(camera.rotation.x);
+            // Add 180° to Y rotation to flip the direction
+            p.rotation.y = THREE.MathUtils.radToDeg(camera.rotation.y) + 180;
+            // Normalize to -180 to 180 range
+            while (p.rotation.y > 180) p.rotation.y -= 360;
+            while (p.rotation.y < -180) p.rotation.y += 360;
+            // Negate Z rotation as well due to the flip
+            p.rotation.z = -THREE.MathUtils.radToDeg(camera.rotation.z);
+            
+            // Update projector visuals and projection
+            updateProjectorMatrix(p);
+            updateProjectorMesh(p);
+            updateShadowMap(p);
+            updateAllSurfaceMaterials();
+            updatePropertiesPanel();
+            updateGizmoPosition();
+            
+            // Debounced undo save - save state after 500ms of no changes
+            if (pilotUndoTimer) clearTimeout(pilotUndoTimer);
+            pilotUndoTimer = setTimeout(() => {
+                saveUndo();
+                pilotUndoTimer = null;
+            }, 500);
         }
         
         function toggleOption(opt) {
@@ -4452,6 +5498,20 @@
             else if (opt === 'distance') {
                 updateDistanceHelpers();
             }
+        }
+        
+        // Debug mode: visualize lens type and rejection reasons
+        let debugLensTypeEnabled = false;
+        function toggleDebugLensType() {
+            debugLensTypeEnabled = !debugLensTypeEnabled;
+            surfaceGroup.children.forEach(m => {
+                if (m.material?.uniforms?.debugLensType) {
+                    m.material.uniforms.debugLensType.value = debugLensTypeEnabled;
+                }
+            });
+            showToast(debugLensTypeEnabled ? 
+                'Debug Mode ON: Green=Rectilinear, Blue=Fisheye, Dark colors=rejection reasons (Ctrl+D to toggle)' : 
+                'Debug Mode OFF');
         }
         
         function updateDistanceHelpers() {
@@ -4589,7 +5649,16 @@
         // ==========================================
         
         function updateStatus() {
-            document.getElementById('projector-status').textContent = state.projectors.length + ' Projector' + (state.projectors.length !== 1 ? 's' : '');
+            const enabledCount = state.projectors.filter(p => p.enabled).length;
+            const activeCount = Math.min(enabledCount, 8);
+            let projText = state.projectors.length + ' Projector' + (state.projectors.length !== 1 ? 's' : '');
+            if (enabledCount > 0) {
+                projText += ` (${activeCount}/${enabledCount} active)`;
+            }
+            if (enabledCount > 8) {
+                projText += ' ⚠️';
+            }
+            document.getElementById('projector-status').textContent = projText;
             document.getElementById('surface-status').textContent = state.surfaces.length + ' Surface' + (state.surfaces.length !== 1 ? 's' : '');
         }
         
@@ -4610,6 +5679,9 @@
             projectorMatrixData.clear(); projectionTextures.clear(); customTextureData.clear();
             updateProjectorList(); updateSurfaceList(); updatePropertiesPanel(); updateStatus();
             updateCoverageDisplay(0, 0, 0, 0);
+            
+            // Clear undo history (old IDs no longer valid)
+            undoHistory.length = 0;
             
             // Reset transform tools
             enableTransformTools(false);
@@ -4894,7 +5966,14 @@
                         videoResolution: projData.videoResolution || null,
                         nearPlane: projData.nearPlane || 0.1,
                         farPlane: projData.farPlane || 100,
-                        frustumDistance: projData.frustumDistance || 20
+                        frustumDistance: projData.frustumDistance || 20,
+                        lens: projData.lens || {
+                            type: 'rectilinear',
+                            fisheyeFov: 180,
+                            k1: 0, k2: 0, k3: 0,
+                            p1: 0, p2: 0,
+                            cx: 0, cy: 0
+                        }
                     };
                     
                     state.projectors.push(projector);
@@ -4919,6 +5998,7 @@
                     }
                     
                     updateProjectorMatrix(projector);
+                    updateShadowMap(projector);  // Create shadow map for imported projector
                     importedProjectors++;
                 });
             }
@@ -4989,6 +6069,19 @@
             updateSurfaceList();
             updateStatus();
             calculateCoverage();
+            
+            // Re-enable transform tools (they get disabled by resetScene)
+            // Select first projector if any were imported, otherwise first surface
+            if (state.projectors.length > 0) {
+                selectObject('projector', state.projectors[0].id);
+            } else if (state.surfaces.length > 0) {
+                selectObject('surface', state.surfaces[0].id);
+            } else {
+                enableTransformTools(false);
+            }
+            
+            // Update undo button state
+            updateUndoButton();
             
             closeModal('import-modal');
             
