@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta author="Joe Loe">
-    <title>Projection Study Configurator</title>
+    <title>Projection Studio v2.8</title>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600&family=Outfit:wght@300;400;500;600;700&display=swap');
         
@@ -740,12 +740,12 @@
         <header class="header">
             <div class="logo">
                 <div class="logo-icon"><svg viewBox="0 0 24 24"><path d="M21 3H3c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h5v2h8v-2h5c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 14H3V5h18v12z"/></svg></div>
-                <span class="logo-text">Projection Studio <span>v2.6</span></span>
+                <span class="logo-text">Projection Studio <span>v2.8</span></span>
             </div>
             <div class="header-actions">
                 <button class="btn" onclick="confirmNewProject()"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/></svg>New</button>
                 <button class="btn" onclick="document.getElementById('import-file').click()"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M9 16h6v-6h4l-7-7-7 7h4v6zm-4 2h14v2H5v-2z"/></svg>Import</button>
-                <input type="file" id="import-file" accept=".json" style="display:none" onchange="importConfig(this.files[0])">
+                <input type="file" id="import-file" accept=".json,.csv" style="display:none" onchange="importConfig(this.files[0])">
                 <button class="btn" onclick="showExportModal()"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>Export</button>
                 <button class="btn btn-primary" onclick="quickSave()"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M17 3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V7l-4-4zm-5 16c-1.66 0-3-1.34-3-3s1.34-3 3-3 3 1.34 3 3-1.34 3-3 3zm3-10H5V5h10v4z"/></svg>Save</button>
                 <div class="contact-wrapper">
@@ -982,6 +982,9 @@
                 <div class="status-item"><svg viewBox="0 0 24 24"><path d="M21 3H3c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h5v2h8v-2h5c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 14H3V5h18v12z"/></svg><span id="projector-status">0 Projectors</span></div>
                 <div class="status-item"><svg viewBox="0 0 24 24"><path d="M20 6H4c-1.1 0-2 .9-2 2v8c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2z"/></svg><span id="surface-status">0 Surfaces</span></div>
             </div>
+            <div class="status-center" style="color: var(--text-muted); font-size: 10px;">
+                <span>Left-drag: Look • Right-drag: Pan • Scroll: Zoom • WASD/QE: Move</span>
+            </div>
             <div class="status-right"><div class="status-item"><span id="fps-counter">60 FPS</span></div></div>
         </footer>
     </div>
@@ -999,6 +1002,23 @@
                 <label style="font-size: 11px; color: var(--text-muted); display: block; margin-bottom: 6px;">Filename</label>
                 <input type="text" class="filename-input" id="export-filename" value="projection-config" placeholder="Enter filename">
                 
+                <label style="font-size: 11px; color: var(--text-muted); display: block; margin-bottom: 6px; margin-top: 12px;">Format</label>
+                <div style="display: flex; gap: 8px; margin-bottom: 12px;">
+                    <button class="btn btn-primary" id="export-format-json" onclick="setExportFormat('json')" style="flex: 1;">
+                        <svg viewBox="0 0 24 24" fill="currentColor" style="width:14px;height:14px;margin-right:4px;"><path d="M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/></svg>
+                        JSON
+                    </button>
+                    <button class="btn" id="export-format-csv" onclick="setExportFormat('csv')" style="flex: 1;">
+                        <svg viewBox="0 0 24 24" fill="currentColor" style="width:14px;height:14px;margin-right:4px;"><path d="M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6zm-1 9h-2v1h2v2H9v-4h4v1zm-4 3v-4H7v4h2zm8 0h-2v-1h-1v-1h1v-1h-1V9h2v4h1v1z"/></svg>
+                        CSV
+                    </button>
+                    <button class="btn" id="export-format-obj" onclick="setExportFormat('obj')" style="flex: 1;">
+                        <svg viewBox="0 0 24 24" fill="currentColor" style="width:14px;height:14px;margin-right:4px;"><path d="M21 16.5c0 .38-.21.71-.53.88l-7.9 4.44c-.16.12-.36.18-.57.18-.21 0-.41-.06-.57-.18l-7.9-4.44A.991.991 0 013 16.5v-9c0-.38.21-.71.53-.88l7.9-4.44c.16-.12.36-.18.57-.18.21 0 .41.06.57.18l7.9 4.44c.32.17.53.5.53.88v9z"/></svg>
+                        OBJ
+                    </button>
+                </div>
+                
+                <div id="json-export-options">
                 <label style="font-size: 11px; color: var(--text-muted); display: block; margin-bottom: 10px;">Include in export:</label>
                 
                 <div class="export-option" onclick="toggleExportOption('projectors')">
@@ -1058,6 +1078,41 @@
                         <div class="checkbox" id="export-check-textures">
                             <svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"/></svg>
                         </div>
+                    </div>
+                </div>
+                </div>
+                
+                <div id="csv-export-options" style="display: none;">
+                    <div class="import-preview" style="margin-bottom: 0;">
+                        <h4>CSV Export (disguise Compatible)</h4>
+                        <div class="import-stat">
+                            <span>Projectors</span>
+                            <span id="csv-export-projector-count">0</span>
+                        </div>
+                        <div class="import-stat">
+                            <span>Format</span>
+                            <span>disguise d3/gx</span>
+                        </div>
+                        <p style="font-size: 11px; color: var(--text-muted); margin-top: 8px;">
+                            Exports projector positions, rotations, lens settings, and calculated metrics in disguise-compatible CSV format. Surfaces are not included in CSV export.
+                        </p>
+                    </div>
+                </div>
+                
+                <div id="obj-export-options" style="display: none;">
+                    <div class="import-preview" style="margin-bottom: 0;">
+                        <h4>OBJ Export (3D Geometry)</h4>
+                        <div class="import-stat">
+                            <span>Surfaces</span>
+                            <span id="obj-export-surface-count">0</span>
+                        </div>
+                        <div class="import-stat">
+                            <span>Format</span>
+                            <span>Wavefront OBJ</span>
+                        </div>
+                        <p style="font-size: 11px; color: var(--text-muted); margin-top: 8px;">
+                            Exports all surfaces as a single OBJ file with UV coordinates. Each surface is exported as a separate named object. Compatible with most 3D software.
+                        </p>
                     </div>
                 </div>
             </div>
@@ -3462,6 +3517,7 @@
         
         function initControls() {
             let isMouseDown = false;
+            let mouseButton = -1;  // Track which button is pressed
             let prevMouseX = 0, prevMouseY = 0;
             let mouseDownX = 0, mouseDownY = 0;
             let isDragging = false;
@@ -3478,6 +3534,7 @@
                 
                 if (e.button === 0 || e.button === 2) {
                     isMouseDown = true;
+                    mouseButton = e.button;
                     isDragging = false;
                     prevMouseX = e.clientX;
                     prevMouseY = e.clientY;
@@ -3498,11 +3555,13 @@
                     handleCanvasClick(e);
                 }
                 isMouseDown = false;
+                mouseButton = -1;
                 isDragging = false;
             });
             
             renderer.domElement.addEventListener('mouseleave', () => { 
                 isMouseDown = false; 
+                mouseButton = -1;
                 isDragging = false;
                 if (isGizmoActive) {
                     handleGizmoInteraction(null, 'up');
@@ -3527,19 +3586,61 @@
                 const totalMovement = Math.abs(e.clientX - mouseDownX) + Math.abs(e.clientY - mouseDownY);
                 if (totalMovement > 5) isDragging = true;
                 
-                camera.rotation.order = 'YXZ';
-                camera.rotation.y -= deltaX * 0.003;
-                camera.rotation.x -= deltaY * 0.003;
-                camera.rotation.x = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, camera.rotation.x));
+                if (mouseButton === 0) {
+                    // Left-click drag: Rotate camera (look around)
+                    camera.rotation.order = 'YXZ';
+                    camera.rotation.y -= deltaX * 0.003;
+                    camera.rotation.x -= deltaY * 0.003;
+                    camera.rotation.x = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, camera.rotation.x));
+                    
+                    // Sync projector if in pilot mode
+                    if (pilotMode.enabled) {
+                        syncProjectorToCamera();
+                    }
+                } else if (mouseButton === 2) {
+                    // Right-click drag: Pan camera (move in view plane)
+                    const panSpeed = 0.01;
+                    
+                    // Get camera's right and up vectors in world space
+                    const right = new THREE.Vector3();
+                    const up = new THREE.Vector3();
+                    camera.getWorldDirection(new THREE.Vector3());
+                    right.setFromMatrixColumn(camera.matrix, 0);  // First column = right
+                    up.setFromMatrixColumn(camera.matrix, 1);     // Second column = up
+                    
+                    // Move camera: right for horizontal, up for vertical
+                    camera.position.addScaledVector(right, -deltaX * panSpeed);
+                    camera.position.addScaledVector(up, deltaY * panSpeed);
+                    
+                    // Sync projector if in pilot mode
+                    if (pilotMode.enabled) {
+                        syncProjectorToCamera();
+                    }
+                }
                 
                 prevMouseX = e.clientX;
                 prevMouseY = e.clientY;
+            });
+            
+            // Scroll wheel: Move forward/backward
+            renderer.domElement.addEventListener('wheel', e => {
+                e.preventDefault();
+                
+                const scrollSpeed = 0.5;
+                const delta = e.deltaY > 0 ? -scrollSpeed : scrollSpeed;
+                
+                // Get camera's forward direction
+                const forward = new THREE.Vector3();
+                camera.getWorldDirection(forward);
+                
+                // Move camera along forward direction
+                camera.position.addScaledVector(forward, delta);
                 
                 // Sync projector if in pilot mode
                 if (pilotMode.enabled) {
                     syncProjectorToCamera();
                 }
-            });
+            }, { passive: false });
             
             // Gizmo hover effect
             renderer.domElement.addEventListener('mousemove', e => {
@@ -3776,11 +3877,14 @@
             const id = Date.now();
             const projector = {
                 id,
+                uuid: generateUUID(),  // Unique identifier for disguise compatibility
                 name: `Projector ${state.projectors.length + 1}`,
                 preset: presetKey,
                 position: { x: 0, y: 4, z: -8 },
-                rotation: { x: -10, y: 0, z: 0 },
+                rotation: { x: -10, y: 0, z: 0 },  // pitch, yaw, roll
                 lumens: preset.lumens,
+                brightness: 100,       // Brightness percentage (0-100)
+                stack: 1,              // Quantity for stacked projectors
                 throwRatio: preset.throwRatio,
                 aspectRatio: preset.aspectRatio,
                 resolution: preset.resolution,
@@ -3790,20 +3894,33 @@
                 nearPlane: 0.1,
                 farPlane: 100,
                 frustumDistance: 20,
+                // Body mesh properties
+                body: {
+                    width: 0.4,        // Body width in meters
+                    height: 0.2,       // Body height in meters
+                    depth: 0.5,        // Body depth in meters
+                    offsetX: 0,        // Position offset X
+                    offsetY: 0,        // Position offset Y
+                    offsetZ: 0         // Position offset Z
+                },
                 // Lens/Optics properties
                 lens: {
                     type: 'rectilinear',  // rectilinear, fisheye_equidistant, fisheye_equisolid, fisheye_stereographic, fisheye_orthographic
                     fisheyeFov: 180,      // FOV in degrees for fisheye lenses (90-220, typical 180)
+                    shiftH: 0,            // Horizontal lens shift in % (-100 to 100)
+                    shiftV: 0,            // Vertical lens shift in % (-100 to 100)
                     // Distortion coefficients (Brown-Conrady model)
                     k1: 0,                // Radial distortion coefficient 1
                     k2: 0,                // Radial distortion coefficient 2
                     k3: 0,                // Radial distortion coefficient 3
                     p1: 0,                // Tangential distortion coefficient 1
                     p2: 0,                // Tangential distortion coefficient 2
-                    // Principal point offset (normalized -1 to 1)
+                    // Principal point offset (normalized -1 to 1) - derived from shift
                     cx: 0,                // Horizontal principal point offset
-                    cy: 0                 // Vertical principal point offset (lens shift)
-                }
+                    cy: 0                 // Vertical principal point offset
+                },
+                // Target point (optional - for look-at calculations)
+                target: null  // { x, y, z } or null
             };
             
             state.projectors.push(projector);
@@ -3817,26 +3934,80 @@
             calculateCoverage();
         }
         
+        // Generate UUID v4
+        function generateUUID() {
+            return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+                const r = Math.random() * 16 | 0;
+                const v = c === 'x' ? r : (r & 0x3 | 0x8);
+                return v.toString(16).toUpperCase();
+            });
+        }
+        
+        // Calculate projector metrics at target distance
+        function calculateProjectorMetrics(projector, targetDistance = null) {
+            const dist = targetDistance || projector.frustumDistance || 20;
+            const effectiveLumens = projector.lumens * (projector.brightness / 100) * (projector.stack || 1);
+            
+            // Calculate projection dimensions at target distance
+            const width = dist / projector.throwRatio / (projector.zoom || 1);
+            const height = width / projector.aspectRatio;
+            const area = width * height;
+            
+            // Illuminance in lux at target
+            const illuminance = effectiveLumens / area;
+            
+            // Parse resolution
+            const resParts = projector.resolution.split('×');
+            const resX = parseInt(resParts[0]) || 1920;
+            const resY = parseInt(resParts[1]) || 1080;
+            
+            // DPI at target (pixels per inch, with meters to inches conversion)
+            const widthInches = width * 39.3701;
+            const dpi = resX / widthInches;
+            
+            return {
+                distance: dist,
+                width: width,
+                height: height,
+                area: area,
+                illuminance: illuminance,
+                effectiveLumens: effectiveLumens,
+                dpi: dpi,
+                resX: resX,
+                resY: resY
+            };
+        }
+        
         function createProjectorMesh(projector) {
             const group = new THREE.Group();
             group.userData.projectorId = projector.id;
             
+            // Get body dimensions with defaults
+            const bodyW = projector.body?.width || 0.4;
+            const bodyH = projector.body?.height || 0.2;
+            const bodyD = projector.body?.depth || 0.5;
+            const offsetX = projector.body?.offsetX || 0;
+            const offsetY = projector.body?.offsetY || 0;
+            const offsetZ = projector.body?.offsetZ || 0;
+            
             const body = new THREE.Mesh(
-                new THREE.BoxGeometry(0.4, 0.2, 0.5),
+                new THREE.BoxGeometry(bodyW, bodyH, bodyD),
                 new THREE.MeshBasicMaterial({ color: 0x444444 })
             );
             body.userData.isProjector = true;
             body.userData.projectorId = projector.id;
+            body.position.set(offsetX, offsetY, offsetZ);
             group.add(body);
             
             // Direction indicator above projector
+            const indicatorSize = Math.min(bodyW, bodyH) * 0.4;
             const indicator = new THREE.Mesh(
-                new THREE.ConeGeometry(0.08, 0.2, 8),
+                new THREE.ConeGeometry(indicatorSize, indicatorSize * 2.5, 8),
                 new THREE.MeshBasicMaterial({ color: 0x00ff00 })
             );
             indicator.rotation.x = Math.PI / 2;
-            indicator.position.y = 0.25;
-            indicator.position.z = 0.15;
+            indicator.position.y = offsetY + bodyH / 2 + indicatorSize;
+            indicator.position.z = offsetZ + bodyD * 0.3;
             group.add(indicator);
             
             group.add(createFrustum(projector));
@@ -3924,11 +4095,14 @@
             // Inverse (transpose) transforms from world to local space
             const rotMatrixInverse = rotMatrix3.clone().transpose();
             
+            // Calculate effective lumens (base * brightness% * stack)
+            const effectiveLumens = projector.lumens * ((projector.brightness || 100) / 100) * (projector.stack || 1);
+            
             projectorMatrixData.set(projector.id, {
                 matrix: vpMatrix,
                 position: new THREE.Vector3(projector.position.x, projector.position.y, projector.position.z),
                 rotationMatrixInverse: rotMatrixInverse,
-                lumens: projector.lumens,
+                lumens: effectiveLumens,
                 throwRatio: projector.throwRatio * projector.zoom,
                 nearPlane: nearPlane,
                 farPlane: farPlane
@@ -4288,12 +4462,14 @@
                 } else if (p.customTextureUrl) {
                     textureInfo = ' • Image';
                 }
+                const effectiveLm = p.lumens * ((p.brightness || 100) / 100) * (p.stack || 1);
+                const stackInfo = (p.stack || 1) > 1 ? ` (×${p.stack})` : '';
                 return `
                 <div class="object-item ${state.selectedType === 'projector' && state.selectedObject === p.id ? 'selected' : ''}" onclick="selectObject('projector', ${p.id})">
                     <div class="object-icon projector"><svg viewBox="0 0 24 24"><path d="M21 3H3c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h5v2h8v-2h5c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 14H3V5h18v12z"/></svg></div>
                     <div class="object-info">
-                        <div class="object-name">${p.name}</div>
-                        <div class="object-type">${(p.lumens/1000).toFixed(0)}K lm${textureInfo}</div>
+                        <div class="object-name">${p.name}${stackInfo}</div>
+                        <div class="object-type">${(effectiveLm/1000).toFixed(0)}K lm${textureInfo}</div>
                     </div>
                     <div class="object-actions">
                         <button class="icon-btn" onclick="event.stopPropagation(); duplicateProjector(${p.id})"><svg viewBox="0 0 24 24"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg></button>
@@ -4309,6 +4485,7 @@
             const dup = { 
                 ...JSON.parse(JSON.stringify(orig)), 
                 id: Date.now(), 
+                uuid: generateUUID(),  // Generate new unique ID
                 name: orig.name + ' (Copy)', 
                 position: { ...orig.position, x: orig.position.x + 2 }, 
                 customTextureUrl: null,
@@ -4318,6 +4495,7 @@
             state.projectors.push(dup);
             createProjectorMesh(dup);
             updateProjectorMatrix(dup);
+            updateShadowMap(dup);  // Create shadow map for duplicated projector
             updateAllSurfaceMaterials();
             updateProjectorList();
             updateStatus();
@@ -4667,7 +4845,18 @@
             }
             
             let geom;
-            if (surface.type === 'curved' && surface.curvature > 0) {
+            if (surface.type === 'sphere') {
+                // Sphere geometry
+                const radius = surface.dimensions.radius || surface.dimensions.width / 2 || 2;
+                const segments = surface.segments || 32;
+                geom = new THREE.SphereGeometry(radius, segments, segments);
+            } else if (surface.type === 'cube') {
+                // Cube/Box geometry
+                const width = surface.dimensions.width || 2;
+                const height = surface.dimensions.height || 2;
+                const depth = surface.dimensions.depth || width;
+                geom = new THREE.BoxGeometry(width, height, depth, 8, 8, 8);
+            } else if (surface.type === 'curved' && surface.curvature > 0) {
                 const angle = surface.curvature * Math.PI / 180;
                 const radius = surface.dimensions.width / Math.max(angle, 0.01);
                 geom = new THREE.CylinderGeometry(radius, radius, surface.dimensions.height, 64, 1, true, Math.PI - angle/2, angle);
@@ -4748,12 +4937,30 @@
             }
             
             list.innerHTML = state.surfaces.map(s => {
-                const typeInfo = s.type === 'custom' 
-                    ? `Custom OBJ • Scale ${(s.scale || 1.0).toFixed(1)}×`
-                    : `${s.dimensions.width.toFixed(1)}m × ${s.dimensions.height.toFixed(1)}m • Gain ${s.gain}`;
-                const icon = s.type === 'custom'
-                    ? `<svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/></svg>`
-                    : `<svg viewBox="0 0 24 24"><path d="M20 6H4c-1.1 0-2 .9-2 2v8c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2z"/></svg>`;
+                let typeInfo;
+                if (s.type === 'custom') {
+                    typeInfo = `Custom OBJ • Scale ${(s.scale || 1.0).toFixed(1)}×`;
+                } else if (s.type === 'sphere') {
+                    const radius = s.dimensions.radius || s.dimensions.width / 2 || 2;
+                    typeInfo = `Sphere • r=${radius.toFixed(1)}m • Gain ${s.gain}`;
+                } else if (s.type === 'cube') {
+                    const depth = s.dimensions.depth || s.dimensions.width;
+                    typeInfo = `Cube • ${s.dimensions.width.toFixed(1)}×${s.dimensions.height.toFixed(1)}×${depth.toFixed(1)}m • Gain ${s.gain}`;
+                } else {
+                    typeInfo = `${s.dimensions.width.toFixed(1)}m × ${s.dimensions.height.toFixed(1)}m • Gain ${s.gain}`;
+                }
+                
+                let icon;
+                if (s.type === 'custom') {
+                    icon = `<svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/></svg>`;
+                } else if (s.type === 'sphere') {
+                    icon = `<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="2"/><ellipse cx="12" cy="12" rx="10" ry="4" fill="none" stroke="currentColor" stroke-width="1"/><path d="M12 2v20" stroke="currentColor" stroke-width="1"/></svg>`;
+                } else if (s.type === 'cube') {
+                    icon = `<svg viewBox="0 0 24 24"><path d="M21 16.5c0 .38-.21.71-.53.88l-7.9 4.44c-.16.12-.36.18-.57.18-.21 0-.41-.06-.57-.18l-7.9-4.44A.991.991 0 013 16.5v-9c0-.38.21-.71.53-.88l7.9-4.44c.16-.12.36-.18.57-.18.21 0 .41.06.57.18l7.9 4.44c.32.17.53.5.53.88v9zM12 4.15L5 8.09v7.82l7 3.94l7-3.94V8.09l-7-3.94z"/></svg>`;
+                } else {
+                    icon = `<svg viewBox="0 0 24 24"><path d="M20 6H4c-1.1 0-2 .9-2 2v8c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2z"/></svg>`;
+                }
+                
                 return `
                 <div class="object-item ${state.selectedType === 'surface' && state.selectedObject === s.id ? 'selected' : ''}" onclick="selectObject('surface', ${s.id})">
                     <div class="object-icon surface">${icon}</div>
@@ -5102,7 +5309,18 @@
                             <div class="slider-row"><span class="slider-label">Throw Ratio</span><div class="slider-container"><input type="range" class="slider" min="0.3" max="3" step="0.05" value="${p.throwRatio}" oninput="updateProjectorProp(${p.id}, 'throwRatio', +this.value); this.nextElementSibling.value=Number(this.value).toFixed(2)"><input type="number" class="slider-input" step="0.05" min="0.3" max="3" value="${p.throwRatio.toFixed(2)}" onchange="updateProjectorProp(${p.id}, 'throwRatio', +this.value); this.previousElementSibling.value=this.value"></div></div>
                             <div class="slider-row"><span class="slider-label">Zoom</span><div class="slider-container"><input type="range" class="slider" min="0.8" max="1.5" step="0.01" value="${p.zoom}" oninput="updateProjectorProp(${p.id}, 'zoom', +this.value); this.nextElementSibling.value=Number(this.value).toFixed(2)"><input type="number" class="slider-input" step="0.01" min="0.8" max="1.5" value="${p.zoom.toFixed(2)}" onchange="updateProjectorProp(${p.id}, 'zoom', +this.value); this.previousElementSibling.value=this.value"></div></div>
                             <div class="property-row"><span class="property-label">Lumens</span><div class="single-input"><input type="number" step="1000" value="${p.lumens}" onchange="updateProjectorProp(${p.id}, 'lumens', +this.value)"></div></div>
+                            <div class="slider-row"><span class="slider-label">Brightness (%)</span><div class="slider-container"><input type="range" class="slider" min="0" max="100" step="5" value="${p.brightness || 100}" oninput="updateProjectorProp(${p.id}, 'brightness', +this.value); this.nextElementSibling.value=this.value"><input type="number" class="slider-input" step="5" min="0" max="100" value="${p.brightness || 100}" onchange="updateProjectorProp(${p.id}, 'brightness', +this.value); this.previousElementSibling.value=this.value"></div></div>
+                            <div class="property-row"><span class="property-label">Stack Qty</span><div class="single-input"><input type="number" step="1" min="1" max="10" value="${p.stack || 1}" onchange="updateProjectorProp(${p.id}, 'stack', +this.value)" style="width: 60px;"></div></div>
+                            <div class="property-row" style="font-size: 10px; color: var(--text-muted); margin-top: -4px;"><span>Effective: ${Math.round(p.lumens * (p.brightness || 100) / 100 * (p.stack || 1))} lm</span></div>
                             <div class="property-row"><span class="property-label">Resolution</span><div class="single-input"><input type="text" value="${p.resolution || '1920×1080'}" readonly style="opacity: 0.6;"></div></div>
+                        </div>
+                        <div class="property-group">
+                            <div class="property-group-title">Lens Shift</div>
+                            <div class="slider-row"><span class="slider-label">Horizontal (%)</span><div class="slider-container"><input type="range" class="slider" min="-100" max="100" step="1" value="${p.lens?.shiftH || 0}" oninput="updateLensShift(${p.id}, 'shiftH', +this.value); this.nextElementSibling.value=this.value"><input type="number" class="slider-input" step="1" min="-100" max="100" value="${p.lens?.shiftH || 0}" onchange="updateLensShift(${p.id}, 'shiftH', +this.value); this.previousElementSibling.value=this.value"></div></div>
+                            <div class="slider-row"><span class="slider-label">Vertical (%)</span><div class="slider-container"><input type="range" class="slider" min="-100" max="100" step="1" value="${p.lens?.shiftV || 0}" oninput="updateLensShift(${p.id}, 'shiftV', +this.value); this.nextElementSibling.value=this.value"><input type="number" class="slider-input" step="1" min="-100" max="100" value="${p.lens?.shiftV || 0}" onchange="updateLensShift(${p.id}, 'shiftV', +this.value); this.previousElementSibling.value=this.value"></div></div>
+                        </div>
+                        <div class="property-group">
+                            <div class="property-group-title">Lens Model</div>
                             <div class="property-row"><span class="property-label">Lens Type</span><div class="single-input"><select onchange="updateLensProp(${p.id}, 'type', this.value)">
                                 <option value="rectilinear" ${(p.lens?.type || 'rectilinear') === 'rectilinear' ? 'selected' : ''}>Rectilinear (Standard)</option>
                                 <option value="fisheye_equidistant" ${p.lens?.type === 'fisheye_equidistant' ? 'selected' : ''}>Fisheye - Equidistant</option>
@@ -5116,10 +5334,26 @@
                             <div class="slider-row"><span class="slider-label">Radial K3</span><div class="slider-container"><input type="range" class="slider" min="-0.2" max="0.2" step="0.01" value="${p.lens?.k3 || 0}" oninput="updateLensProp(${p.id}, 'k3', +this.value); this.nextElementSibling.value=Number(this.value).toFixed(2)"><input type="number" class="slider-input" step="0.01" min="-0.2" max="0.2" value="${(p.lens?.k3 || 0).toFixed(2)}" onchange="updateLensProp(${p.id}, 'k3', +this.value); this.previousElementSibling.value=this.value"></div></div>
                             <div class="slider-row"><span class="slider-label">Tangential P1</span><div class="slider-container"><input type="range" class="slider" min="-0.1" max="0.1" step="0.001" value="${p.lens?.p1 || 0}" oninput="updateLensProp(${p.id}, 'p1', +this.value); this.nextElementSibling.value=Number(this.value).toFixed(3)"><input type="number" class="slider-input" step="0.001" min="-0.1" max="0.1" value="${(p.lens?.p1 || 0).toFixed(3)}" onchange="updateLensProp(${p.id}, 'p1', +this.value); this.previousElementSibling.value=this.value"></div></div>
                             <div class="slider-row"><span class="slider-label">Tangential P2</span><div class="slider-container"><input type="range" class="slider" min="-0.1" max="0.1" step="0.001" value="${p.lens?.p2 || 0}" oninput="updateLensProp(${p.id}, 'p2', +this.value); this.nextElementSibling.value=Number(this.value).toFixed(3)"><input type="number" class="slider-input" step="0.001" min="-0.1" max="0.1" value="${(p.lens?.p2 || 0).toFixed(3)}" onchange="updateLensProp(${p.id}, 'p2', +this.value); this.previousElementSibling.value=this.value"></div></div>
-                            <div class="slider-row"><span class="slider-label">Principal Point X</span><div class="slider-container"><input type="range" class="slider" min="-0.5" max="0.5" step="0.01" value="${p.lens?.cx || 0}" oninput="updateLensProp(${p.id}, 'cx', +this.value); this.nextElementSibling.value=Number(this.value).toFixed(2)"><input type="number" class="slider-input" step="0.01" min="-0.5" max="0.5" value="${(p.lens?.cx || 0).toFixed(2)}" onchange="updateLensProp(${p.id}, 'cx', +this.value); this.previousElementSibling.value=this.value"></div></div>
-                            <div class="slider-row"><span class="slider-label">Lens Shift (Y)</span><div class="slider-container"><input type="range" class="slider" min="-0.5" max="0.5" step="0.01" value="${p.lens?.cy || 0}" oninput="updateLensProp(${p.id}, 'cy', +this.value); this.nextElementSibling.value=Number(this.value).toFixed(2)"><input type="number" class="slider-input" step="0.01" min="-0.5" max="0.5" value="${(p.lens?.cy || 0).toFixed(2)}" onchange="updateLensProp(${p.id}, 'cy', +this.value); this.previousElementSibling.value=this.value"></div></div>
                             <button class="btn btn-sm" style="width: 100%; margin-top: 8px;" onclick="resetLensParams(${p.id})">Reset Lens to Default</button>
-                            <p style="font-size: 10px; color: #666; margin: 4px 0 0 0;">K1-K3: Radial distortion. P1-P2: Tangential. CX/CY: Optical center offset.</p>
+                            <p style="font-size: 10px; color: #666; margin: 4px 0 0 0;">K1-K3: Radial distortion. P1-P2: Tangential.</p>
+                        </div>
+                        <div class="property-group">
+                            <div class="property-group-title">Body Mesh</div>
+                            <div class="property-row"><span class="property-label">Size (m)</span>
+                                <div class="property-inputs">
+                                    <div class="input-group"><label>W</label><input type="number" step="0.05" min="0.05" value="${(p.body?.width || 0.4).toFixed(2)}" onchange="updateBodyProp(${p.id}, 'width', +this.value)"></div>
+                                    <div class="input-group"><label>H</label><input type="number" step="0.05" min="0.05" value="${(p.body?.height || 0.2).toFixed(2)}" onchange="updateBodyProp(${p.id}, 'height', +this.value)"></div>
+                                    <div class="input-group"><label>D</label><input type="number" step="0.05" min="0.05" value="${(p.body?.depth || 0.5).toFixed(2)}" onchange="updateBodyProp(${p.id}, 'depth', +this.value)"></div>
+                                </div>
+                            </div>
+                            <div class="property-row"><span class="property-label">Offset (m)</span>
+                                <div class="property-inputs">
+                                    <div class="input-group"><label>X</label><input type="number" step="0.05" value="${(p.body?.offsetX || 0).toFixed(2)}" onchange="updateBodyProp(${p.id}, 'offsetX', +this.value)"></div>
+                                    <div class="input-group"><label>Y</label><input type="number" step="0.05" value="${(p.body?.offsetY || 0).toFixed(2)}" onchange="updateBodyProp(${p.id}, 'offsetY', +this.value)"></div>
+                                    <div class="input-group"><label>Z</label><input type="number" step="0.05" value="${(p.body?.offsetZ || 0).toFixed(2)}" onchange="updateBodyProp(${p.id}, 'offsetZ', +this.value)"></div>
+                                </div>
+                            </div>
+                            <p style="font-size: 10px; color: #666; margin: 4px 0 0 0;">Offset is relative to projection origin (lens center)</p>
                         </div>
                         <div class="property-group">
                             <div class="property-group-title">Custom Texture</div>
@@ -5145,9 +5379,9 @@
                 // Build type selector HTML (hidden for custom OBJ)
                 const typeHtml = isCustomOBJ 
                     ? `<div class="property-row"><span class="property-label">Type</span><div class="single-input"><input type="text" value="Custom OBJ" disabled style="opacity: 0.6"></div></div>`
-                    : `<div class="property-row"><span class="property-label">Type</span><div class="single-input"><select onchange="updateSurfaceProp(${s.id}, 'type', this.value)"><option value="flat" ${s.type==='flat'?'selected':''}>Flat</option><option value="curved" ${s.type==='curved'?'selected':''}>Curved</option></select></div></div>`;
+                    : `<div class="property-row"><span class="property-label">Type</span><div class="single-input"><select onchange="updateSurfaceProp(${s.id}, 'type', this.value)"><option value="flat" ${s.type==='flat'?'selected':''}>Flat</option><option value="curved" ${s.type==='curved'?'selected':''}>Curved</option><option value="sphere" ${s.type==='sphere'?'selected':''}>Sphere</option><option value="cube" ${s.type==='cube'?'selected':''}>Cube</option></select></div></div>`;
                 
-                // Build dimensions HTML (scale for OBJ, width/height for others)
+                // Build dimensions HTML (scale for OBJ, type-specific for others)
                 let dimensionsHtml;
                 if (isCustomOBJ) {
                     const scale = s.scale || 1.0;
@@ -5156,6 +5390,22 @@
                             <div class="property-group-title">Scale</div>
                             <div class="slider-row"><span class="slider-label">Uniform Scale</span><div class="slider-container"><input type="range" class="slider" min="0.1" max="5" step="0.1" value="${scale}" oninput="updateSurfaceScale(${s.id}, +this.value); this.nextElementSibling.value=Number(this.value).toFixed(1)"><input type="number" class="slider-input" step="0.1" min="0.1" max="10" value="${scale.toFixed(1)}" onchange="updateSurfaceScale(${s.id}, +this.value); this.previousElementSibling.value=this.value">×</div></div>
                             <div class="property-row" style="opacity: 0.6"><span class="property-label">Original Size</span><div class="single-input"><input type="text" value="${s.dimensions.width.toFixed(1)}m × ${s.dimensions.height.toFixed(1)}m" disabled></div></div>
+                        </div>`;
+                } else if (s.type === 'sphere') {
+                    const radius = s.dimensions.radius || s.dimensions.width / 2 || 2;
+                    dimensionsHtml = `
+                        <div class="property-group">
+                            <div class="property-group-title">Dimensions</div>
+                            <div class="property-row"><span class="property-label">Radius (m)</span><div class="single-input"><input type="number" step="0.1" min="0.1" value="${radius}" onchange="updateSurfaceDim(${s.id}, 'radius', +this.value)"></div></div>
+                            <div class="property-row"><span class="property-label">Segments</span><div class="single-input"><input type="number" step="4" min="8" max="128" value="${s.segments || 32}" onchange="updateSurfaceProp(${s.id}, 'segments', +this.value)"></div></div>
+                        </div>`;
+                } else if (s.type === 'cube') {
+                    dimensionsHtml = `
+                        <div class="property-group">
+                            <div class="property-group-title">Dimensions</div>
+                            <div class="property-row"><span class="property-label">Width (m)</span><div class="single-input"><input type="number" step="0.1" value="${s.dimensions.width}" onchange="updateSurfaceDim(${s.id}, 'width', +this.value)"></div></div>
+                            <div class="property-row"><span class="property-label">Height (m)</span><div class="single-input"><input type="number" step="0.1" value="${s.dimensions.height}" onchange="updateSurfaceDim(${s.id}, 'height', +this.value)"></div></div>
+                            <div class="property-row"><span class="property-label">Depth (m)</span><div class="single-input"><input type="number" step="0.1" value="${s.dimensions.depth || s.dimensions.width}" onchange="updateSurfaceDim(${s.id}, 'depth', +this.value)"></div></div>
                         </div>`;
                 } else {
                     dimensionsHtml = `
@@ -5263,6 +5513,7 @@
                     p.lens = {
                         type: 'rectilinear',
                         fisheyeFov: 180,
+                        shiftH: 0, shiftV: 0,
                         k1: 0, k2: 0, k3: 0,
                         p1: 0, p2: 0,
                         cx: 0, cy: 0
@@ -5283,12 +5534,113 @@
             }
         }
         
+        function updateLensShift(id, prop, val) {
+            const p = state.projectors.find(x => x.id === id);
+            if (p) {
+                if (!p.lens) {
+                    p.lens = {
+                        type: 'rectilinear',
+                        fisheyeFov: 180,
+                        shiftH: 0, shiftV: 0,
+                        k1: 0, k2: 0, k3: 0,
+                        p1: 0, p2: 0,
+                        cx: 0, cy: 0
+                    };
+                }
+                // Store both the percentage value and convert to cx/cy
+                p.lens[prop] = val;
+                if (prop === 'shiftH') {
+                    p.lens.cx = val / 50;  // Convert -100..100% to -2..2 range (for full image shift)
+                } else if (prop === 'shiftV') {
+                    p.lens.cy = val / 50;
+                }
+                updateProjectorMatrix(p);
+                updateAllSurfaceMaterials();
+                calculateCoverage();
+            }
+        }
+        
+        function updateBodyProp(id, prop, val) {
+            const p = state.projectors.find(x => x.id === id);
+            if (p) {
+                // Initialize body object if needed
+                if (!p.body) {
+                    p.body = {
+                        width: 0.4, height: 0.2, depth: 0.5,
+                        offsetX: 0, offsetY: 0, offsetZ: 0
+                    };
+                }
+                // Validate dimensions (must be positive)
+                if (['width', 'height', 'depth'].includes(prop)) {
+                    val = Math.max(0.05, Math.min(5, val));
+                }
+                // Validate offset (reasonable range)
+                if (['offsetX', 'offsetY', 'offsetZ'].includes(prop)) {
+                    val = Math.max(-5, Math.min(5, val));
+                }
+                p.body[prop] = val;
+                
+                // Rebuild the projector mesh
+                rebuildProjectorBody(p);
+            }
+        }
+        
+        function rebuildProjectorBody(projector) {
+            const mesh = projectorGroup.children.find(c => c.userData.projectorId === projector.id);
+            if (!mesh) return;
+            
+            // Find and remove old body and indicator
+            const oldBody = mesh.children.find(c => c.userData.isProjector);
+            if (oldBody) {
+                if (oldBody.geometry) oldBody.geometry.dispose();
+                if (oldBody.material) oldBody.material.dispose();
+                mesh.remove(oldBody);
+            }
+            
+            // Remove old indicator (cone without specific userData)
+            const oldIndicator = mesh.children.find(c => c.geometry && c.geometry.type === 'ConeGeometry');
+            if (oldIndicator) {
+                if (oldIndicator.geometry) oldIndicator.geometry.dispose();
+                if (oldIndicator.material) oldIndicator.material.dispose();
+                mesh.remove(oldIndicator);
+            }
+            
+            // Create new body with updated dimensions
+            const bodyW = projector.body?.width || 0.4;
+            const bodyH = projector.body?.height || 0.2;
+            const bodyD = projector.body?.depth || 0.5;
+            const offsetX = projector.body?.offsetX || 0;
+            const offsetY = projector.body?.offsetY || 0;
+            const offsetZ = projector.body?.offsetZ || 0;
+            
+            const body = new THREE.Mesh(
+                new THREE.BoxGeometry(bodyW, bodyH, bodyD),
+                new THREE.MeshBasicMaterial({ color: 0x444444 })
+            );
+            body.userData.isProjector = true;
+            body.userData.projectorId = projector.id;
+            body.position.set(offsetX, offsetY, offsetZ);
+            mesh.add(body);
+            
+            // Create new indicator
+            const indicatorSize = Math.min(bodyW, bodyH) * 0.4;
+            const indicator = new THREE.Mesh(
+                new THREE.ConeGeometry(indicatorSize, indicatorSize * 2.5, 8),
+                new THREE.MeshBasicMaterial({ color: 0x00ff00 })
+            );
+            indicator.rotation.x = Math.PI / 2;
+            indicator.position.y = offsetY + bodyH / 2 + indicatorSize;
+            indicator.position.z = offsetZ + bodyD * 0.3;
+            mesh.add(indicator);
+        }
+        
         function resetLensParams(id) {
             const p = state.projectors.find(x => x.id === id);
             if (p) {
                 p.lens = {
                     type: 'rectilinear',
                     fisheyeFov: 180,
+                    shiftH: 0, shiftV: 0,
                     k1: 0, k2: 0, k3: 0,
                     p1: 0, p2: 0,
                     cx: 0, cy: 0
@@ -5307,6 +5659,22 @@
                 // Validate gain
                 if (prop === 'gain') val = Math.max(0.1, Math.min(5, val));
                 if (prop === 'curvature') val = Math.max(0, Math.min(180, val));
+                if (prop === 'segments') val = Math.max(8, Math.min(128, val));
+                
+                // Handle type change - set appropriate default dimensions
+                if (prop === 'type') {
+                    if (val === 'sphere' && s.type !== 'sphere') {
+                        // Switching to sphere - set radius based on current size
+                        const avgSize = (s.dimensions.width + s.dimensions.height) / 2;
+                        s.dimensions.radius = avgSize / 2;
+                        s.segments = 32;
+                    } else if (val === 'cube' && s.type !== 'cube') {
+                        // Switching to cube - ensure depth is set
+                        if (!s.dimensions.depth) {
+                            s.dimensions.depth = s.dimensions.width;
+                        }
+                    }
+                }
                 
                 s[prop] = val;
                 updateSurfaceMesh(s);
@@ -5341,6 +5709,7 @@
                 val = Math.max(0.1, Math.min(100, val));
                 s.dimensions[dim] = val;
                 updateSurfaceMesh(s);
+                updateSurfaceList();
             }
         }
         
@@ -5697,7 +6066,8 @@
             projectors: true,
             surfaces: true,
             settings: true,
-            textures: false
+            textures: false,
+            format: 'json'  // 'json' or 'csv'
         };
         
         const importOptions = {
@@ -5706,6 +6076,409 @@
         };
         
         let pendingImportData = null;
+        let pendingImportFormat = 'json';  // 'json' or 'csv'
+        
+        function setExportFormat(format) {
+            exportOptions.format = format;
+            
+            // Update button states
+            document.getElementById('export-format-json').classList.toggle('btn-primary', format === 'json');
+            document.getElementById('export-format-json').classList.toggle('btn', format !== 'json');
+            document.getElementById('export-format-csv').classList.toggle('btn-primary', format === 'csv');
+            document.getElementById('export-format-csv').classList.toggle('btn', format !== 'csv');
+            document.getElementById('export-format-obj').classList.toggle('btn-primary', format === 'obj');
+            document.getElementById('export-format-obj').classList.toggle('btn', format !== 'obj');
+            
+            // Show/hide appropriate options
+            document.getElementById('json-export-options').style.display = format === 'json' ? 'block' : 'none';
+            document.getElementById('csv-export-options').style.display = format === 'csv' ? 'block' : 'none';
+            document.getElementById('obj-export-options').style.display = format === 'obj' ? 'block' : 'none';
+            
+            // Update counts
+            if (format === 'csv') {
+                document.getElementById('csv-export-projector-count').textContent = state.projectors.length;
+            } else if (format === 'obj') {
+                document.getElementById('obj-export-surface-count').textContent = state.surfaces.length;
+            }
+        }
+        
+        // ==========================================
+        // COORDINATE SYSTEM TRANSFORMS
+        // ==========================================
+        // disguise: X=right, Y=forward (toward stage), Z=up (Z-up, right-handed)
+        // Three.js/Our scene: X=right, Y=up, Z=forward (Y-up, right-handed)
+        //
+        // Position transform (swap Y and Z):
+        //   Three.js X = disguise X
+        //   Three.js Y = disguise Z (up)
+        //   Three.js Z = disguise Y (forward)
+        //
+        // Rotation transform:
+        //   disguise: Pitch=around X, Yaw=around Z, Roll=around Y
+        //   Three.js: X=pitch, Y=yaw, Z=roll
+        //
+        //   - Pitch: NEGATE (disguise negative=down, Three.js positive=down)
+        //   - Yaw: NEGATE (disguise CW+, Three.js CCW+)
+        //   - Roll: unchanged
+        
+        function disguisePosToThreeJS(pos) {
+            return {
+                x: pos.x,
+                y: pos.z,        // Z (up) → Y
+                z: pos.y         // Y (forward) → Z
+            };
+        }
+        
+        function threeJSPosToDisguise(pos) {
+            return {
+                x: pos.x,
+                y: pos.z,        // Z → Y (forward)
+                z: pos.y         // Y → Z (up)
+            };
+        }
+        
+        function disguiseRotToThreeJS(rot) {
+            // rot = { pitch, yaw, roll } in degrees
+            return {
+                x: -rot.pitch,   // NEGATE: opposite tilt convention
+                y: -rot.yaw,     // NEGATE: CW to CCW conversion
+                z: rot.roll
+            };
+        }
+        
+        function threeJSRotToDisguise(rot) {
+            // rot = { x, y, z } in degrees
+            return {
+                pitch: -rot.x,   // NEGATE: opposite tilt convention
+                yaw: -rot.y,     // NEGATE: CCW to CW conversion
+                roll: rot.z
+            };
+        }
+        
+        function disguiseToThreeJS(pos, rot) {
+            return {
+                position: disguisePosToThreeJS(pos),
+                rotation: disguiseRotToThreeJS(rot)
+            };
+        }
+        
+        function threeJSToDisguise(pos, rot) {
+            return {
+                position: threeJSPosToDisguise(pos),
+                rotation: threeJSRotToDisguise(rot)
+            };
+        }
+        
+        // Export to disguise-compatible CSV format
+        function exportToCSV() {
+            const headers = [
+                'Projector_Name',
+                'Projector_Qte(Stack)',
+                'Projector_Native-Rez-X',
+                'Projector_Native-Rez-Y',
+                'Projector_Lumens(lux)',
+                'Projector_Brightness(%)',
+                'Projector_Total_Lumens(lux)',
+                'Projector_Trow-Ratio',
+                'Lens_Shift-H(%)',
+                'Lens_Shift-V(%)',
+                'Lens_X',
+                'Lens_Y',
+                'Lens_Z',
+                'Pitch(deg)',
+                'Yaw(deg)',
+                'Roll(deg)',
+                'Target_X',
+                'Target_Y',
+                'Target_Z',
+                'Target_Distance',
+                'Target_Width',
+                'Target_Height',
+                'Target_Illuminance',
+                'Target_DPI',
+                'Unit_Dim',
+                'Unit_Illuminance',
+                'Projector_UUID'
+            ];
+            
+            const rows = state.projectors.map(p => {
+                const metrics = calculateProjectorMetrics(p);
+                const resParts = p.resolution.split('×');
+                const resX = parseInt(resParts[0]) || 1920;
+                const resY = parseInt(resParts[1]) || 1080;
+                
+                // Calculate target point in Three.js space (project forward from projector)
+                // In our system, +Z is forward (projector optical axis)
+                const targetDist = p.frustumDistance || 20;
+                
+                // Use Euler to get forward direction, consistent with rest of codebase
+                const euler = new THREE.Euler(
+                    THREE.MathUtils.degToRad(p.rotation.x),
+                    THREE.MathUtils.degToRad(p.rotation.y),
+                    THREE.MathUtils.degToRad(p.rotation.z),
+                    'YXZ'
+                );
+                const forward = new THREE.Vector3(0, 0, 1).applyEuler(euler);
+                
+                const targetThreeJS = {
+                    x: p.position.x + forward.x * targetDist,
+                    y: p.position.y + forward.y * targetDist,
+                    z: p.position.z + forward.z * targetDist
+                };
+                
+                // Transform Three.js coordinates to disguise coordinates
+                const disguisePos = threeJSPosToDisguise(p.position);
+                const disguiseRot = threeJSRotToDisguise(p.rotation);
+                const disguiseTarget = threeJSPosToDisguise(targetThreeJS);
+                
+                return [
+                    p.name,
+                    p.stack || 1,
+                    resX,
+                    resY,
+                    p.lumens,
+                    p.brightness || 100,
+                    metrics.effectiveLumens,
+                    p.throwRatio,
+                    p.lens?.shiftH || 0,
+                    p.lens?.shiftV || 0,
+                    disguisePos.x.toFixed(3),
+                    disguisePos.y.toFixed(3),
+                    disguisePos.z.toFixed(3),
+                    disguiseRot.pitch.toFixed(8),
+                    disguiseRot.yaw.toFixed(8),
+                    disguiseRot.roll.toFixed(8),
+                    disguiseTarget.x.toFixed(3),
+                    disguiseTarget.y.toFixed(3),
+                    disguiseTarget.z.toFixed(3),
+                    metrics.distance.toFixed(3),
+                    metrics.width.toFixed(3),
+                    metrics.height.toFixed(3),
+                    Math.round(metrics.illuminance),
+                    metrics.dpi.toFixed(2),
+                    'm',
+                    'lux',
+                    p.uuid || generateUUID()
+                ].join(',');
+            });
+            
+            return [headers.join(','), ...rows].join('\n');
+        }
+        
+        // Export all surfaces to OBJ format
+        function exportToOBJ() {
+            let objContent = '# Projection Studio OBJ Export\n';
+            objContent += `# Generated: ${new Date().toISOString()}\n`;
+            objContent += `# Surfaces: ${state.surfaces.length}\n\n`;
+            
+            let vertexOffset = 0;
+            let uvOffset = 0;
+            let normalOffset = 0;
+            
+            state.surfaces.forEach(surface => {
+                // Find the mesh for this surface
+                const mesh = surfaceGroup.children.find(c => c.userData.surfaceId === surface.id);
+                if (!mesh || !mesh.geometry) return;
+                
+                // Get the geometry in world coordinates
+                const geometry = mesh.geometry.clone();
+                mesh.updateMatrixWorld();
+                geometry.applyMatrix4(mesh.matrixWorld);
+                
+                // Ensure we have the attributes
+                if (!geometry.attributes.position) return;
+                
+                const positions = geometry.attributes.position.array;
+                const uvs = geometry.attributes.uv ? geometry.attributes.uv.array : null;
+                const normals = geometry.attributes.normal ? geometry.attributes.normal.array : null;
+                const indices = geometry.index ? geometry.index.array : null;
+                
+                // Clean the surface name for OBJ (remove special chars)
+                const cleanName = surface.name.replace(/[^a-zA-Z0-9_-]/g, '_');
+                objContent += `# Surface: ${surface.name}\n`;
+                objContent += `o ${cleanName}\n`;
+                
+                // Write vertices
+                const vertexCount = positions.length / 3;
+                for (let i = 0; i < vertexCount; i++) {
+                    const x = positions[i * 3];
+                    const y = positions[i * 3 + 1];
+                    const z = positions[i * 3 + 2];
+                    objContent += `v ${x.toFixed(6)} ${y.toFixed(6)} ${z.toFixed(6)}\n`;
+                }
+                
+                // Write texture coordinates
+                if (uvs) {
+                    const uvCount = uvs.length / 2;
+                    for (let i = 0; i < uvCount; i++) {
+                        const u = uvs[i * 2];
+                        const v = uvs[i * 2 + 1];
+                        objContent += `vt ${u.toFixed(6)} ${v.toFixed(6)}\n`;
+                    }
+                }
+                
+                // Write normals
+                if (normals) {
+                    const normalCount = normals.length / 3;
+                    for (let i = 0; i < normalCount; i++) {
+                        const nx = normals[i * 3];
+                        const ny = normals[i * 3 + 1];
+                        const nz = normals[i * 3 + 2];
+                        objContent += `vn ${nx.toFixed(6)} ${ny.toFixed(6)} ${nz.toFixed(6)}\n`;
+                    }
+                }
+                
+                // Write faces
+                if (indices) {
+                    // Indexed geometry
+                    const faceCount = indices.length / 3;
+                    for (let i = 0; i < faceCount; i++) {
+                        const a = indices[i * 3] + 1 + vertexOffset;
+                        const b = indices[i * 3 + 1] + 1 + vertexOffset;
+                        const c = indices[i * 3 + 2] + 1 + vertexOffset;
+                        
+                        if (uvs && normals) {
+                            const ua = indices[i * 3] + 1 + uvOffset;
+                            const ub = indices[i * 3 + 1] + 1 + uvOffset;
+                            const uc = indices[i * 3 + 2] + 1 + uvOffset;
+                            const na = indices[i * 3] + 1 + normalOffset;
+                            const nb = indices[i * 3 + 1] + 1 + normalOffset;
+                            const nc = indices[i * 3 + 2] + 1 + normalOffset;
+                            objContent += `f ${a}/${ua}/${na} ${b}/${ub}/${nb} ${c}/${uc}/${nc}\n`;
+                        } else if (uvs) {
+                            const ua = indices[i * 3] + 1 + uvOffset;
+                            const ub = indices[i * 3 + 1] + 1 + uvOffset;
+                            const uc = indices[i * 3 + 2] + 1 + uvOffset;
+                            objContent += `f ${a}/${ua} ${b}/${ub} ${c}/${uc}\n`;
+                        } else {
+                            objContent += `f ${a} ${b} ${c}\n`;
+                        }
+                    }
+                } else {
+                    // Non-indexed geometry (triangles)
+                    const faceCount = vertexCount / 3;
+                    for (let i = 0; i < faceCount; i++) {
+                        const a = i * 3 + 1 + vertexOffset;
+                        const b = i * 3 + 2 + vertexOffset;
+                        const c = i * 3 + 3 + vertexOffset;
+                        
+                        if (uvs && normals) {
+                            objContent += `f ${a}/${a - vertexOffset + uvOffset}/${a - vertexOffset + normalOffset} ${b}/${b - vertexOffset + uvOffset}/${b - vertexOffset + normalOffset} ${c}/${c - vertexOffset + uvOffset}/${c - vertexOffset + normalOffset}\n`;
+                        } else if (uvs) {
+                            objContent += `f ${a}/${a - vertexOffset + uvOffset} ${b}/${b - vertexOffset + uvOffset} ${c}/${c - vertexOffset + uvOffset}\n`;
+                        } else {
+                            objContent += `f ${a} ${b} ${c}\n`;
+                        }
+                    }
+                }
+                
+                // Update offsets for next object
+                vertexOffset += vertexCount;
+                if (uvs) uvOffset += uvs.length / 2;
+                if (normals) normalOffset += normals.length / 3;
+                
+                objContent += '\n';
+                
+                // Clean up cloned geometry
+                geometry.dispose();
+            });
+            
+            return objContent;
+        }
+        
+        // Parse disguise CSV format
+        function parseDisguiseCSV(csvText) {
+            const lines = csvText.trim().split('\n');
+            if (lines.length < 2) {
+                throw new Error('CSV must have header and at least one data row');
+            }
+            
+            const headers = lines[0].split(',').map(h => h.trim());
+            const projectors = [];
+            
+            // Map header names to indices
+            const headerMap = {};
+            headers.forEach((h, i) => headerMap[h] = i);
+            
+            // Helper to get value by header name
+            const getValue = (row, header, defaultVal = 0) => {
+                const idx = headerMap[header];
+                if (idx === undefined || idx >= row.length) return defaultVal;
+                const val = row[idx];
+                return val === '' ? defaultVal : val;
+            };
+            
+            for (let i = 1; i < lines.length; i++) {
+                const line = lines[i].trim();
+                if (!line) continue;
+                
+                // Parse CSV line (handle potential commas in quoted fields)
+                const row = line.split(',').map(v => v.trim());
+                
+                const name = getValue(row, 'Projector_Name', `Projector ${i}`);
+                const resX = parseInt(getValue(row, 'Projector_Native-Rez-X', 1920));
+                const resY = parseInt(getValue(row, 'Projector_Native-Rez-Y', 1080));
+                
+                // Raw disguise coordinates (Z-up system)
+                const disguisePos = {
+                    x: parseFloat(getValue(row, 'Lens_X', 0)),
+                    y: parseFloat(getValue(row, 'Lens_Y', 0)),
+                    z: parseFloat(getValue(row, 'Lens_Z', 2.5))
+                };
+                const disguiseRot = {
+                    pitch: parseFloat(getValue(row, 'Pitch(deg)', 0)),
+                    yaw: parseFloat(getValue(row, 'Yaw(deg)', 0)),
+                    roll: parseFloat(getValue(row, 'Roll(deg)', 0))
+                };
+                const disguiseTarget = {
+                    x: parseFloat(getValue(row, 'Target_X', 0)),
+                    y: parseFloat(getValue(row, 'Target_Y', 0)),
+                    z: parseFloat(getValue(row, 'Target_Z', 0))
+                };
+                
+                // Transform from disguise (Z-up) to Three.js (Y-up)
+                // disguise: X=right, Y=forward, Z=up
+                // Three.js: X=right, Y=up, Z=towards camera
+                const transformed = disguiseToThreeJS(disguisePos, disguiseRot);
+                const transformedTarget = disguisePosToThreeJS(disguiseTarget);
+                
+                const projector = {
+                    id: Date.now() + Math.random() * 1000,
+                    uuid: getValue(row, 'Projector_UUID', generateUUID()),
+                    name: name,
+                    preset: 'custom',
+                    position: transformed.position,
+                    rotation: transformed.rotation,
+                    lumens: parseFloat(getValue(row, 'Projector_Lumens(lux)', 10000)),
+                    brightness: parseFloat(getValue(row, 'Projector_Brightness(%)', 100)),
+                    stack: parseInt(getValue(row, 'Projector_Qte(Stack)', 1)),
+                    throwRatio: parseFloat(getValue(row, 'Projector_Trow-Ratio', 1.5)),
+                    aspectRatio: resX / resY,
+                    resolution: `${resX}×${resY}`,
+                    zoom: 1.0,
+                    enabled: true,
+                    customTextureUrl: null,
+                    nearPlane: 0.1,
+                    farPlane: 100,
+                    frustumDistance: parseFloat(getValue(row, 'Target_Distance', 20)),
+                    lens: {
+                        type: 'rectilinear',
+                        fisheyeFov: 180,
+                        shiftH: parseFloat(getValue(row, 'Lens_Shift-H(%)', 0)),
+                        shiftV: parseFloat(getValue(row, 'Lens_Shift-V(%)', 0)),
+                        k1: 0, k2: 0, k3: 0,
+                        p1: 0, p2: 0,
+                        cx: parseFloat(getValue(row, 'Lens_Shift-H(%)', 0)) / 50,
+                        cy: parseFloat(getValue(row, 'Lens_Shift-V(%)', 0)) / 50
+                    },
+                    target: transformedTarget
+                };
+                
+                projectors.push(projector);
+            }
+            
+            return { projectors, surfaces: [] };
+        }
         
         function showExportModal() {
             // Check if session is valid, otherwise request authentication
@@ -5743,6 +6516,10 @@
             const date = new Date();
             const timestamp = `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}`;
             document.getElementById('export-filename').value = `projection-config-${timestamp}`;
+            
+            // Reset format selection to JSON
+            exportOptions.format = 'json';
+            setExportFormat('json');
             
             document.getElementById('export-modal').classList.add('active');
         }
@@ -5818,8 +6595,47 @@
         function doExport() {
             const filename = document.getElementById('export-filename').value.trim() || 'projection-config';
             
+            // CSV Export
+            if (exportOptions.format === 'csv') {
+                const csvContent = exportToCSV();
+                const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+                const url = URL.createObjectURL(blob);
+                
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `${filename}.csv`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                
+                closeModal('export-modal');
+                showToast(`Exported "${filename}.csv" (disguise format) successfully`);
+                return;
+            }
+            
+            // OBJ Export
+            if (exportOptions.format === 'obj') {
+                const objContent = exportToOBJ();
+                const blob = new Blob([objContent], { type: 'text/plain;charset=utf-8;' });
+                const url = URL.createObjectURL(blob);
+                
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `${filename}.obj`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+                
+                closeModal('export-modal');
+                showToast(`Exported "${filename}.obj" (${state.surfaces.length} surfaces) successfully`);
+                return;
+            }
+            
+            // JSON Export
             const config = {
-                version: '2.6',
+                version: '2.8',
                 exportDate: new Date().toISOString(),
                 metadata: {
                     projectorCount: state.projectors.length,
@@ -5830,6 +6646,8 @@
             if (exportOptions.projectors) {
                 config.projectors = state.projectors.map(p => {
                     const proj = { ...p };
+                    // Ensure UUID exists
+                    if (!proj.uuid) proj.uuid = generateUUID();
                     // Skip video textures (can't be embedded)
                     if (p.customTextureType === 'video') {
                         proj.customTextureUrl = null;
@@ -5852,6 +6670,7 @@
                     rotation: { ...s.rotation },
                     dimensions: { ...s.dimensions },
                     curvature: s.curvature,
+                    segments: s.segments || 32,  // For sphere surfaces
                     color: s.color,
                     gain: s.gain,
                     scale: s.scale || 1.0,
@@ -5886,31 +6705,52 @@
         function importConfig(file) {
             if (!file) return;
             
+            const isCSV = file.name.toLowerCase().endsWith('.csv');
+            
             const reader = new FileReader();
             reader.onload = function(e) {
                 try {
-                    const data = JSON.parse(e.target.result);
-                    pendingImportData = data;
+                    let data;
                     
-                    // Update preview
-                    document.getElementById('import-version').textContent = data.version || 'Unknown';
-                    document.getElementById('import-projectors').textContent = 
-                        data.projectors ? `${data.projectors.length} projector${data.projectors.length !== 1 ? 's' : ''}` : 'None';
-                    
-                    // Show surface count with custom OBJ info
-                    const customObjCount = data.surfaces ? data.surfaces.filter(s => s.type === 'custom' && s.objData).length : 0;
-                    let surfaceText = data.surfaces ? `${data.surfaces.length} surface${data.surfaces.length !== 1 ? 's' : ''}` : 'None';
-                    if (customObjCount > 0) {
-                        surfaceText += ` (${customObjCount} custom OBJ)`;
+                    if (isCSV) {
+                        // Parse CSV (disguise format)
+                        data = parseDisguiseCSV(e.target.result);
+                        pendingImportFormat = 'csv';
+                        
+                        // Update preview for CSV
+                        document.getElementById('import-version').textContent = 'disguise CSV';
+                        document.getElementById('import-projectors').textContent = 
+                            `${data.projectors.length} projector${data.projectors.length !== 1 ? 's' : ''}`;
+                        document.getElementById('import-surfaces').textContent = 'None (CSV only contains projectors)';
+                        document.getElementById('import-textures').textContent = 'None';
+                        document.getElementById('import-settings').textContent = 'Not included';
+                    } else {
+                        // Parse JSON
+                        data = JSON.parse(e.target.result);
+                        pendingImportFormat = 'json';
+                        
+                        // Update preview for JSON
+                        document.getElementById('import-version').textContent = data.version || 'Unknown';
+                        document.getElementById('import-projectors').textContent = 
+                            data.projectors ? `${data.projectors.length} projector${data.projectors.length !== 1 ? 's' : ''}` : 'None';
+                        
+                        // Show surface count with custom OBJ info
+                        const customObjCount = data.surfaces ? data.surfaces.filter(s => s.type === 'custom' && s.objData).length : 0;
+                        let surfaceText = data.surfaces ? `${data.surfaces.length} surface${data.surfaces.length !== 1 ? 's' : ''}` : 'None';
+                        if (customObjCount > 0) {
+                            surfaceText += ` (${customObjCount} custom OBJ)`;
+                        }
+                        document.getElementById('import-surfaces').textContent = surfaceText;
+                        
+                        const imageCount = data.projectors ? data.projectors.filter(p => p.customTextureUrl && p.customTextureType !== 'video').length : 0;
+                        document.getElementById('import-textures').textContent = 
+                            imageCount > 0 ? `${imageCount} image${imageCount !== 1 ? 's' : ''} embedded` : 'None';
+                        
+                        document.getElementById('import-settings').textContent = 
+                            data.settings ? 'Included' : 'Not included';
                     }
-                    document.getElementById('import-surfaces').textContent = surfaceText;
                     
-                    const imageCount = data.projectors ? data.projectors.filter(p => p.customTextureUrl && p.customTextureType !== 'video').length : 0;
-                    document.getElementById('import-textures').textContent = 
-                        imageCount > 0 ? `${imageCount} image${imageCount !== 1 ? 's' : ''} embedded` : 'None';
-                    
-                    document.getElementById('import-settings').textContent = 
-                        data.settings ? 'Included' : 'Not included';
+                    pendingImportData = data;
                     
                     // Show modal
                     document.getElementById('import-modal').classList.add('active');
@@ -5919,7 +6759,7 @@
                     document.getElementById('import-file').value = '';
                     
                 } catch (err) {
-                    showToast('Error parsing file: Invalid JSON format', 'error');
+                    showToast(`Error parsing file: ${isCSV ? 'Invalid CSV format' : 'Invalid JSON format'}`, 'error');
                     console.error('Import error:', err);
                 }
             };
@@ -5951,11 +6791,14 @@
                     const id = Date.now() + Math.random() * 1000;
                     const projector = {
                         id,
+                        uuid: projData.uuid || generateUUID(),
                         name: projData.name || `Projector ${state.projectors.length + 1}`,
                         preset: projData.preset || 'custom',
                         position: projData.position || { x: 0, y: 4, z: -8 },
                         rotation: projData.rotation || { x: -10, y: 0, z: 0 },
                         lumens: projData.lumens || 10000,
+                        brightness: projData.brightness || 100,
+                        stack: projData.stack || 1,
                         throwRatio: projData.throwRatio || 1.5,
                         aspectRatio: projData.aspectRatio || 16/9,
                         resolution: projData.resolution || '1920×1080',
@@ -5967,13 +6810,38 @@
                         nearPlane: projData.nearPlane || 0.1,
                         farPlane: projData.farPlane || 100,
                         frustumDistance: projData.frustumDistance || 20,
-                        lens: projData.lens || {
+                        lens: projData.lens ? {
+                            type: projData.lens.type || 'rectilinear',
+                            fisheyeFov: projData.lens.fisheyeFov || 180,
+                            shiftH: projData.lens.shiftH || 0,
+                            shiftV: projData.lens.shiftV || 0,
+                            k1: projData.lens.k1 || 0,
+                            k2: projData.lens.k2 || 0,
+                            k3: projData.lens.k3 || 0,
+                            p1: projData.lens.p1 || 0,
+                            p2: projData.lens.p2 || 0,
+                            cx: projData.lens.cx || (projData.lens.shiftH || 0) / 50,
+                            cy: projData.lens.cy || (projData.lens.shiftV || 0) / 50
+                        } : {
                             type: 'rectilinear',
                             fisheyeFov: 180,
+                            shiftH: 0, shiftV: 0,
                             k1: 0, k2: 0, k3: 0,
                             p1: 0, p2: 0,
                             cx: 0, cy: 0
-                        }
+                        },
+                        body: projData.body ? {
+                            width: projData.body.width || 0.4,
+                            height: projData.body.height || 0.2,
+                            depth: projData.body.depth || 0.5,
+                            offsetX: projData.body.offsetX || 0,
+                            offsetY: projData.body.offsetY || 0,
+                            offsetZ: projData.body.offsetZ || 0
+                        } : {
+                            width: 0.4, height: 0.2, depth: 0.5,
+                            offsetX: 0, offsetY: 0, offsetZ: 0
+                        },
+                        target: projData.target || null
                     };
                     
                     state.projectors.push(projector);
@@ -6015,6 +6883,7 @@
                         rotation: surfData.rotation || { x: 0, y: 180, z: 0 },
                         dimensions: surfData.dimensions || { width: 8, height: 4.5 },
                         curvature: surfData.curvature || 30,
+                        segments: surfData.segments || 32,  // For sphere surfaces
                         color: surfData.color || '#555555',
                         gain: surfData.gain || 1.0,
                         scale: surfData.scale || 1.0,
@@ -6104,7 +6973,7 @@
             const timestamp = `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}_${String(date.getHours()).padStart(2,'0')}-${String(date.getMinutes()).padStart(2,'0')}`;
             
             const config = {
-                version: '2.6',
+                version: '2.8',
                 exportDate: date.toISOString(),
                 metadata: {
                     projectorCount: state.projectors.length,
