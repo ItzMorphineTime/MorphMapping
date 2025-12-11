@@ -188,7 +188,7 @@
         .pattern-cross::before, .pattern-cross::after { content: ''; position: absolute; background: var(--text-muted); }
         .pattern-cross::before { width: 1px; height: 100%; left: 50%; }
         .pattern-cross::after { height: 1px; width: 100%; top: 50%; }
-        .pattern-white { background: #fff; }
+        .pattern-white { background: #1a1a1a; background-image: linear-gradient(#444 1px, transparent 1px), linear-gradient(90deg, #444 1px, transparent 1px); background-size: 25% 33.33%; }
         .pattern-none { background: var(--bg-tertiary); display: flex; align-items: center; justify-content: center; font-size: 10px; color: var(--text-muted); }
         .pattern-blend { background: linear-gradient(90deg, rgba(255,0,0,0.5) 0% 20%, transparent 20% 80%, rgba(0,255,0,0.5) 80% 100%); }
         
@@ -890,7 +890,7 @@
                         <button class="pattern-btn" onclick="setPattern('gradient')" title="Gradient"><div class="pattern-preview pattern-gradient"></div></button>
                         <button class="pattern-btn" onclick="setPattern('colorbars')" title="Color Bars"><div class="pattern-preview pattern-colorbars"></div></button>
                         <button class="pattern-btn" onclick="setPattern('cross')" title="Focus Cross"><div class="pattern-preview pattern-cross"></div></button>
-                        <button class="pattern-btn" onclick="setPattern('white')" title="White"><div class="pattern-preview pattern-white"></div></button>
+                        <button class="pattern-btn" onclick="setPattern('white')" title="Grid ID (16:9)"><div class="pattern-preview pattern-white"></div></button>
                         <button class="pattern-btn" onclick="setPattern('blend')" title="Blend Zones"><div class="pattern-preview pattern-blend"></div></button>
                     </div>
                     <div class="scroll-controls" id="pattern-scroll-controls">
@@ -916,6 +916,27 @@
                             </div>
                         </div>
                     </div>
+                </div>
+            </div>
+            
+            <div class="panel-section">
+                <div class="panel-header"><span class="panel-title">Scene Settings</span></div>
+                <div class="panel-content">
+                    <div class="slider-row">
+                        <span class="slider-label">Ambient Light</span>
+                        <div class="slider-container">
+                            <input type="range" class="slider" min="0" max="100" step="5" value="10" id="ambient-light-slider" oninput="updateAmbientLight(+this.value); document.getElementById('ambient-light-input').value=this.value">
+                            <input type="number" class="slider-input" id="ambient-light-input" step="5" min="0" max="100" value="10" onchange="updateAmbientLight(+this.value); document.getElementById('ambient-light-slider').value=this.value">%
+                        </div>
+                    </div>
+                    <div class="property-row" style="margin-top: 8px;">
+                        <span class="property-label">Surface Color</span>
+                        <div class="single-input" style="display: flex; gap: 8px; align-items: center;">
+                            <input type="color" id="default-surface-color" value="#808080" onchange="updateDefaultSurfaceColor(this.value)" style="width: 40px; height: 24px; padding: 0; border: 1px solid var(--border-color); cursor: pointer;">
+                            <button class="btn btn-sm" onclick="applyColorToAllSurfaces()" style="font-size: 10px;">Apply to All</button>
+                        </div>
+                    </div>
+                    <button class="btn btn-sm" onclick="resetSceneSettings()" style="width: 100%; margin-top: 12px; font-size: 10px;">Reset to Defaults</button>
                 </div>
             </div>
             
@@ -1494,7 +1515,11 @@
             currentPattern: 'none',
             displayOptions: { frustums: true, grid: true, coverage: true, overlap: false, distance: false, heatmap: false, wireframe: false },
             currentView: 'perspective',
-            heatmapMax: 2000 // cd/m² maximum for heatmap scale
+            heatmapMax: 2000, // cd/m² maximum for heatmap scale
+            sceneSettings: {
+                ambientLight: 10,          // Ambient light intensity (0-100%)
+                defaultSurfaceColor: '#808080'  // Default color for new surfaces
+            }
         };
         
         // Undo history system
@@ -2952,6 +2977,7 @@
             uniform float surfaceGain;
             uniform vec3 baseColor;
             uniform float heatmapMax;
+            uniform float ambientIntensity;  // Global ambient light (0-1)
             
             varying vec4 vWorldPosition;
             varying vec3 vWorldNormal;
@@ -3247,7 +3273,8 @@
             }
             
             void main() {
-                vec3 color = baseColor * 0.02;
+                // Base ambient illumination - scales with ambient light setting
+                vec3 color = baseColor * (0.02 + ambientIntensity * 0.5);
                 float totalCdm2 = 0.0;
                 int hitCount = 0;
                 
@@ -3334,7 +3361,7 @@
             renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
             container.appendChild(renderer.domElement);
             
-            scene.add(new THREE.AmbientLight(0xffffff, 0.1));
+            scene.add(new THREE.AmbientLight(0xffffff, 0.1));  // Basic ambient for non-projected areas
             
             gridHelper = new THREE.GridHelper(50, 50, 0x2a2a32, 0x1a1a20);
             scene.add(gridHelper);
@@ -3848,8 +3875,58 @@
                     [[10,10],[452,10],[10,452],[452,452]].forEach(([x,y]) => ctx.strokeRect(x, y, 50, 50));
                     break;
                 case 'white':
-                    ctx.fillStyle = '#fff';
-                    ctx.fillRect(0, 0, 512, 512);
+                    // 16:9 Grid with alphanumeric identifiers (A1, A2, B1, etc.)
+                    // Use 1024x576 for 16:9 aspect ratio
+                    canvas.width = 1024; canvas.height = 576;
+                    const cols = 16;
+                    const rows = 9;
+                    const cellW = canvas.width / cols;
+                    const cellH = canvas.height / rows;
+                    
+                    // Background
+                    ctx.fillStyle = '#1a1a1a';
+                    ctx.fillRect(0, 0, canvas.width, canvas.height);
+                    
+                    // Draw grid cells
+                    ctx.strokeStyle = '#444';
+                    ctx.lineWidth = 1;
+                    for (let r = 0; r < rows; r++) {
+                        for (let c = 0; c < cols; c++) {
+                            const x = c * cellW;
+                            const y = r * cellH;
+                            
+                            // Alternate cell colors slightly
+                            ctx.fillStyle = (r + c) % 2 === 0 ? '#222' : '#1a1a1a';
+                            ctx.fillRect(x, y, cellW, cellH);
+                            ctx.strokeRect(x, y, cellW, cellH);
+                            
+                            // Cell label (A1, A2, ..., I16)
+                            const rowLabel = String.fromCharCode(65 + r); // A, B, C...
+                            const colLabel = (c + 1).toString();
+                            const label = rowLabel + colLabel;
+                            
+                            ctx.fillStyle = '#666';
+                            ctx.font = 'bold 18px monospace';
+                            ctx.textAlign = 'center';
+                            ctx.textBaseline = 'middle';
+                            ctx.fillText(label, x + cellW / 2, y + cellH / 2);
+                        }
+                    }
+                    
+                    // Border
+                    ctx.strokeStyle = '#0af';
+                    ctx.lineWidth = 4;
+                    ctx.strokeRect(2, 2, canvas.width - 4, canvas.height - 4);
+                    
+                    // Center crosshair
+                    ctx.strokeStyle = '#f00';
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    ctx.moveTo(canvas.width / 2, 0);
+                    ctx.lineTo(canvas.width / 2, canvas.height);
+                    ctx.moveTo(0, canvas.height / 2);
+                    ctx.lineTo(canvas.width, canvas.height / 2);
+                    ctx.stroke();
                     break;
                 case 'blend':
                     ctx.fillStyle = '#888';
@@ -4517,7 +4594,7 @@
                 rotation: { x: 0, y: 180, z: 0 },
                 dimensions: { width: 8, height: 4.5 },
                 curvature: 30,
-                color: '#555555',
+                color: state.sceneSettings.defaultSurfaceColor,
                 gain: 1.0
             };
             
@@ -4556,7 +4633,7 @@
                         rotation: { x: 0, y: 0, z: 0 },
                         dimensions: { width: size.x, height: size.y },
                         curvature: 0,
-                        color: '#555555',
+                        color: state.sceneSettings.defaultSurfaceColor,
                         gain: 1.0,
                         scale: 1.0,
                         objData: e.target.result // Store OBJ data for export
@@ -4754,7 +4831,8 @@
                 debugLensType: { value: false },  // Debug mode
                 surfaceGain: { value: surface.gain },
                 baseColor: { value: new THREE.Color(surface.color) },
-                heatmapMax: { value: state.heatmapMax }
+                heatmapMax: { value: state.heatmapMax },
+                ambientIntensity: { value: state.sceneSettings.ambientLight / 100 }
             };
             
             const enabled = state.projectors.filter(p => p.enabled);
@@ -5869,6 +5947,52 @@
             }
         }
         
+        function updateAmbientLight(value) {
+            state.sceneSettings.ambientLight = value;
+            // Update the shader uniform on all surfaces
+            const intensity = value / 100;
+            surfaceGroup.children.forEach(mesh => {
+                if (mesh.material?.uniforms?.ambientIntensity) {
+                    mesh.material.uniforms.ambientIntensity.value = intensity;
+                }
+            });
+        }
+        
+        function updateDefaultSurfaceColor(color) {
+            state.sceneSettings.defaultSurfaceColor = color;
+        }
+        
+        function applyColorToAllSurfaces() {
+            const color = state.sceneSettings.defaultSurfaceColor;
+            state.surfaces.forEach(surface => {
+                surface.color = color;
+                // Update the mesh material
+                const mesh = surfaceGroup.children.find(c => c.userData.surfaceId === surface.id);
+                if (mesh && mesh.material?.uniforms?.baseColor) {
+                    mesh.material.uniforms.baseColor.value.set(color);
+                }
+            });
+            updateSurfaceList();
+            updatePropertiesPanel();
+            showToast(`Applied color to ${state.surfaces.length} surfaces`);
+        }
+        
+        function resetSceneSettings() {
+            // Reset to defaults
+            state.sceneSettings.ambientLight = 10;
+            state.sceneSettings.defaultSurfaceColor = '#808080';
+            
+            // Update UI
+            document.getElementById('ambient-light-slider').value = 10;
+            document.getElementById('ambient-light-input').value = 10;
+            document.getElementById('default-surface-color').value = '#808080';
+            
+            // Apply ambient light change
+            updateAmbientLight(10);
+            
+            showToast('Scene settings reset to defaults');
+        }
+        
         // Debug mode: visualize lens type and rejection reasons
         let debugLensTypeEnabled = false;
         function toggleDebugLensType() {
@@ -6683,7 +6807,8 @@
                     currentPattern: state.currentPattern,
                     displayOptions: { ...state.displayOptions },
                     heatmapMax: state.heatmapMax,
-                    currentView: state.currentView
+                    currentView: state.currentView,
+                    sceneSettings: { ...state.sceneSettings }
                 };
             }
             
@@ -6930,6 +7055,20 @@
                     document.getElementById('legend-mid').textContent = Math.round(data.settings.heatmapMax / 2);
                     document.getElementById('legend-max').textContent = data.settings.heatmapMax + '+';
                 }
+                
+                // Import scene settings
+                if (data.settings.sceneSettings) {
+                    if (data.settings.sceneSettings.ambientLight !== undefined) {
+                        state.sceneSettings.ambientLight = data.settings.sceneSettings.ambientLight;
+                        document.getElementById('ambient-light-slider').value = data.settings.sceneSettings.ambientLight;
+                        document.getElementById('ambient-light-input').value = data.settings.sceneSettings.ambientLight;
+                        updateAmbientLight(data.settings.sceneSettings.ambientLight);
+                    }
+                    if (data.settings.sceneSettings.defaultSurfaceColor) {
+                        state.sceneSettings.defaultSurfaceColor = data.settings.sceneSettings.defaultSurfaceColor;
+                        document.getElementById('default-surface-color').value = data.settings.sceneSettings.defaultSurfaceColor;
+                    }
+                }
             }
             
             // Update UI
@@ -6985,7 +7124,8 @@
                     currentPattern: state.currentPattern,
                     displayOptions: { ...state.displayOptions },
                     heatmapMax: state.heatmapMax,
-                    currentView: state.currentView
+                    currentView: state.currentView,
+                    sceneSettings: { ...state.sceneSettings }
                 }
             };
             
