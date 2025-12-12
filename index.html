@@ -1753,7 +1753,8 @@
             activeAxis: null, // 'x', 'y', 'z', 'xy', 'xz', 'yz'
             isDragging: false,
             startPoint: new THREE.Vector3(),
-            startValue: null,
+            startValue: null, // World position/rotation at drag start
+            startLocalValue: null, // Local position/rotation at drag start
             localSpace: false,
             snap: {
                 enabled: false,
@@ -2383,16 +2384,24 @@
                         : state.surfaces.find(x => x.id === state.selectedObject)?.name;
                     saveStateForUndo(`${actionType} ${objectName || 'object'}`);
                     
-                    // Store starting value
+                    // Store starting value - use WORLD position/rotation for dragging
                     if (state.selectedType === 'projector') {
                         const p = state.projectors.find(x => x.id === state.selectedObject);
+                        const worldTransform = getWorldTransform(p);
                         gizmoState.startValue = gizmoState.mode === 'translate' 
-                            ? { ...p.position } 
+                            ? { ...worldTransform.position } 
+                            : { ...worldTransform.rotation };
+                        gizmoState.startLocalValue = gizmoState.mode === 'translate'
+                            ? { ...p.position }
                             : { ...p.rotation };
                     } else if (state.selectedType === 'surface') {
                         const s = state.surfaces.find(x => x.id === state.selectedObject);
+                        const worldTransform = getWorldTransform(s);
                         gizmoState.startValue = gizmoState.mode === 'translate' 
-                            ? { ...s.position } 
+                            ? { ...worldTransform.position } 
+                            : { ...worldTransform.rotation };
+                        gizmoState.startLocalValue = gizmoState.mode === 'translate'
+                            ? { ...s.position }
                             : { ...s.rotation };
                     }
                     
@@ -2544,35 +2553,108 @@
                 }
                 
                 // Apply to position (delta is now in world space)
-                let newX = gizmoState.startValue.x + delta.x;
-                let newY = gizmoState.startValue.y + delta.y;
-                let newZ = gizmoState.startValue.z + delta.z;
+                // startValue is WORLD position, so newX/Y/Z are WORLD coordinates
+                let newWorldX = gizmoState.startValue.x + delta.x;
+                let newWorldY = gizmoState.startValue.y + delta.y;
+                let newWorldZ = gizmoState.startValue.z + delta.z;
                 
-                // Snap
+                // Snap in world space
                 if (gizmoState.snap.enabled) {
                     const snap = gizmoState.snap.translate;
-                    newX = Math.round(newX / snap) * snap;
-                    newY = Math.round(newY / snap) * snap;
-                    newZ = Math.round(newZ / snap) * snap;
+                    newWorldX = Math.round(newWorldX / snap) * snap;
+                    newWorldY = Math.round(newWorldY / snap) * snap;
+                    newWorldZ = Math.round(newWorldZ / snap) * snap;
                 }
                 
-                data.position.x = newX;
-                data.position.y = newY;
-                data.position.z = newZ;
+                // Convert world position to local position for storage
+                const newWorldPos = { x: newWorldX, y: newWorldY, z: newWorldZ };
+                let newLocalPos;
                 
-                obj.position.set(newX, newY, newZ);
+                if (data.parentId) {
+                    // Has parent - convert world to local
+                    const parent = getObjectById(data.parentId);
+                    if (parent) {
+                        const parentWorld = getWorldTransform(parent.obj);
+                        // Use the same rotation as current (only position changed)
+                        const currentWorldTransform = getWorldTransform(data);
+                        const worldTransformForConversion = {
+                            position: newWorldPos,
+                            rotation: currentWorldTransform.rotation
+                        };
+                        newLocalPos = worldToLocalTransform(worldTransformForConversion, parentWorld).position;
+                    } else {
+                        newLocalPos = newWorldPos;
+                    }
+                } else {
+                    // No parent - local = world
+                    newLocalPos = newWorldPos;
+                }
                 
-                // Update drag guide line
+                // Update stored LOCAL position
+                data.position.x = newLocalPos.x;
+                data.position.y = newLocalPos.y;
+                data.position.z = newLocalPos.z;
+                
+                // Set mesh to WORLD position
+                obj.position.set(newWorldX, newWorldY, newWorldZ);
+                
+                // Update drag guide line (in world space)
                 const startPos = new THREE.Vector3(gizmoState.startValue.x, gizmoState.startValue.y, gizmoState.startValue.z);
-                const endPos = new THREE.Vector3(newX, newY, newZ);
+                const endPos = new THREE.Vector3(newWorldX, newWorldY, newWorldZ);
                 updateDragGuide(startPos, endPos, axis);
                 
-                // Update shadow maps when any object moves
+                // Update projector/surface and all children
                 if (state.selectedType === 'projector') {
                     updateProjectorMatrix(data);
+                    updateProjectorMeshWithArray(data);
                 }
+                
+                // Update all children recursively (lightweight version for drag)
+                updateChildrenWorldPositions(data.id);
+                
                 updateAllSurfaceMaterials();
             }
+        }
+        
+        // Lightweight function to update child positions during drag without full mesh recreation
+        function updateChildrenWorldPositions(parentId) {
+            const children = getChildren(parentId);
+            children.forEach(child => {
+                const worldTransform = getWorldTransform(child.obj);
+                
+                if (child.type === 'projector') {
+                    // Update projector mesh position
+                    const mesh = projectorGroup.children.find(c => c.userData.projectorId === child.obj.id && !c.userData.isArrayInstance);
+                    if (mesh) {
+                        mesh.position.set(worldTransform.position.x, worldTransform.position.y, worldTransform.position.z);
+                        mesh.rotation.order = 'YXZ';
+                        mesh.rotation.set(
+                            THREE.MathUtils.degToRad(worldTransform.rotation.x),
+                            THREE.MathUtils.degToRad(worldTransform.rotation.y),
+                            THREE.MathUtils.degToRad(worldTransform.rotation.z)
+                        );
+                    }
+                    // Update array instances
+                    updateProjectorMeshWithArray(child.obj);
+                    // Update projection matrix
+                    updateProjectorMatrix(child.obj);
+                } else if (child.type === 'surface') {
+                    // Update surface mesh position
+                    const mesh = surfaceGroup.children.find(c => c.userData.surfaceId === child.obj.id);
+                    if (mesh) {
+                        mesh.position.set(worldTransform.position.x, worldTransform.position.y, worldTransform.position.z);
+                        mesh.rotation.order = 'YXZ';
+                        mesh.rotation.set(
+                            THREE.MathUtils.degToRad(worldTransform.rotation.x),
+                            THREE.MathUtils.degToRad(worldTransform.rotation.y),
+                            THREE.MathUtils.degToRad(worldTransform.rotation.z)
+                        );
+                    }
+                }
+                
+                // Recursively update this child's children
+                updateChildrenWorldPositions(child.obj.id);
+            });
         }
         
         function updateRotation(event, mouse, obj, data) {
@@ -2622,7 +2704,7 @@
             
             const deltaRad = THREE.MathUtils.degToRad(deltaAngle);
             
-            // Create start quaternion from initial rotation values
+            // Create start quaternion from initial WORLD rotation values
             const startQuat = new THREE.Quaternion().setFromEuler(new THREE.Euler(
                 THREE.MathUtils.degToRad(gizmoState.startValue.x),
                 THREE.MathUtils.degToRad(gizmoState.startValue.y),
@@ -2644,25 +2726,64 @@
                 resultQuat = deltaQuat.clone().multiply(startQuat);
             }
             
-            // Convert back to Euler angles
+            // Convert back to Euler angles - this is the new WORLD rotation
             const resultEuler = new THREE.Euler().setFromQuaternion(resultQuat, 'YXZ');
+            const newWorldRotation = {
+                x: THREE.MathUtils.radToDeg(resultEuler.x),
+                y: THREE.MathUtils.radToDeg(resultEuler.y),
+                z: THREE.MathUtils.radToDeg(resultEuler.z)
+            };
             
-            data.rotation.x = THREE.MathUtils.radToDeg(resultEuler.x);
-            data.rotation.y = THREE.MathUtils.radToDeg(resultEuler.y);
-            data.rotation.z = THREE.MathUtils.radToDeg(resultEuler.z);
+            // Convert world rotation to local rotation for storage
+            let newLocalRotation;
+            if (data.parentId) {
+                const parent = getObjectById(data.parentId);
+                if (parent) {
+                    const parentWorld = getWorldTransform(parent.obj);
+                    const parentEuler = new THREE.Euler(
+                        THREE.MathUtils.degToRad(parentWorld.rotation.x),
+                        THREE.MathUtils.degToRad(parentWorld.rotation.y),
+                        THREE.MathUtils.degToRad(parentWorld.rotation.z),
+                        'YXZ'
+                    );
+                    const parentQuat = new THREE.Quaternion().setFromEuler(parentEuler);
+                    const parentQuatInverse = parentQuat.clone().invert();
+                    const localQuat = parentQuatInverse.clone().multiply(resultQuat);
+                    const localEuler = new THREE.Euler().setFromQuaternion(localQuat, 'YXZ');
+                    newLocalRotation = {
+                        x: THREE.MathUtils.radToDeg(localEuler.x),
+                        y: THREE.MathUtils.radToDeg(localEuler.y),
+                        z: THREE.MathUtils.radToDeg(localEuler.z)
+                    };
+                } else {
+                    newLocalRotation = newWorldRotation;
+                }
+            } else {
+                newLocalRotation = newWorldRotation;
+            }
             
-            // Set rotation with consistent YXZ order to avoid gimbal lock
+            // Store LOCAL rotation
+            data.rotation.x = newLocalRotation.x;
+            data.rotation.y = newLocalRotation.y;
+            data.rotation.z = newLocalRotation.z;
+            
+            // Set mesh to WORLD rotation
             obj.rotation.order = 'YXZ';
             obj.rotation.set(
-                THREE.MathUtils.degToRad(data.rotation.x),
-                THREE.MathUtils.degToRad(data.rotation.y),
-                THREE.MathUtils.degToRad(data.rotation.z)
+                THREE.MathUtils.degToRad(newWorldRotation.x),
+                THREE.MathUtils.degToRad(newWorldRotation.y),
+                THREE.MathUtils.degToRad(newWorldRotation.z)
             );
             
-            // Update shadow maps when any object rotates
+            // Update projector/surface
             if (state.selectedType === 'projector') {
                 updateProjectorMatrix(data);
+                updateProjectorMeshWithArray(data);
             }
+            
+            // Update all children recursively
+            updateChildrenWorldPositions(data.id);
+            
             updateAllSurfaceMaterials();
         }
         
@@ -3997,7 +4118,11 @@
                     cy: 0                 // Vertical principal point offset
                 },
                 // Target point (optional - for look-at calculations)
-                target: null  // { x, y, z } or null
+                target: null,  // { x, y, z } or null
+                // Hierarchy - parent ID for nested transforms
+                parentId: null,
+                // Projector Array settings (for creating multiple evenly-spaced projectors)
+                array: null  // { count: 3, spacing: { x: 2, y: 0, z: 0 }, rotationOffset: { x: 0, y: 0, z: 0 } }
             };
             
             state.projectors.push(projector);
@@ -4020,6 +4145,241 @@
             });
         }
         
+        // ==========================================
+        // HIERARCHY / PARENT-CHILD SYSTEM
+        // ==========================================
+        
+        // Get an object by ID (projector or surface)
+        function getObjectById(id, type = null) {
+            if (type === 'projector' || !type) {
+                const proj = state.projectors.find(p => p.id === id);
+                if (proj) return { obj: proj, type: 'projector' };
+            }
+            if (type === 'surface' || !type) {
+                const surf = state.surfaces.find(s => s.id === id);
+                if (surf) return { obj: surf, type: 'surface' };
+            }
+            return null;
+        }
+        
+        // Get world transform by traversing parent chain
+        function getWorldTransform(obj) {
+            const localPos = { ...obj.position };
+            const localRot = { ...obj.rotation };
+            
+            if (!obj.parentId) {
+                return { position: localPos, rotation: localRot };
+            }
+            
+            // Build parent chain
+            const chain = [];
+            let current = obj;
+            while (current.parentId) {
+                const parentResult = getObjectById(current.parentId);
+                if (!parentResult) break;
+                chain.unshift(parentResult.obj);
+                current = parentResult.obj;
+            }
+            
+            // Apply transforms from root to leaf
+            const worldPos = new THREE.Vector3(localPos.x, localPos.y, localPos.z);
+            const worldRot = new THREE.Euler(
+                THREE.MathUtils.degToRad(localRot.x),
+                THREE.MathUtils.degToRad(localRot.y),
+                THREE.MathUtils.degToRad(localRot.z),
+                'YXZ'
+            );
+            
+            // Start with local position/rotation, then transform by each parent
+            for (let i = chain.length - 1; i >= 0; i--) {
+                const parent = chain[i];
+                const parentEuler = new THREE.Euler(
+                    THREE.MathUtils.degToRad(parent.rotation.x),
+                    THREE.MathUtils.degToRad(parent.rotation.y),
+                    THREE.MathUtils.degToRad(parent.rotation.z),
+                    'YXZ'
+                );
+                
+                // Rotate local position by parent rotation
+                worldPos.applyEuler(parentEuler);
+                // Add parent position
+                worldPos.add(new THREE.Vector3(parent.position.x, parent.position.y, parent.position.z));
+                
+                // Combine rotations (apply parent rotation to local rotation)
+                const parentQuat = new THREE.Quaternion().setFromEuler(parentEuler);
+                const localQuat = new THREE.Quaternion().setFromEuler(worldRot);
+                localQuat.premultiply(parentQuat);
+                worldRot.setFromQuaternion(localQuat, 'YXZ');
+            }
+            
+            return {
+                position: { x: worldPos.x, y: worldPos.y, z: worldPos.z },
+                rotation: {
+                    x: THREE.MathUtils.radToDeg(worldRot.x),
+                    y: THREE.MathUtils.radToDeg(worldRot.y),
+                    z: THREE.MathUtils.radToDeg(worldRot.z)
+                }
+            };
+        }
+        
+        // Get all array instances for a projector (for rendering and export)
+        function getProjectorArrayInstances(projector) {
+            if (!projector.array || projector.array.count <= 1) {
+                return [{ projector, offset: { x: 0, y: 0, z: 0 }, rotOffset: { x: 0, y: 0, z: 0 }, index: 0 }];
+            }
+            
+            const instances = [];
+            const count = projector.array.count;
+            const spacing = projector.array.spacing || { x: 0, y: 0, z: 0 };
+            const rotOffset = projector.array.rotationOffset || { x: 0, y: 0, z: 0 };
+            
+            for (let i = 0; i < count; i++) {
+                instances.push({
+                    projector,
+                    offset: {
+                        x: spacing.x * i,
+                        y: spacing.y * i,
+                        z: spacing.z * i
+                    },
+                    rotOffset: {
+                        x: rotOffset.x * i,
+                        y: rotOffset.y * i,
+                        z: rotOffset.z * i
+                    },
+                    index: i
+                });
+            }
+            return instances;
+        }
+        
+        // Get world transform for an array instance
+        function getArrayInstanceWorldTransform(projector, instance) {
+            // First get the projector's world transform (respecting hierarchy)
+            const baseWorld = getWorldTransform(projector);
+            
+            // Apply array offset in local space, then transform to world
+            const offsetVec = new THREE.Vector3(instance.offset.x, instance.offset.y, instance.offset.z);
+            const baseEuler = new THREE.Euler(
+                THREE.MathUtils.degToRad(baseWorld.rotation.x),
+                THREE.MathUtils.degToRad(baseWorld.rotation.y),
+                THREE.MathUtils.degToRad(baseWorld.rotation.z),
+                'YXZ'
+            );
+            offsetVec.applyEuler(baseEuler);
+            
+            return {
+                position: {
+                    x: baseWorld.position.x + offsetVec.x,
+                    y: baseWorld.position.y + offsetVec.y,
+                    z: baseWorld.position.z + offsetVec.z
+                },
+                rotation: {
+                    x: baseWorld.rotation.x + instance.rotOffset.x,
+                    y: baseWorld.rotation.y + instance.rotOffset.y,
+                    z: baseWorld.rotation.z + instance.rotOffset.z
+                }
+            };
+        }
+        
+        // Get valid parent options for an object (exclude self and descendants)
+        function getParentOptions(type, excludeId) {
+            const options = [{ id: null, name: '(None)', type: null }];
+            
+            // Add projectors as potential parents
+            state.projectors.forEach(p => {
+                if (p.id !== excludeId && !isDescendantOf(p.id, excludeId)) {
+                    options.push({ id: p.id, name: p.name, type: 'projector' });
+                }
+            });
+            
+            // Add surfaces as potential parents
+            state.surfaces.forEach(s => {
+                if (s.id !== excludeId && !isDescendantOf(s.id, excludeId)) {
+                    options.push({ id: s.id, name: s.name, type: 'surface' });
+                }
+            });
+            
+            return options;
+        }
+        
+        // Check if an object is a descendant of another
+        function isDescendantOf(childId, ancestorId) {
+            if (!ancestorId) return false;
+            
+            const child = getObjectById(childId);
+            if (!child) return false;
+            
+            let current = child.obj;
+            while (current.parentId) {
+                if (current.parentId === ancestorId) return true;
+                const parent = getObjectById(current.parentId);
+                if (!parent) break;
+                current = parent.obj;
+            }
+            return false;
+        }
+        
+        // Get children of an object
+        function getChildren(parentId) {
+            const children = [];
+            state.projectors.forEach(p => {
+                if (p.parentId === parentId) children.push({ obj: p, type: 'projector' });
+            });
+            state.surfaces.forEach(s => {
+                if (s.parentId === parentId) children.push({ obj: s, type: 'surface' });
+            });
+            return children;
+        }
+        
+        // Convert projector array to individual projectors
+        function convertArrayToProjectors(projectorId) {
+            const projector = state.projectors.find(p => p.id === projectorId);
+            if (!projector || !projector.array || projector.array.count <= 1) {
+                showToast('No array to convert');
+                return;
+            }
+            
+            const instances = getProjectorArrayInstances(projector);
+            const newProjectors = [];
+            
+            // Skip first instance (index 0) as it becomes the original projector
+            for (let i = 1; i < instances.length; i++) {
+                const instance = instances[i];
+                const worldTransform = getArrayInstanceWorldTransform(projector, instance);
+                
+                // Clone projector with world transform
+                const newProj = JSON.parse(JSON.stringify(projector));
+                newProj.id = Date.now() + i;
+                newProj.uuid = generateUUID();
+                newProj.name = `${projector.name} (${i + 1})`;
+                newProj.position = worldTransform.position;
+                newProj.rotation = worldTransform.rotation;
+                newProj.array = null;  // Not an array
+                newProj.parentId = null;  // Independent projector
+                
+                newProjectors.push(newProj);
+            }
+            
+            // Clear array from original projector
+            projector.array = null;
+            
+            // Add new projectors
+            newProjectors.forEach(p => {
+                state.projectors.push(p);
+                createProjectorMesh(p);
+                updateProjectorMatrix(p);
+                updateShadowMap(p);
+            });
+            
+            // Update original projector mesh (remove array instances)
+            updateProjectorMeshWithArray(projector);
+            
+            updateAllSurfaceMaterials();
+            updateProjectorList();
+            updatePropertiesPanel();
+            showToast(`Created ${newProjectors.length} projectors from array`);
+        }
+
         // Calculate projector metrics at target distance
         function calculateProjectorMetrics(projector, targetDistance = null) {
             const dist = targetDistance || projector.frustumDistance || 20;
@@ -4056,8 +4416,12 @@
         }
         
         function createProjectorMesh(projector) {
+            // Get world transform (respects parent hierarchy)
+            const worldTransform = getWorldTransform(projector);
+            
             const group = new THREE.Group();
             group.userData.projectorId = projector.id;
+            group.userData.isMainProjector = true;
             
             // Get body dimensions with defaults
             const bodyW = projector.body?.width || 0.4;
@@ -4089,19 +4453,90 @@
             
             group.add(createFrustum(projector));
             
-            group.position.set(projector.position.x, projector.position.y, projector.position.z);
-            // Use YXZ order to match updateProjectorMatrix
+            // Use world transform for position and rotation
+            group.position.set(worldTransform.position.x, worldTransform.position.y, worldTransform.position.z);
             group.rotation.order = 'YXZ';
             group.rotation.set(
-                THREE.MathUtils.degToRad(projector.rotation.x),
-                THREE.MathUtils.degToRad(projector.rotation.y),
-                THREE.MathUtils.degToRad(projector.rotation.z)
+                THREE.MathUtils.degToRad(worldTransform.rotation.x),
+                THREE.MathUtils.degToRad(worldTransform.rotation.y),
+                THREE.MathUtils.degToRad(worldTransform.rotation.z)
             );
             
             projectorGroup.add(group);
+            
+            // Create array instance meshes if applicable
+            if (projector.array && projector.array.count > 1) {
+                createArrayInstanceMeshes(projector);
+            }
         }
         
-        function createFrustum(projector) {
+        // Create ghost meshes for array instances
+        function createArrayInstanceMeshes(projector) {
+            const instances = getProjectorArrayInstances(projector);
+            const bodyW = projector.body?.width || 0.4;
+            const bodyH = projector.body?.height || 0.2;
+            const bodyD = projector.body?.depth || 0.5;
+            
+            // Skip first instance (it's the main projector)
+            for (let i = 1; i < instances.length; i++) {
+                const instance = instances[i];
+                const worldTransform = getArrayInstanceWorldTransform(projector, instance);
+                
+                const group = new THREE.Group();
+                group.userData.projectorId = projector.id;
+                group.userData.arrayIndex = i;
+                group.userData.isArrayInstance = true;
+                
+                // Ghost body (semi-transparent)
+                const body = new THREE.Mesh(
+                    new THREE.BoxGeometry(bodyW, bodyH, bodyD),
+                    new THREE.MeshBasicMaterial({ color: 0x446688, transparent: true, opacity: 0.5 })
+                );
+                const offsetX = projector.body?.offsetX || 0;
+                const offsetY = projector.body?.offsetY || 0;
+                const offsetZ = projector.body?.offsetZ || 0;
+                body.position.set(offsetX, offsetY, offsetZ);
+                group.add(body);
+                
+                // Ghost frustum
+                group.add(createFrustum(projector, true));
+                
+                group.position.set(worldTransform.position.x, worldTransform.position.y, worldTransform.position.z);
+                group.rotation.order = 'YXZ';
+                group.rotation.set(
+                    THREE.MathUtils.degToRad(worldTransform.rotation.x),
+                    THREE.MathUtils.degToRad(worldTransform.rotation.y),
+                    THREE.MathUtils.degToRad(worldTransform.rotation.z)
+                );
+                
+                projectorGroup.add(group);
+            }
+        }
+        
+        // Update projector mesh with array (rebuild array instances)
+        function updateProjectorMeshWithArray(projector) {
+            // Remove existing array instance meshes
+            const toRemove = [];
+            projectorGroup.children.forEach(c => {
+                if (c.userData.projectorId === projector.id && c.userData.isArrayInstance) {
+                    toRemove.push(c);
+                }
+            });
+            toRemove.forEach(c => {
+                c.traverse(child => {
+                    if (child.geometry) child.geometry.dispose();
+                    if (child.material) child.material.dispose();
+                });
+                projectorGroup.remove(c);
+            });
+            
+            // Recreate array instances if needed
+            if (projector.array && projector.array.count > 1) {
+                createArrayInstanceMeshes(projector);
+            }
+        }
+        
+        function createFrustum(projector, isGhost = false) {
             const group = new THREE.Group();
             group.userData.isFrustum = true;
             
@@ -4110,7 +4545,9 @@
             const w = (dist / projector.throwRatio) / projector.zoom;
             const h = w / projector.aspectRatio;
             
-            const mat = new THREE.LineBasicMaterial({ color: 0x00aaff, transparent: true, opacity: 0.5 });
+            const color = isGhost ? 0x4488aa : 0x00aaff;
+            const opacity = isGhost ? 0.25 : 0.5;
+            const mat = new THREE.LineBasicMaterial({ color, transparent: true, opacity });
             
             // Frustum edge lines from projector to far plane
             const pts = [
@@ -4129,6 +4566,9 @@
         }
         
         function updateProjectorMatrix(projector) {
+            // Get world transform (respects parent hierarchy)
+            const worldTransform = getWorldTransform(projector);
+            
             // Calculate VERTICAL FOV from throw ratio
             // Throw ratio = distance / width, so horizontal half-angle = atan(1 / (2 * throwRatio * zoom))
             // Vertical half-angle = horizontal half-angle / aspectRatio
@@ -4139,13 +4579,13 @@
             const farPlane = projector.farPlane || 100;
             
             const projCam = new THREE.PerspectiveCamera(verticalFov, projector.aspectRatio, nearPlane, farPlane);
-            projCam.position.set(projector.position.x, projector.position.y, projector.position.z);
+            projCam.position.set(worldTransform.position.x, worldTransform.position.y, worldTransform.position.z);
             
             // User rotation euler (this is what the mesh uses, +Z is forward)
             const userEuler = new THREE.Euler(
-                THREE.MathUtils.degToRad(projector.rotation.x),
-                THREE.MathUtils.degToRad(projector.rotation.y),
-                THREE.MathUtils.degToRad(projector.rotation.z),
+                THREE.MathUtils.degToRad(worldTransform.rotation.x),
+                THREE.MathUtils.degToRad(worldTransform.rotation.y),
+                THREE.MathUtils.degToRad(worldTransform.rotation.z),
                 'YXZ'
             );
             const userQuat = new THREE.Quaternion().setFromEuler(userEuler);
@@ -4177,7 +4617,7 @@
             
             projectorMatrixData.set(projector.id, {
                 matrix: vpMatrix,
-                position: new THREE.Vector3(projector.position.x, projector.position.y, projector.position.z),
+                position: new THREE.Vector3(worldTransform.position.x, worldTransform.position.y, worldTransform.position.z),
                 rotationMatrixInverse: rotMatrixInverse,
                 lumens: effectiveLumens,
                 throwRatio: projector.throwRatio * projector.zoom,
@@ -4193,15 +4633,18 @@
         }
         
         function updateProjectorMesh(projector) {
-            const mesh = projectorGroup.children.find(c => c.userData.projectorId === projector.id);
+            // Get world transform (respects parent hierarchy)
+            const worldTransform = getWorldTransform(projector);
+            
+            const mesh = projectorGroup.children.find(c => c.userData.projectorId === projector.id && c.userData.isMainProjector);
             if (mesh) {
-                mesh.position.set(projector.position.x, projector.position.y, projector.position.z);
+                mesh.position.set(worldTransform.position.x, worldTransform.position.y, worldTransform.position.z);
                 // Use YXZ order to match updateProjectorMatrix
                 mesh.rotation.order = 'YXZ';
                 mesh.rotation.set(
-                    THREE.MathUtils.degToRad(projector.rotation.x),
-                    THREE.MathUtils.degToRad(projector.rotation.y),
-                    THREE.MathUtils.degToRad(projector.rotation.z)
+                    THREE.MathUtils.degToRad(worldTransform.rotation.x),
+                    THREE.MathUtils.degToRad(worldTransform.rotation.y),
+                    THREE.MathUtils.degToRad(worldTransform.rotation.z)
                 );
                 
                 const oldF = mesh.children.find(c => c.userData.isFrustum);
@@ -4215,6 +4658,19 @@
                 }
                 mesh.add(createFrustum(projector));
             }
+            
+            // Update array instances
+            updateProjectorMeshWithArray(projector);
+            
+            // Also update children of this projector
+            const children = getChildren(projector.id);
+            children.forEach(child => {
+                if (child.type === 'projector') {
+                    updateProjectorMesh(child.obj);
+                } else if (child.type === 'surface') {
+                    updateSurfaceMesh(child.obj);
+                }
+            });
             
             updateProjectorMatrix(projector);
             updateAllSurfaceMaterials();
@@ -4238,11 +4694,25 @@
         }
         
         function removeProjector(id) {
+            // Orphan any children (projectors or surfaces that have this as parent)
+            state.projectors.forEach(p => {
+                if (p.parentId === id) {
+                    p.parentId = null;
+                    updateProjectorMesh(p);
+                }
+            });
+            state.surfaces.forEach(s => {
+                if (s.parentId === id) {
+                    s.parentId = null;
+                    updateSurfaceMesh(s);
+                }
+            });
+            
             state.projectors = state.projectors.filter(p => p.id !== id);
             
-            // Clean up mesh and all its children
-            const mesh = projectorGroup.children.find(c => c.userData.projectorId === id);
-            if (mesh) {
+            // Clean up main mesh and array instance meshes
+            const meshesToRemove = projectorGroup.children.filter(c => c.userData.projectorId === id);
+            meshesToRemove.forEach(mesh => {
                 mesh.traverse(child => {
                     if (child.geometry) child.geometry.dispose();
                     if (child.material) {
@@ -4254,7 +4724,7 @@
                     }
                 });
                 projectorGroup.remove(mesh);
-            }
+            });
             
             // Clean up shadow map render target
             const shadowData = shadowMaps.get(id);
@@ -4292,6 +4762,7 @@
             
             updateAllSurfaceMaterials();
             updateProjectorList();
+            updateSurfaceList();
             updateStatus();
             calculateCoverage();
         }
@@ -4541,15 +5012,18 @@
                 }
                 const effectiveLm = p.lumens * ((p.brightness || 100) / 100) * (p.stack || 1);
                 const stackInfo = (p.stack || 1) > 1 ? ` (×${p.stack})` : '';
+                const arrayInfo = p.array && p.array.count > 1 ? ` [Array: ${p.array.count}]` : '';
+                const parentInfo = p.parentId ? ' ⊂' : '';  // Symbol to indicate it has a parent
                 return `
-                <div class="object-item ${state.selectedType === 'projector' && state.selectedObject === p.id ? 'selected' : ''}" onclick="selectObject('projector', ${p.id})">
+                <div class="object-item ${state.selectedType === 'projector' && state.selectedObject === p.id ? 'selected' : ''}" onclick="selectObject('projector', ${p.id})" style="${p.parentId ? 'padding-left: 28px;' : ''}">
                     <div class="object-icon projector"><svg viewBox="0 0 24 24"><path d="M21 3H3c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h5v2h8v-2h5c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 14H3V5h18v12z"/></svg></div>
                     <div class="object-info">
-                        <div class="object-name">${p.name}${stackInfo}</div>
+                        <div class="object-name">${p.name}${stackInfo}${arrayInfo}${parentInfo}</div>
                         <div class="object-type">${(effectiveLm/1000).toFixed(0)}K lm${textureInfo}</div>
                     </div>
                     <div class="object-actions">
-                        <button class="icon-btn" onclick="event.stopPropagation(); duplicateProjector(${p.id})"><svg viewBox="0 0 24 24"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg></button>
+                        <!--<button class="icon-btn" onclick="event.stopPropagation(); duplicateProjector(${p.id})"><svg viewBox="0 0 24 24"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg></button>
+                        -->
                         <button class="icon-btn danger" onclick="event.stopPropagation(); removeProjector(${p.id})"><svg viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg></button>
                     </div>
                 </div>
@@ -4595,7 +5069,8 @@
                 dimensions: { width: 8, height: 4.5 },
                 curvature: 30,
                 color: state.sceneSettings.defaultSurfaceColor,
-                gain: 1.0
+                gain: 1.0,
+                parentId: null  // Hierarchy - parent ID for nested transforms
             };
             
             state.surfaces.push(surface);
@@ -4636,7 +5111,8 @@
                         color: state.sceneSettings.defaultSurfaceColor,
                         gain: 1.0,
                         scale: 1.0,
-                        objData: e.target.result // Store OBJ data for export
+                        objData: e.target.result, // Store OBJ data for export
+                        parentId: null  // Hierarchy - parent ID for nested transforms
                     };
                     
                     state.surfaces.push(surface);
@@ -4732,13 +5208,16 @@
             mesh.userData.surface = surface;
             mesh.userData.isCustomOBJ = true;
             
-            mesh.position.set(surface.position.x, surface.position.y, surface.position.z);
+            // Get world transform (respects parent hierarchy)
+            const worldTransform = getWorldTransform(surface);
+            
+            mesh.position.set(worldTransform.position.x, worldTransform.position.y, worldTransform.position.z);
             // Use YXZ order consistently to avoid gimbal lock
             mesh.rotation.order = 'YXZ';
             mesh.rotation.set(
-                THREE.MathUtils.degToRad(surface.rotation.x),
-                THREE.MathUtils.degToRad(surface.rotation.y),
-                THREE.MathUtils.degToRad(surface.rotation.z)
+                THREE.MathUtils.degToRad(worldTransform.rotation.x),
+                THREE.MathUtils.degToRad(worldTransform.rotation.y),
+                THREE.MathUtils.degToRad(worldTransform.rotation.z)
             );
             
             // Apply scale
@@ -4753,111 +5232,89 @@
             const defaultShadowTex = new THREE.DataTexture(new Uint8Array([255, 255, 255, 255]), 1, 1, THREE.RGBAFormat);
             defaultShadowTex.needsUpdate = true;
             
-            const uniforms = {
-                // Projector textures (supports up to 8 projectors)
-                projTex0: { value: defaultTex }, projTex1: { value: defaultTex },
-                projTex2: { value: defaultTex }, projTex3: { value: defaultTex },
-                projTex4: { value: defaultTex }, projTex5: { value: defaultTex },
-                projTex6: { value: defaultTex }, projTex7: { value: defaultTex },
-                shadowMap0: { value: defaultShadowTex }, shadowMap1: { value: defaultShadowTex },
-                shadowMap2: { value: defaultShadowTex }, shadowMap3: { value: defaultShadowTex },
-                shadowMap4: { value: defaultShadowTex }, shadowMap5: { value: defaultShadowTex },
-                shadowMap6: { value: defaultShadowTex }, shadowMap7: { value: defaultShadowTex },
-                projMat0: { value: new THREE.Matrix4() }, projMat1: { value: new THREE.Matrix4() },
-                projMat2: { value: new THREE.Matrix4() }, projMat3: { value: new THREE.Matrix4() },
-                projMat4: { value: new THREE.Matrix4() }, projMat5: { value: new THREE.Matrix4() },
-                projMat6: { value: new THREE.Matrix4() }, projMat7: { value: new THREE.Matrix4() },
-                // Shadow camera matrices (may differ from projMat for fisheye)
-                shadowMat0: { value: new THREE.Matrix4() }, shadowMat1: { value: new THREE.Matrix4() },
-                shadowMat2: { value: new THREE.Matrix4() }, shadowMat3: { value: new THREE.Matrix4() },
-                shadowMat4: { value: new THREE.Matrix4() }, shadowMat5: { value: new THREE.Matrix4() },
-                shadowMat6: { value: new THREE.Matrix4() }, shadowMat7: { value: new THREE.Matrix4() },
-                projPos0: { value: new THREE.Vector3() }, projPos1: { value: new THREE.Vector3() },
-                projPos2: { value: new THREE.Vector3() }, projPos3: { value: new THREE.Vector3() },
-                projPos4: { value: new THREE.Vector3() }, projPos5: { value: new THREE.Vector3() },
-                projPos6: { value: new THREE.Vector3() }, projPos7: { value: new THREE.Vector3() },
-                // Projector rotation matrices (inverse) for fisheye calculation
-                projRotInv0: { value: new THREE.Matrix3() }, projRotInv1: { value: new THREE.Matrix3() },
-                projRotInv2: { value: new THREE.Matrix3() }, projRotInv3: { value: new THREE.Matrix3() },
-                projRotInv4: { value: new THREE.Matrix3() }, projRotInv5: { value: new THREE.Matrix3() },
-                projRotInv6: { value: new THREE.Matrix3() }, projRotInv7: { value: new THREE.Matrix3() },
-                projLumens0: { value: 0 }, projLumens1: { value: 0 },
-                projLumens2: { value: 0 }, projLumens3: { value: 0 },
-                projLumens4: { value: 0 }, projLumens5: { value: 0 },
-                projLumens6: { value: 0 }, projLumens7: { value: 0 },
-                projThrow0: { value: 1.5 }, projThrow1: { value: 1.5 },
-                projThrow2: { value: 1.5 }, projThrow3: { value: 1.5 },
-                projThrow4: { value: 1.5 }, projThrow5: { value: 1.5 },
-                projThrow6: { value: 1.5 }, projThrow7: { value: 1.5 },
-                projNear0: { value: 0.1 }, projNear1: { value: 0.1 },
-                projNear2: { value: 0.1 }, projNear3: { value: 0.1 },
-                projNear4: { value: 0.1 }, projNear5: { value: 0.1 },
-                projNear6: { value: 0.1 }, projNear7: { value: 0.1 },
-                projFar0: { value: 100 }, projFar1: { value: 100 },
-                projFar2: { value: 100 }, projFar3: { value: 100 },
-                projFar4: { value: 100 }, projFar5: { value: 100 },
-                projFar6: { value: 100 }, projFar7: { value: 100 },
-                texOffset0: { value: new THREE.Vector2(0, 0) }, texOffset1: { value: new THREE.Vector2(0, 0) },
-                texOffset2: { value: new THREE.Vector2(0, 0) }, texOffset3: { value: new THREE.Vector2(0, 0) },
-                texOffset4: { value: new THREE.Vector2(0, 0) }, texOffset5: { value: new THREE.Vector2(0, 0) },
-                texOffset6: { value: new THREE.Vector2(0, 0) }, texOffset7: { value: new THREE.Vector2(0, 0) },
-                // Lens uniforms: x=type, y=k1, z=k2, w=k3
-                lensParams0: { value: new THREE.Vector4(0, 0, 0, 0) },
-                lensParams1: { value: new THREE.Vector4(0, 0, 0, 0) },
-                lensParams2: { value: new THREE.Vector4(0, 0, 0, 0) },
-                lensParams3: { value: new THREE.Vector4(0, 0, 0, 0) },
-                lensParams4: { value: new THREE.Vector4(0, 0, 0, 0) },
-                lensParams5: { value: new THREE.Vector4(0, 0, 0, 0) },
-                lensParams6: { value: new THREE.Vector4(0, 0, 0, 0) },
-                lensParams7: { value: new THREE.Vector4(0, 0, 0, 0) },
-                // Lens uniforms: x=p1, y=p2, z=cx, w=cy
-                lensParams2_0: { value: new THREE.Vector4(0, 0, 0, 0) },
-                lensParams2_1: { value: new THREE.Vector4(0, 0, 0, 0) },
-                lensParams2_2: { value: new THREE.Vector4(0, 0, 0, 0) },
-                lensParams2_3: { value: new THREE.Vector4(0, 0, 0, 0) },
-                lensParams2_4: { value: new THREE.Vector4(0, 0, 0, 0) },
-                lensParams2_5: { value: new THREE.Vector4(0, 0, 0, 0) },
-                lensParams2_6: { value: new THREE.Vector4(0, 0, 0, 0) },
-                lensParams2_7: { value: new THREE.Vector4(0, 0, 0, 0) },
-                // Fisheye FOV in degrees (180 = full hemisphere)
-                fisheyeFov0: { value: 180 }, fisheyeFov1: { value: 180 },
-                fisheyeFov2: { value: 180 }, fisheyeFov3: { value: 180 },
-                fisheyeFov4: { value: 180 }, fisheyeFov5: { value: 180 },
-                fisheyeFov6: { value: 180 }, fisheyeFov7: { value: 180 },
-                numProjectors: { value: 0 },
-                showCoverage: { value: state.displayOptions.coverage },
-                showOverlap: { value: state.displayOptions.overlap },
-                showHeatmap: { value: state.displayOptions.heatmap },
-                debugLensType: { value: false },  // Debug mode
-                surfaceGain: { value: surface.gain },
-                baseColor: { value: new THREE.Color(surface.color) },
-                heatmapMax: { value: state.heatmapMax },
-                ambientIntensity: { value: state.sceneSettings.ambientLight / 100 }
-            };
+            // Build uniforms for 20 projector slots
+            const uniforms = {};
+            for (let i = 0; i < 8; i++) {
+                uniforms[`projTex${i}`] = { value: defaultTex };
+                uniforms[`shadowMap${i}`] = { value: defaultShadowTex };
+                uniforms[`projMat${i}`] = { value: new THREE.Matrix4() };
+                uniforms[`shadowMat${i}`] = { value: new THREE.Matrix4() };
+                uniforms[`projPos${i}`] = { value: new THREE.Vector3() };
+                uniforms[`projRotInv${i}`] = { value: new THREE.Matrix3() };
+                uniforms[`projLumens${i}`] = { value: 0 };
+                uniforms[`projThrow${i}`] = { value: 1.5 };
+                uniforms[`projNear${i}`] = { value: 0.1 };
+                uniforms[`projFar${i}`] = { value: 100 };
+                uniforms[`texOffset${i}`] = { value: new THREE.Vector2(0, 0) };
+                uniforms[`lensParams${i}`] = { value: new THREE.Vector4(0, 0, 0, 0) };
+                uniforms[`lensParams2_${i}`] = { value: new THREE.Vector4(0, 0, 0, 0) };
+                uniforms[`fisheyeFov${i}`] = { value: 180 };
+            }
             
-            const enabled = state.projectors.filter(p => p.enabled);
-            uniforms.numProjectors.value = Math.min(enabled.length, 8);
+            uniforms.numProjectors = { value: 0 };
+            uniforms.showCoverage = { value: state.displayOptions.coverage };
+            uniforms.showOverlap = { value: state.displayOptions.overlap };
+            uniforms.showHeatmap = { value: state.displayOptions.heatmap };
+            uniforms.debugLensType = { value: false };
+            uniforms.surfaceGain = { value: surface.gain };
+            uniforms.baseColor = { value: new THREE.Color(surface.color) };
+            uniforms.heatmapMax = { value: state.heatmapMax };
+            uniforms.ambientIntensity = { value: state.sceneSettings.ambientLight / 100 };
             
-            enabled.slice(0, 8).forEach((proj, i) => {
-                const data = projectorMatrixData.get(proj.id);
+            // Get all virtual projector slots (includes array instances)
+            const slots = getAllProjectorSlots();
+            uniforms.numProjectors.value = Math.min(slots.length, 20);
+            
+            slots.slice(0, 20).forEach((slot, i) => {
+                const proj = slot.projector;
+                const worldTransform = slot.worldTransform;
+                
+                // Calculate projection matrix for this slot
+                const verticalFov = 2 * Math.atan(1 / (2 * proj.throwRatio * proj.zoom * proj.aspectRatio)) * (180 / Math.PI);
+                const nearPlane = proj.nearPlane || 0.1;
+                const farPlane = proj.farPlane || 100;
+                
+                const projCam = new THREE.PerspectiveCamera(verticalFov, proj.aspectRatio, nearPlane, farPlane);
+                projCam.position.set(worldTransform.position.x, worldTransform.position.y, worldTransform.position.z);
+                
+                const userEuler = new THREE.Euler(
+                    THREE.MathUtils.degToRad(worldTransform.rotation.x),
+                    THREE.MathUtils.degToRad(worldTransform.rotation.y),
+                    THREE.MathUtils.degToRad(worldTransform.rotation.z),
+                    'YXZ'
+                );
+                const userQuat = new THREE.Quaternion().setFromEuler(userEuler);
+                const flipQuat = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI);
+                const finalQuat = new THREE.Quaternion().multiplyQuaternions(userQuat, flipQuat);
+                projCam.quaternion.copy(finalQuat);
+                projCam.updateMatrixWorld(true);
+                projCam.updateProjectionMatrix();
+                
+                const vpMatrix = new THREE.Matrix4();
+                vpMatrix.multiplyMatrices(projCam.projectionMatrix, projCam.matrixWorldInverse);
+                
+                const rotMatrix = new THREE.Matrix4().makeRotationFromQuaternion(userQuat);
+                const rotMatrix3 = new THREE.Matrix3().setFromMatrix4(rotMatrix);
+                const rotMatrixInverse = rotMatrix3.clone().transpose();
+                
+                const effectiveLumens = proj.lumens * ((proj.brightness || 100) / 100) * (proj.stack || 1);
+                
+                uniforms[`projMat${i}`].value.copy(vpMatrix);
+                uniforms[`projPos${i}`].value.set(worldTransform.position.x, worldTransform.position.y, worldTransform.position.z);
+                uniforms[`projRotInv${i}`].value.copy(rotMatrixInverse);
+                uniforms[`projLumens${i}`].value = effectiveLumens;
+                uniforms[`projThrow${i}`].value = proj.throwRatio * proj.zoom;
+                uniforms[`projNear${i}`].value = nearPlane;
+                uniforms[`projFar${i}`].value = farPlane;
+                
+                // Texture - use parent projector's texture
                 const tex = projectionTextures.get(proj.id);
-                const shadow = shadowMaps.get(proj.id);
-                if (data) {
-                    uniforms[`projMat${i}`].value.copy(data.matrix);
-                    uniforms[`projPos${i}`].value.copy(data.position);
-                    uniforms[`projLumens${i}`].value = data.lumens;
-                    uniforms[`projThrow${i}`].value = data.throwRatio;
-                    uniforms[`projNear${i}`].value = data.nearPlane || 0.1;
-                    uniforms[`projFar${i}`].value = data.farPlane || 100;
-                    // Copy rotation matrix inverse for fisheye calculation
-                    if (data.rotationMatrixInverse) {
-                        uniforms[`projRotInv${i}`].value.copy(data.rotationMatrixInverse);
-                    }
-                }
                 if (tex) uniforms[`projTex${i}`].value = tex;
+                
+                // Shadow map - use parent projector's shadow (array instances share shadows)
+                const shadow = shadowMaps.get(proj.id);
                 if (shadow) {
                     uniforms[`shadowMap${i}`].value = shadow.renderTarget.texture;
-                    // Compute and set shadow camera's view-projection matrix
                     if (shadow.camera) {
                         const shadowVPMatrix = new THREE.Matrix4();
                         shadowVPMatrix.multiplyMatrices(shadow.camera.projectionMatrix, shadow.camera.matrixWorldInverse);
@@ -4865,7 +5322,7 @@
                     }
                 }
                 
-                // Set lens parameters
+                // Lens parameters
                 const lens = proj.lens || { type: 'rectilinear', k1: 0, k2: 0, k3: 0, p1: 0, p2: 0, cx: 0, cy: 0 };
                 const lensTypeMap = {
                     'rectilinear': 0,
@@ -4875,23 +5332,11 @@
                     'fisheye_orthographic': 4
                 };
                 const lensTypeValue = lensTypeMap[lens.type] !== undefined ? lensTypeMap[lens.type] : 0;
-                uniforms[`lensParams${i}`].value.set(
-                    lensTypeValue,
-                    lens.k1 || 0,
-                    lens.k2 || 0,
-                    lens.k3 || 0
-                );
-                uniforms[`lensParams2_${i}`].value.set(
-                    lens.p1 || 0,
-                    lens.p2 || 0,
-                    lens.cx || 0,
-                    lens.cy || 0
-                );
-                
-                // Set fisheye FOV (default 180°)
+                uniforms[`lensParams${i}`].value.set(lensTypeValue, lens.k1 || 0, lens.k2 || 0, lens.k3 || 0);
+                uniforms[`lensParams2_${i}`].value.set(lens.p1 || 0, lens.p2 || 0, lens.cx || 0, lens.cy || 0);
                 uniforms[`fisheyeFov${i}`].value = lens.fisheyeFov || 180;
                 
-                // Apply pattern scroll offset only for projectors without custom textures
+                // Texture offset
                 if (!proj.customTextureUrl && patternScrollState.enabled) {
                     uniforms[`texOffset${i}`].value.set(patternScrollState.offset.x, patternScrollState.offset.y);
                 } else {
@@ -4907,7 +5352,30 @@
             });
         }
         
+        // Get all projector slots including array instances for shader
+        function getAllProjectorSlots() {
+            const slots = [];
+            const enabled = state.projectors.filter(p => p.enabled);
+            
+            enabled.forEach(proj => {
+                const instances = getProjectorArrayInstances(proj);
+                instances.forEach(instance => {
+                    const worldTransform = getArrayInstanceWorldTransform(proj, instance);
+                    slots.push({
+                        projector: proj,
+                        instance: instance,
+                        worldTransform: worldTransform
+                    });
+                });
+            });
+            
+            return slots;
+        }
+        
         function createSurfaceMesh(surface) {
+            // Get world transform (respects parent hierarchy)
+            const worldTransform = getWorldTransform(surface);
+            
             // Skip custom OBJ surfaces - they're handled by createOBJSurfaceMesh
             if (surface.type === 'custom') {
                 // Re-parse OBJ data if available
@@ -4945,13 +5413,14 @@
             const mesh = new THREE.Mesh(geom, createSurfaceMaterial(surface));
             mesh.userData.surfaceId = surface.id;
             mesh.userData.surface = surface; // Store reference for coverage calculation
-            mesh.position.set(surface.position.x, surface.position.y, surface.position.z);
+            // Use world transform
+            mesh.position.set(worldTransform.position.x, worldTransform.position.y, worldTransform.position.z);
             // Use YXZ order consistently to avoid gimbal lock
             mesh.rotation.order = 'YXZ';
             mesh.rotation.set(
-                THREE.MathUtils.degToRad(surface.rotation.x),
-                THREE.MathUtils.degToRad(surface.rotation.y),
-                THREE.MathUtils.degToRad(surface.rotation.z)
+                THREE.MathUtils.degToRad(worldTransform.rotation.x),
+                THREE.MathUtils.degToRad(worldTransform.rotation.y),
+                THREE.MathUtils.degToRad(worldTransform.rotation.z)
             );
             surfaceGroup.add(mesh);
         }
@@ -4964,6 +5433,17 @@
                 surfaceGroup.remove(mesh);
                 createSurfaceMesh(surface);
             }
+            
+            // Also update children of this surface
+            const children = getChildren(surface.id);
+            children.forEach(child => {
+                if (child.type === 'projector') {
+                    updateProjectorMesh(child.obj);
+                } else if (child.type === 'surface') {
+                    updateSurfaceMesh(child.obj);
+                }
+            });
+            
             // Re-render shadow maps since surface geometry/position changed
             updateAllSurfaceMaterials();
             calculateCoverage();
@@ -4994,6 +5474,20 @@
         }
         
         function removeSurface(id) {
+            // Orphan any children (projectors or surfaces that have this as parent)
+            state.projectors.forEach(p => {
+                if (p.parentId === id) {
+                    p.parentId = null;
+                    updateProjectorMesh(p);
+                }
+            });
+            state.surfaces.forEach(s => {
+                if (s.parentId === id) {
+                    s.parentId = null;
+                    updateSurfaceMesh(s);
+                }
+            });
+            
             state.surfaces = state.surfaces.filter(s => s.id !== id);
             const mesh = surfaceGroup.children.find(c => c.userData.surfaceId === id);
             if (mesh) { mesh.material.dispose(); mesh.geometry.dispose(); surfaceGroup.remove(mesh); }
@@ -5002,7 +5496,7 @@
             }
             // Re-render shadow maps since surface no longer blocks light
             updateAllSurfaceMaterials();
-            updateSurfaceList(); updateStatus(); calculateCoverage();
+            updateProjectorList(); updateSurfaceList(); updateStatus(); calculateCoverage();
         }
         
         function updateSurfaceList() {
@@ -5028,6 +5522,8 @@
                     typeInfo = `${s.dimensions.width.toFixed(1)}m × ${s.dimensions.height.toFixed(1)}m • Gain ${s.gain}`;
                 }
                 
+                const parentInfo = s.parentId ? ' ⊂' : '';  // Symbol to indicate it has a parent
+                
                 let icon;
                 if (s.type === 'custom') {
                     icon = `<svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 17.93c-3.95-.49-7-3.85-7-7.93 0-.62.08-1.21.21-1.79L9 15v1c0 1.1.9 2 2 2v1.93zm6.9-2.54c-.26-.81-1-1.39-1.9-1.39h-1v-3c0-.55-.45-1-1-1H8v-2h2c.55 0 1-.45 1-1V7h2c1.1 0 2-.9 2-2v-.41c2.93 1.19 5 4.06 5 7.41 0 2.08-.8 3.97-2.1 5.39z"/></svg>`;
@@ -5040,10 +5536,10 @@
                 }
                 
                 return `
-                <div class="object-item ${state.selectedType === 'surface' && state.selectedObject === s.id ? 'selected' : ''}" onclick="selectObject('surface', ${s.id})">
+                <div class="object-item ${state.selectedType === 'surface' && state.selectedObject === s.id ? 'selected' : ''}" onclick="selectObject('surface', ${s.id})" style="${s.parentId ? 'padding-left: 28px;' : ''}">
                     <div class="object-icon surface">${icon}</div>
                     <div class="object-info">
-                        <div class="object-name">${s.name}</div>
+                        <div class="object-name">${s.name}${parentInfo}</div>
                         <div class="object-type">${typeInfo}</div>
                     </div>
                     <div class="object-actions">
@@ -5354,6 +5850,22 @@
                     `<option value="${key}" ${p.preset === key ? 'selected' : ''}>${val.name}</option>`
                 ).join('');
                 
+                // Build parent options
+                const parentOptions = getParentOptions('projector', p.id);
+                const parentOptionsHtml = parentOptions.map(opt => 
+                    `<option value="${opt.id || ''}" ${p.parentId === opt.id ? 'selected' : ''}>${opt.name}${opt.type ? ` (${opt.type})` : ''}</option>`
+                ).join('');
+                
+                // Array settings
+                const hasArray = p.array && p.array.count > 1;
+                const arrayCount = p.array?.count || 2;
+                const arraySpacingX = p.array?.spacing?.x || 2;
+                const arraySpacingY = p.array?.spacing?.y || 0;
+                const arraySpacingZ = p.array?.spacing?.z || 0;
+                const arrayRotX = p.array?.rotationOffset?.x || 0;
+                const arrayRotY = p.array?.rotationOffset?.y || 0;
+                const arrayRotZ = p.array?.rotationOffset?.z || 0;
+                
                 panel.innerHTML = `
                     <div class="panel-section"><div class="panel-header"><span class="panel-title">Projector</span></div>
                     <div class="panel-content">
@@ -5361,24 +5873,48 @@
                             <div class="property-group-title">General</div>
                             <div class="property-row"><span class="property-label">Name</span><div class="single-input"><input type="text" value="${p.name}" onchange="updateProjectorProp(${p.id}, 'name', this.value)"></div></div>
                             <div class="property-row"><span class="property-label">Preset</span><div class="single-input"><select onchange="applyPreset(${p.id}, this.value)">${presetOptions}</select></div></div>
+                            <div class="property-row"><span class="property-label">Parent</span><div class="single-input"><select onchange="updateParent(${p.id}, 'projector', this.value || null)">${parentOptionsHtml}</select></div></div>
                         </div>
                         <div class="property-group">
-                            <div class="property-group-title">Position (meters)</div>
+                            <div class="property-group-title">Projector Array</div>
+                            <div class="toggle-row"><span class="toggle-label">Enable Array</span><div class="toggle ${hasArray ? 'active' : ''}" onclick="toggleProjectorArray(${p.id})"></div></div>
+                            ${hasArray ? `
+                            <div class="property-row"><span class="property-label">Count</span><div class="single-input"><input type="number" step="1" min="2" max="20" value="${arrayCount}" onchange="updateArrayProp(${p.id}, 'count', +this.value)" style="width: 60px;"></div></div>
+                            <div class="property-row"><span class="property-label">Spacing (m)</span>
+                                <div class="property-inputs">
+                                    <div class="input-group"><label>X</label><input type="number" step="0.1" value="${arraySpacingX}" onchange="updateArrayProp(${p.id}, 'spacingX', +this.value)"></div>
+                                    <div class="input-group"><label>Y</label><input type="number" step="0.1" value="${arraySpacingY}" onchange="updateArrayProp(${p.id}, 'spacingY', +this.value)"></div>
+                                    <div class="input-group"><label>Z</label><input type="number" step="0.1" value="${arraySpacingZ}" onchange="updateArrayProp(${p.id}, 'spacingZ', +this.value)"></div>
+                                </div>
+                            </div>
+                            <div class="property-row"><span class="property-label">Rot Offset (°)</span>
+                                <div class="property-inputs">
+                                    <div class="input-group"><label>X</label><input type="number" step="1" value="${arrayRotX}" onchange="updateArrayProp(${p.id}, 'rotX', +this.value)"></div>
+                                    <div class="input-group"><label>Y</label><input type="number" step="1" value="${arrayRotY}" onchange="updateArrayProp(${p.id}, 'rotY', +this.value)"></div>
+                                    <div class="input-group"><label>Z</label><input type="number" step="1" value="${arrayRotZ}" onchange="updateArrayProp(${p.id}, 'rotZ', +this.value)"></div>
+                                </div>
+                            </div>
+                            <button class="btn btn-sm btn-primary" style="width: 100%; margin-top: 8px;" onclick="convertArrayToProjectors(${p.id})">Create ${arrayCount} Projectors</button>
+                            <p style="font-size: 10px; color: #666; margin: 4px 0 0 0;">Creates ${arrayCount} individual projectors from array</p>
+                            ` : `<p style="font-size: 10px; color: #666; margin: 4px 0 0 0;">Enable to create evenly-spaced projector copies</p>`}
+                        </div>
+                        <div class="property-group">
+                            <div class="property-group-title">Position (meters)${p.parentId ? ' <span style="color: var(--accent-color); font-size: 9px;">LOCAL</span>' : ''}</div>
                             <div class="property-row"><span class="property-label">Position</span>
                                 <div class="property-inputs">
-                                    <div class="input-group"><label>X</label><input type="number" step="0.1" value="${p.position.x}" onchange="updateProjectorPos(${p.id}, 'x', +this.value)"></div>
-                                    <div class="input-group"><label>Y</label><input type="number" step="0.1" value="${p.position.y}" onchange="updateProjectorPos(${p.id}, 'y', +this.value)"></div>
-                                    <div class="input-group"><label>Z</label><input type="number" step="0.1" value="${p.position.z}" onchange="updateProjectorPos(${p.id}, 'z', +this.value)"></div>
+                                    <div class="input-group"><label>X</label><input type="number" step="0.1" value="${p.position.x.toFixed(2)}" onchange="updateProjectorPos(${p.id}, 'x', +this.value)"></div>
+                                    <div class="input-group"><label>Y</label><input type="number" step="0.1" value="${p.position.y.toFixed(2)}" onchange="updateProjectorPos(${p.id}, 'y', +this.value)"></div>
+                                    <div class="input-group"><label>Z</label><input type="number" step="0.1" value="${p.position.z.toFixed(2)}" onchange="updateProjectorPos(${p.id}, 'z', +this.value)"></div>
                                 </div>
                             </div>
                         </div>
                         <div class="property-group">
-                            <div class="property-group-title">Rotation (degrees)</div>
+                            <div class="property-group-title">Rotation (degrees)${p.parentId ? ' <span style="color: var(--accent-color); font-size: 9px;">LOCAL</span>' : ''}</div>
                             <div class="property-row"><span class="property-label">Rotation</span>
                                 <div class="property-inputs">
-                                    <div class="input-group"><label>X</label><input type="number" step="1" value="${p.rotation.x}" onchange="updateProjectorRot(${p.id}, 'x', +this.value)"></div>
-                                    <div class="input-group"><label>Y</label><input type="number" step="1" value="${p.rotation.y}" onchange="updateProjectorRot(${p.id}, 'y', +this.value)"></div>
-                                    <div class="input-group"><label>Z</label><input type="number" step="1" value="${p.rotation.z}" onchange="updateProjectorRot(${p.id}, 'z', +this.value)"></div>
+                                    <div class="input-group"><label>X</label><input type="number" step="1" value="${p.rotation.x.toFixed(1)}" onchange="updateProjectorRot(${p.id}, 'x', +this.value)"></div>
+                                    <div class="input-group"><label>Y</label><input type="number" step="1" value="${p.rotation.y.toFixed(1)}" onchange="updateProjectorRot(${p.id}, 'y', +this.value)"></div>
+                                    <div class="input-group"><label>Z</label><input type="number" step="1" value="${p.rotation.z.toFixed(1)}" onchange="updateProjectorRot(${p.id}, 'z', +this.value)"></div>
                                 </div>
                             </div>
                         </div>
@@ -5454,6 +5990,12 @@
                 
                 const isCustomOBJ = s.type === 'custom';
                 
+                // Build parent options
+                const parentOptions = getParentOptions('surface', s.id);
+                const parentOptionsHtml = parentOptions.map(opt => 
+                    `<option value="${opt.id || ''}" ${s.parentId === opt.id ? 'selected' : ''}>${opt.name}${opt.type ? ` (${opt.type})` : ''}</option>`
+                ).join('');
+                
                 // Build type selector HTML (hidden for custom OBJ)
                 const typeHtml = isCustomOBJ 
                     ? `<div class="property-row"><span class="property-label">Type</span><div class="single-input"><input type="text" value="Custom OBJ" disabled style="opacity: 0.6"></div></div>`
@@ -5502,24 +6044,25 @@
                             <div class="property-group-title">General</div>
                             <div class="property-row"><span class="property-label">Name</span><div class="single-input"><input type="text" value="${s.name}" onchange="updateSurfaceProp(${s.id}, 'name', this.value)"></div></div>
                             ${typeHtml}
+                            <div class="property-row"><span class="property-label">Parent</span><div class="single-input"><select onchange="updateParent(${s.id}, 'surface', this.value || null)">${parentOptionsHtml}</select></div></div>
                         </div>
                         <div class="property-group">
-                            <div class="property-group-title">Position (meters)</div>
+                            <div class="property-group-title">Position (meters)${s.parentId ? ' <span style="color: var(--accent-color); font-size: 9px;">LOCAL</span>' : ''}</div>
                             <div class="property-row"><span class="property-label">Position</span>
                                 <div class="property-inputs">
-                                    <div class="input-group"><label>X</label><input type="number" step="0.1" value="${s.position.x}" onchange="updateSurfacePos(${s.id}, 'x', +this.value)"></div>
-                                    <div class="input-group"><label>Y</label><input type="number" step="0.1" value="${s.position.y}" onchange="updateSurfacePos(${s.id}, 'y', +this.value)"></div>
-                                    <div class="input-group"><label>Z</label><input type="number" step="0.1" value="${s.position.z}" onchange="updateSurfacePos(${s.id}, 'z', +this.value)"></div>
+                                    <div class="input-group"><label>X</label><input type="number" step="0.1" value="${s.position.x.toFixed(2)}" onchange="updateSurfacePos(${s.id}, 'x', +this.value)"></div>
+                                    <div class="input-group"><label>Y</label><input type="number" step="0.1" value="${s.position.y.toFixed(2)}" onchange="updateSurfacePos(${s.id}, 'y', +this.value)"></div>
+                                    <div class="input-group"><label>Z</label><input type="number" step="0.1" value="${s.position.z.toFixed(2)}" onchange="updateSurfacePos(${s.id}, 'z', +this.value)"></div>
                                 </div>
                             </div>
                         </div>
                         <div class="property-group">
-                            <div class="property-group-title">Rotation (degrees)</div>
+                            <div class="property-group-title">Rotation (degrees)${s.parentId ? ' <span style="color: var(--accent-color); font-size: 9px;">LOCAL</span>' : ''}</div>
                             <div class="property-row"><span class="property-label">Rotation</span>
                                 <div class="property-inputs">
-                                    <div class="input-group"><label>X</label><input type="number" step="1" value="${s.rotation.x}" onchange="updateSurfaceRot(${s.id}, 'x', +this.value)"></div>
-                                    <div class="input-group"><label>Y</label><input type="number" step="1" value="${s.rotation.y}" onchange="updateSurfaceRot(${s.id}, 'y', +this.value)"></div>
-                                    <div class="input-group"><label>Z</label><input type="number" step="1" value="${s.rotation.z}" onchange="updateSurfaceRot(${s.id}, 'z', +this.value)"></div>
+                                    <div class="input-group"><label>X</label><input type="number" step="1" value="${s.rotation.x.toFixed(1)}" onchange="updateSurfaceRot(${s.id}, 'x', +this.value)"></div>
+                                    <div class="input-group"><label>Y</label><input type="number" step="1" value="${s.rotation.y.toFixed(1)}" onchange="updateSurfaceRot(${s.id}, 'y', +this.value)"></div>
+                                    <div class="input-group"><label>Z</label><input type="number" step="1" value="${s.rotation.z.toFixed(1)}" onchange="updateSurfaceRot(${s.id}, 'z', +this.value)"></div>
                                 </div>
                             </div>
                         </div>
@@ -5568,6 +6111,132 @@
                 saveStateForUndo(`Rotate ${p.name} (panel)`);
                 p.rotation[axis] = val;
                 updateProjectorMesh(p);
+            }
+        }
+        
+        // Update parent for projector or surface - preserves world position
+        function updateParent(id, type, parentId) {
+            const obj = type === 'projector' 
+                ? state.projectors.find(x => x.id === id)
+                : state.surfaces.find(x => x.id === id);
+            
+            if (!obj) return;
+            
+            // Convert empty string to null
+            const newParentId = parentId === '' ? null : (typeof parentId === 'string' ? parseInt(parentId) : parentId);
+            
+            // Get current world transform before changing parent
+            const currentWorldTransform = getWorldTransform(obj);
+            
+            // Set new parent
+            obj.parentId = newParentId;
+            
+            // Calculate local transform that preserves world position
+            if (newParentId) {
+                const parent = getObjectById(newParentId);
+                if (parent) {
+                    const parentWorld = getWorldTransform(parent.obj);
+                    const localTransform = worldToLocalTransform(currentWorldTransform, parentWorld);
+                    obj.position = localTransform.position;
+                    obj.rotation = localTransform.rotation;
+                }
+            } else {
+                // No parent - local = world
+                obj.position = { ...currentWorldTransform.position };
+                obj.rotation = { ...currentWorldTransform.rotation };
+            }
+            
+            // Update mesh with new world transform
+            if (type === 'projector') {
+                updateProjectorMesh(obj);
+            } else {
+                updateSurfaceMesh(obj);
+            }
+            
+            updateProjectorList();
+            updateSurfaceList();
+            updatePropertiesPanel();
+        }
+        
+        // Convert world transform to local transform given parent's world transform
+        function worldToLocalTransform(worldTransform, parentWorld) {
+            // Create parent inverse transform
+            const parentPos = new THREE.Vector3(parentWorld.position.x, parentWorld.position.y, parentWorld.position.z);
+            const parentEuler = new THREE.Euler(
+                THREE.MathUtils.degToRad(parentWorld.rotation.x),
+                THREE.MathUtils.degToRad(parentWorld.rotation.y),
+                THREE.MathUtils.degToRad(parentWorld.rotation.z),
+                'YXZ'
+            );
+            const parentQuat = new THREE.Quaternion().setFromEuler(parentEuler);
+            const parentQuatInverse = parentQuat.clone().invert();
+            
+            // Calculate local position: inverse rotate (worldPos - parentPos)
+            const worldPos = new THREE.Vector3(worldTransform.position.x, worldTransform.position.y, worldTransform.position.z);
+            const localPos = worldPos.clone().sub(parentPos).applyQuaternion(parentQuatInverse);
+            
+            // Calculate local rotation: inverse(parentRot) * worldRot
+            const worldEuler = new THREE.Euler(
+                THREE.MathUtils.degToRad(worldTransform.rotation.x),
+                THREE.MathUtils.degToRad(worldTransform.rotation.y),
+                THREE.MathUtils.degToRad(worldTransform.rotation.z),
+                'YXZ'
+            );
+            const worldQuat = new THREE.Quaternion().setFromEuler(worldEuler);
+            const localQuat = parentQuatInverse.clone().multiply(worldQuat);
+            const localEuler = new THREE.Euler().setFromQuaternion(localQuat, 'YXZ');
+            
+            return {
+                position: { x: localPos.x, y: localPos.y, z: localPos.z },
+                rotation: {
+                    x: THREE.MathUtils.radToDeg(localEuler.x),
+                    y: THREE.MathUtils.radToDeg(localEuler.y),
+                    z: THREE.MathUtils.radToDeg(localEuler.z)
+                }
+            };
+        }
+        
+        // Toggle projector array mode
+        function toggleProjectorArray(id) {
+            const p = state.projectors.find(x => x.id === id);
+            if (p) {
+                if (p.array) {
+                    // Disable array
+                    p.array = null;
+                    updateProjectorMeshWithArray(p);
+                } else {
+                    // Enable array with defaults
+                    p.array = {
+                        count: 3,
+                        spacing: { x: 2, y: 0, z: 0 },
+                        rotationOffset: { x: 0, y: 0, z: 0 }
+                    };
+                    updateProjectorMeshWithArray(p);
+                }
+                updateAllSurfaceMaterials();
+                updatePropertiesPanel();
+            }
+        }
+        
+        // Update array properties
+        function updateArrayProp(id, prop, val) {
+            const p = state.projectors.find(x => x.id === id);
+            if (p && p.array) {
+                if (prop === 'count') {
+                    p.array.count = Math.max(2, Math.min(20, val));
+                } else if (prop.startsWith('spacing')) {
+                    const axis = prop.replace('spacing', '').toLowerCase();
+                    if (!p.array.spacing) p.array.spacing = { x: 0, y: 0, z: 0 };
+                    p.array.spacing[axis] = val;
+                } else if (prop.startsWith('rot')) {
+                    const axis = prop.replace('rot', '').toLowerCase();
+                    if (!p.array.rotationOffset) p.array.rotationOffset = { x: 0, y: 0, z: 0 };
+                    p.array.rotationOffset[axis] = val;
+                }
+                
+                updateProjectorMeshWithArray(p);
+                updateAllSurfaceMaterials();
+                updatePropertiesPanel();
             }
         }
         
@@ -6325,65 +6994,78 @@
                 'Projector_UUID'
             ];
             
-            const rows = state.projectors.map(p => {
-                const metrics = calculateProjectorMetrics(p);
-                const resParts = p.resolution.split('×');
-                const resX = parseInt(resParts[0]) || 1920;
-                const resY = parseInt(resParts[1]) || 1080;
+            const rows = [];
+            
+            state.projectors.forEach(p => {
+                // Get all instances (handles arrays)
+                const instances = getProjectorArrayInstances(p);
                 
-                // Calculate target point in Three.js space (project forward from projector)
-                // In our system, +Z is forward (projector optical axis)
-                const targetDist = p.frustumDistance || 20;
-                
-                // Use Euler to get forward direction, consistent with rest of codebase
-                const euler = new THREE.Euler(
-                    THREE.MathUtils.degToRad(p.rotation.x),
-                    THREE.MathUtils.degToRad(p.rotation.y),
-                    THREE.MathUtils.degToRad(p.rotation.z),
-                    'YXZ'
-                );
-                const forward = new THREE.Vector3(0, 0, 1).applyEuler(euler);
-                
-                const targetThreeJS = {
-                    x: p.position.x + forward.x * targetDist,
-                    y: p.position.y + forward.y * targetDist,
-                    z: p.position.z + forward.z * targetDist
-                };
-                
-                // Transform Three.js coordinates to disguise coordinates
-                const disguisePos = threeJSPosToDisguise(p.position);
-                const disguiseRot = threeJSRotToDisguise(p.rotation);
-                const disguiseTarget = threeJSPosToDisguise(targetThreeJS);
-                
-                return [
-                    p.name,
-                    p.stack || 1,
-                    resX,
-                    resY,
-                    p.lumens,
-                    p.brightness || 100,
-                    metrics.effectiveLumens,
-                    p.throwRatio,
-                    p.lens?.shiftH || 0,
-                    p.lens?.shiftV || 0,
-                    disguisePos.x.toFixed(3),
-                    disguisePos.y.toFixed(3),
-                    disguisePos.z.toFixed(3),
-                    disguiseRot.pitch.toFixed(8),
-                    disguiseRot.yaw.toFixed(8),
-                    disguiseRot.roll.toFixed(8),
-                    disguiseTarget.x.toFixed(3),
-                    disguiseTarget.y.toFixed(3),
-                    disguiseTarget.z.toFixed(3),
-                    metrics.distance.toFixed(3),
-                    metrics.width.toFixed(3),
-                    metrics.height.toFixed(3),
-                    Math.round(metrics.illuminance),
-                    metrics.dpi.toFixed(2),
-                    'm',
-                    'lux',
-                    p.uuid || generateUUID()
-                ].join(',');
+                instances.forEach((instance, idx) => {
+                    // Get world transform for this instance
+                    const worldTransform = getArrayInstanceWorldTransform(p, instance);
+                    
+                    const metrics = calculateProjectorMetrics(p);
+                    const resParts = p.resolution.split('×');
+                    const resX = parseInt(resParts[0]) || 1920;
+                    const resY = parseInt(resParts[1]) || 1080;
+                    
+                    // Calculate target point using world transform
+                    const targetDist = p.frustumDistance || 20;
+                    
+                    const euler = new THREE.Euler(
+                        THREE.MathUtils.degToRad(worldTransform.rotation.x),
+                        THREE.MathUtils.degToRad(worldTransform.rotation.y),
+                        THREE.MathUtils.degToRad(worldTransform.rotation.z),
+                        'YXZ'
+                    );
+                    const forward = new THREE.Vector3(0, 0, 1).applyEuler(euler);
+                    
+                    const targetThreeJS = {
+                        x: worldTransform.position.x + forward.x * targetDist,
+                        y: worldTransform.position.y + forward.y * targetDist,
+                        z: worldTransform.position.z + forward.z * targetDist
+                    };
+                    
+                    // Transform to disguise coordinates
+                    const disguisePos = threeJSPosToDisguise(worldTransform.position);
+                    const disguiseRot = threeJSRotToDisguise(worldTransform.rotation);
+                    const disguiseTarget = threeJSPosToDisguise(targetThreeJS);
+                    
+                    // Name with array index if applicable
+                    const name = instances.length > 1 ? `${p.name}_${idx + 1}` : p.name;
+                    // UUID - generate unique for array instances
+                    const uuid = instances.length > 1 ? generateUUID() : (p.uuid || generateUUID());
+                    
+                    rows.push([
+                        name,
+                        p.stack || 1,
+                        resX,
+                        resY,
+                        p.lumens,
+                        p.brightness || 100,
+                        metrics.effectiveLumens,
+                        p.throwRatio,
+                        p.lens?.shiftH || 0,
+                        p.lens?.shiftV || 0,
+                        disguisePos.x.toFixed(3),
+                        disguisePos.y.toFixed(3),
+                        disguisePos.z.toFixed(3),
+                        disguiseRot.pitch.toFixed(8),
+                        disguiseRot.yaw.toFixed(8),
+                        disguiseRot.roll.toFixed(8),
+                        disguiseTarget.x.toFixed(3),
+                        disguiseTarget.y.toFixed(3),
+                        disguiseTarget.z.toFixed(3),
+                        metrics.distance.toFixed(3),
+                        metrics.width.toFixed(3),
+                        metrics.height.toFixed(3),
+                        Math.round(metrics.illuminance),
+                        metrics.dpi.toFixed(2),
+                        'm',
+                        'lux',
+                        uuid
+                    ].join(','));
+                });
             });
             
             return [headers.join(','), ...rows].join('\n');
@@ -6798,6 +7480,7 @@
                     color: s.color,
                     gain: s.gain,
                     scale: s.scale || 1.0,
+                    parentId: s.parentId || null,  // Hierarchy parent
                     objData: s.objData || null // Include custom OBJ data
                 }));
             }
@@ -6966,7 +7649,13 @@
                             width: 0.4, height: 0.2, depth: 0.5,
                             offsetX: 0, offsetY: 0, offsetZ: 0
                         },
-                        target: projData.target || null
+                        target: projData.target || null,
+                        parentId: projData.parentId || null,
+                        array: projData.array ? {
+                            count: projData.array.count || 2,
+                            spacing: projData.array.spacing || { x: 2, y: 0, z: 0 },
+                            rotationOffset: projData.array.rotationOffset || { x: 0, y: 0, z: 0 }
+                        } : null
                     };
                     
                     state.projectors.push(projector);
@@ -7012,6 +7701,7 @@
                         color: surfData.color || '#555555',
                         gain: surfData.gain || 1.0,
                         scale: surfData.scale || 1.0,
+                        parentId: surfData.parentId || null,  // Hierarchy parent
                         objData: surfData.objData || null // Preserve custom OBJ data
                     };
                     
