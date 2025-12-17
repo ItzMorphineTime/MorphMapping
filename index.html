@@ -1,10 +1,11 @@
 <!DOCTYPE html>
+<!-- Projection Studio v5.0 - Fixed visualization double-sided rendering, grid visibility, import errors, gizmo sync -->
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta author="Joe Loe">
-    <title>Projection Studio v2.8</title>
+    <title>Projection Studio v4.2</title>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600&family=Outfit:wght@300;400;500;600;700&display=swap');
         
@@ -1735,6 +1736,14 @@
         const SHADOW_MAP_SIZE = 1024;
         let depthMaterial = null;
         
+        // Accumulation system for visualization modes (coverage, overlap, heatmap)
+        let accumulationTarget = null;  // Render target for hit count + luminance
+        let colorTarget = null;         // Render target for color before visualization
+        let compositeScene = null;      // Scene with full-screen quad for compositing
+        let compositeCamera = null;     // Orthographic camera for compositing
+        let compositeMaterial = null;   // Material for composite pass
+        let accumulationMaterials = new Map(); // surfaceId -> accumulation material
+        
         // Keyboard state for WASD controls
         const keys = { w: false, a: false, s: false, d: false, q: false, e: false };
         
@@ -3045,60 +3054,40 @@
         `;
         
         // Fragment shader with shadow mapping for occlusion
+        // Uses 8 unique texture slots (16 texture units) but supports 20 projection slots
+        // Array instances share their parent projector's texture and shadow map
         const projectionFragmentShader = `
-            // Projector textures (supports up to 8 projectors)
+            // 8 texture slots per pass (8 proj + 8 shadow = 16 texture units max)
+            // Multi-pass rendering allows unlimited projectors
             uniform sampler2D projTex0, projTex1, projTex2, projTex3;
             uniform sampler2D projTex4, projTex5, projTex6, projTex7;
             uniform sampler2D shadowMap0, shadowMap1, shadowMap2, shadowMap3;
             uniform sampler2D shadowMap4, shadowMap5, shadowMap6, shadowMap7;
             
-            // Projector matrices
-            uniform mat4 projMat0, projMat1, projMat2, projMat3;
-            uniform mat4 projMat4, projMat5, projMat6, projMat7;
-            // Shadow camera matrices (may differ from projMat for fisheye)
-            uniform mat4 shadowMat0, shadowMat1, shadowMat2, shadowMat3;
-            uniform mat4 shadowMat4, shadowMat5, shadowMat6, shadowMat7;
+            // Per-slot data for this pass (8 slots max per pass)
+            uniform mat4 projMat[8];
+            uniform mat4 shadowMat[8];
+            uniform vec3 projPos[8];
+            uniform mat3 projRotInv[8];
+            uniform float projLumens[8];
+            uniform float projThrow[8];
+            uniform float projNear[8];
+            uniform float projFar[8];
+            uniform vec2 texOffset[8];
+            uniform vec4 lensParams[8];   // x=type, y=k1, z=k2, w=k3
+            uniform vec4 lensParams2[8];  // x=p1, y=p2, z=cx, w=cy
+            uniform float fisheyeFov[8];
             
-            // Projector positions
-            uniform vec3 projPos0, projPos1, projPos2, projPos3;
-            uniform vec3 projPos4, projPos5, projPos6, projPos7;
-            
-            // Projector rotation matrices (inverse) for fisheye calculation
-            uniform mat3 projRotInv0, projRotInv1, projRotInv2, projRotInv3;
-            uniform mat3 projRotInv4, projRotInv5, projRotInv6, projRotInv7;
-            
-            // Projector properties
-            uniform float projLumens0, projLumens1, projLumens2, projLumens3;
-            uniform float projLumens4, projLumens5, projLumens6, projLumens7;
-            uniform float projThrow0, projThrow1, projThrow2, projThrow3;
-            uniform float projThrow4, projThrow5, projThrow6, projThrow7;
-            uniform float projNear0, projNear1, projNear2, projNear3;
-            uniform float projNear4, projNear5, projNear6, projNear7;
-            uniform float projFar0, projFar1, projFar2, projFar3;
-            uniform float projFar4, projFar5, projFar6, projFar7;
-            uniform vec2 texOffset0, texOffset1, texOffset2, texOffset3;
-            uniform vec2 texOffset4, texOffset5, texOffset6, texOffset7;
-            
-            // Lens uniforms: x=type, y=k1, z=k2, w=k3
-            uniform vec4 lensParams0, lensParams1, lensParams2, lensParams3;
-            uniform vec4 lensParams4, lensParams5, lensParams6, lensParams7;
-            // Lens uniforms: x=p1, y=p2, z=cx, w=cy
-            uniform vec4 lensParams2_0, lensParams2_1, lensParams2_2, lensParams2_3;
-            uniform vec4 lensParams2_4, lensParams2_5, lensParams2_6, lensParams2_7;
-            
-            // Fisheye FOV in degrees (half-angle, so 90 = 180° total FOV)
-            uniform float fisheyeFov0, fisheyeFov1, fisheyeFov2, fisheyeFov3;
-            uniform float fisheyeFov4, fisheyeFov5, fisheyeFov6, fisheyeFov7;
-            
-            uniform int numProjectors;
+            uniform int numProjectors;     // Number of projectors in THIS pass (0-8)
+            uniform bool includeAmbient;   // True for pass 0, false for additive passes
             uniform bool showCoverage;
             uniform bool showOverlap;
             uniform bool showHeatmap;
-            uniform bool debugLensType;  // Debug: show lens type as color
+            uniform bool debugLensType;
             uniform float surfaceGain;
             uniform vec3 baseColor;
             uniform float heatmapMax;
-            uniform float ambientIntensity;  // Global ambient light (0-1)
+            uniform float ambientIntensity;
             
             varying vec4 vWorldPosition;
             varying vec3 vWorldNormal;
@@ -3109,256 +3098,197 @@
             #define LENS_FISHEYE_STEREOGRAPHIC 3
             #define LENS_FISHEYE_ORTHOGRAPHIC 4
             
-            // Apply lens distortion (Brown-Conrady model)
             vec2 applyDistortion(vec2 uv, float k1, float k2, float k3, float p1, float p2, float cx, float cy) {
-                // Center UV around principal point
                 vec2 centered = uv - vec2(0.5 + cx * 0.5, 0.5 + cy * 0.5);
                 float r2 = dot(centered, centered);
                 float r4 = r2 * r2;
                 float r6 = r4 * r2;
-                
-                // Radial distortion
                 float radialFactor = 1.0 + k1 * r2 + k2 * r4 + k3 * r6;
-                
-                // Tangential distortion
                 vec2 tangential = vec2(
                     2.0 * p1 * centered.x * centered.y + p2 * (r2 + 2.0 * centered.x * centered.x),
                     p1 * (r2 + 2.0 * centered.y * centered.y) + 2.0 * p2 * centered.x * centered.y
                 );
-                
                 vec2 distorted = centered * radialFactor + tangential;
                 return distorted + vec2(0.5 + cx * 0.5, 0.5 + cy * 0.5);
             }
             
-            // Calculate fisheye UV from 3D direction in projector-local space
-            // localDir: normalized direction from projector to surface point in projector's coordinate system
-            // In projector-local space, +Z is the forward/optical axis direction
             vec2 calculateFisheyeUV(vec3 localDir, int lensType, float cx, float cy) {
-                // Calculate angle from optical axis (+Z in local space)
-                // theta is the angle between the direction and the forward axis
-                float cosTheta = localDir.z;  // dot(localDir, vec3(0,0,1))
+                float cosTheta = localDir.z;
                 float theta = acos(clamp(cosTheta, -1.0, 1.0));
-                
-                // Calculate the direction in the XY plane (perpendicular to optical axis)
                 vec2 xyDir = localDir.xy;
                 float xyLen = length(xyDir);
                 
-                // Handle case when looking straight down the optical axis
                 if (xyLen < 0.0001) {
                     return vec2(0.5 + cx * 0.5, 0.5 + cy * 0.5);
                 }
                 
-                // Normalize the XY direction
                 vec2 xyNorm = xyDir / xyLen;
-                
-                // Calculate fisheye radius based on projection type
-                // All formulas: r = f(θ), normalized so that θ=90° (π/2) gives r=1
                 float halfPi = 1.5707963;
                 float radius;
                 
                 if (lensType == LENS_FISHEYE_EQUIDISTANT) {
-                    // r = θ, linear mapping (most common for planetarium)
                     radius = theta / halfPi;
                 } else if (lensType == LENS_FISHEYE_EQUISOLID) {
-                    // r = 2·sin(θ/2), preserves solid angle (area)
-                    // At θ=90°: r = 2·sin(45°) = 2·0.707 = 1.414
                     radius = 2.0 * sin(theta * 0.5) / 1.4142;
                 } else if (lensType == LENS_FISHEYE_STEREOGRAPHIC) {
-                    // r = 2·tan(θ/2), preserves angles (conformal)
-                    // At θ=90°: r = 2·tan(45°) = 2·1 = 2
                     radius = tan(theta * 0.5);
                 } else if (lensType == LENS_FISHEYE_ORTHOGRAPHIC) {
-                    // r = sin(θ), hemispheric projection
-                    // At θ=90°: r = sin(90°) = 1
                     radius = sin(theta);
                 } else {
-                    // Rectilinear fallback: r = tan(θ)
                     radius = tan(theta);
                 }
                 
-                // Clamp radius to valid range (0 to 1 for 180° FOV)
                 radius = clamp(radius, 0.0, 1.5);
-                
-                // Convert to UV coordinates
-                // Radius of 1 should map to edge of circular image (0.5 in UV space from center)
                 vec2 principalPoint = vec2(0.5 + cx * 0.5, 0.5 + cy * 0.5);
-                vec2 uv = principalPoint + xyNorm * radius * 0.5;
-                
-                return uv;
+                return principalPoint + xyNorm * radius * 0.5;
             }
             
-            // Unpack linear depth from RGBA
             float unpackLinearDepth(vec4 rgbaDepth) {
                 const vec4 bitShift = vec4(1.0 / (256.0 * 256.0 * 256.0), 1.0 / (256.0 * 256.0), 1.0 / 256.0, 1.0);
                 return dot(rgbaDepth, bitShift);
             }
             
-            // Linear heatmap color function with white for overflow
             vec3 heatmapColor(float t) {
                 if (t > 1.0) {
                     float overflow = min((t - 1.0) * 2.0, 1.0);
                     return mix(vec3(1.0, 0.0, 0.0), vec3(1.0, 1.0, 1.0), overflow);
                 }
-                
                 t = clamp(t, 0.0, 1.0);
-                
-                if (t < 0.167) {
-                    return mix(vec3(0.0, 0.0, 0.2), vec3(0.0, 0.27, 0.67), t / 0.167);
-                } else if (t < 0.333) {
-                    return mix(vec3(0.0, 0.27, 0.67), vec3(0.0, 0.67, 0.27), (t - 0.167) / 0.167);
-                } else if (t < 0.5) {
-                    return mix(vec3(0.0, 0.67, 0.27), vec3(0.67, 0.67, 0.0), (t - 0.333) / 0.167);
-                } else if (t < 0.667) {
-                    return mix(vec3(0.67, 0.67, 0.0), vec3(1.0, 0.67, 0.0), (t - 0.5) / 0.167);
-                } else if (t < 0.833) {
-                    return mix(vec3(1.0, 0.67, 0.0), vec3(1.0, 0.4, 0.0), (t - 0.667) / 0.167);
-                } else {
-                    return mix(vec3(1.0, 0.4, 0.0), vec3(1.0, 0.0, 0.0), (t - 0.833) / 0.167);
-                }
+                if (t < 0.167) return mix(vec3(0.0, 0.0, 0.2), vec3(0.0, 0.27, 0.67), t / 0.167);
+                else if (t < 0.333) return mix(vec3(0.0, 0.27, 0.67), vec3(0.0, 0.67, 0.27), (t - 0.167) / 0.167);
+                else if (t < 0.5) return mix(vec3(0.0, 0.67, 0.27), vec3(0.67, 0.67, 0.0), (t - 0.333) / 0.167);
+                else if (t < 0.667) return mix(vec3(0.67, 0.67, 0.0), vec3(1.0, 0.67, 0.0), (t - 0.5) / 0.167);
+                else if (t < 0.833) return mix(vec3(1.0, 0.67, 0.0), vec3(1.0, 0.4, 0.0), (t - 0.667) / 0.167);
+                else return mix(vec3(1.0, 0.4, 0.0), vec3(1.0, 0.0, 0.0), (t - 0.833) / 0.167);
             }
             
-            // Sample projector with physically accurate occlusion and lens distortion
-            // - Back-face rejection: surfaces facing away from projector receive no light
-            // - Shadow occlusion: surfaces behind other geometry receive no light  
-            // - Lens distortion: applies radial/tangential distortion and fisheye projection
-            vec4 sampleProjectorWithLens(mat4 projMat, mat4 shadowMat, sampler2D projTex, sampler2D shadowMap, vec3 projPos, mat3 projRotInv, float lumens, float throwRatio, float nearPlane, float farPlane, vec2 texOffset, vec4 lensParams, vec4 lensParams2, float fisheyeFov) {
-                // Extract lens parameters
-                int lensType = int(lensParams.x + 0.5); // Round to int
-                float k1 = lensParams.y;
-                float k2 = lensParams.z;
-                float k3 = lensParams.w;
-                float p1 = lensParams2.x;
-                float p2 = lensParams2.y;
-                float cx = lensParams2.z;
-                float cy = lensParams2.w;
+            // Sample texture by slot index (0-7)
+            vec4 sampleProjTex(int slot, vec2 uv) {
+                if (slot == 0) return texture2D(projTex0, uv);
+                else if (slot == 1) return texture2D(projTex1, uv);
+                else if (slot == 2) return texture2D(projTex2, uv);
+                else if (slot == 3) return texture2D(projTex3, uv);
+                else if (slot == 4) return texture2D(projTex4, uv);
+                else if (slot == 5) return texture2D(projTex5, uv);
+                else if (slot == 6) return texture2D(projTex6, uv);
+                else return texture2D(projTex7, uv);
+            }
+            
+            vec4 sampleShadowTex(int slot, vec2 uv) {
+                if (slot == 0) return texture2D(shadowMap0, uv);
+                else if (slot == 1) return texture2D(shadowMap1, uv);
+                else if (slot == 2) return texture2D(shadowMap2, uv);
+                else if (slot == 3) return texture2D(shadowMap3, uv);
+                else if (slot == 4) return texture2D(shadowMap4, uv);
+                else if (slot == 5) return texture2D(shadowMap5, uv);
+                else if (slot == 6) return texture2D(shadowMap6, uv);
+                else return texture2D(shadowMap7, uv);
+            }
+            
+            // Sample a projector with explicit parameters (avoids GLSL ES array indexing issues)
+            vec4 sampleProjectorDirect(
+                mat4 pMat, mat4 sMat, vec3 pPos, mat3 pRotInv,
+                float lumens, float throwRatio, float nearPlane, float farPlane,
+                vec2 tOffset, vec4 lParams, vec4 lParams2, float fovDeg,
+                sampler2D pTex, sampler2D sTex
+            ) {
+                // Extract lens type with robust bounds checking
+                // 0 = rectilinear, 1-4 = fisheye variants
+                int lensType = int(lParams.x + 0.5);
+                // Safety: treat any invalid lens type as rectilinear
+                if (lensType < 0 || lensType > 4) lensType = 0;
                 
-                // Calculate distance and direction to surface point
-                vec3 worldDir = vWorldPosition.xyz - projPos;
+                float k1 = lParams.y;
+                float k2 = lParams.z;
+                float k3 = lParams.w;
+                float p1 = lParams2.x;
+                float p2 = lParams2.y;
+                float cx = lParams2.z;
+                float cy = lParams2.w;
+                
+                vec3 worldDir = vWorldPosition.xyz - pPos;
                 float dist = length(worldDir);
                 vec3 worldDirNorm = worldDir / dist;
                 
-                // Check distance bounds
-                if (dist < nearPlane || dist > farPlane) {
-                    if (debugLensType) return vec4(0.1, 0.0, 0.0, 0.01); // Dark red = distance reject
-                    return vec4(0.0);
-                }
+                if (dist < nearPlane || dist > farPlane) return vec4(0.0);
                 
-                // Back-face rejection - surface must face the projector
                 vec3 toProj = -worldDirNorm;
                 float facing = dot(vWorldNormal, toProj);
-                if (facing <= 0.0) {
-                    if (debugLensType) return vec4(0.1, 0.1, 0.0, 0.01); // Dark yellow = backface reject
-                    return vec4(0.0);
-                }
+                if (facing <= 0.0) return vec4(0.0);
                 
-                // Calculate UV based on lens type
                 vec2 lensUV;
                 vec2 shadowUV;
+                float shadowViewZ = 0.0;  // View-space Z for shadow comparison
                 
-                // === RECTILINEAR LENS (type 0) ===
+                // Always compute shadow coordinates using shadow matrix
+                // Shadow map was rendered with shadow camera, so we need its view-space Z
+                vec4 shadowProjCoord = sMat * vWorldPosition;
+                if (shadowProjCoord.w > 0.0) {
+                    shadowViewZ = shadowProjCoord.w;  // View-space Z from shadow camera's perspective
+                }
+                
                 if (lensType == LENS_RECTILINEAR) {
-                    // Use perspective projection matrix
-                    vec4 projCoord = projMat * vWorldPosition;
-                    if (projCoord.w <= 0.0) {
-                        if (debugLensType) return vec4(0.1, 0.0, 0.1, 0.01); // Dark magenta = behind camera
-                        return vec4(0.0);
-                    }
+                    vec4 projCoord = pMat * vWorldPosition;
+                    if (projCoord.w <= 0.0) return vec4(0.0);
                     
                     vec3 ndc = projCoord.xyz / projCoord.w;
                     lensUV = ndc.xy * 0.5 + 0.5;
                     
-                    // RECTANGULAR bounds check for rectilinear
-                    if (lensUV.x < 0.0 || lensUV.x > 1.0 || lensUV.y < 0.0 || lensUV.y > 1.0) {
-                        if (debugLensType) return vec4(0.0, 0.1, 0.0, 0.01); // Dark green = UV bounds reject
-                        return vec4(0.0);
-                    }
-                    if (ndc.z < -1.0 || ndc.z > 1.0) {
-                        if (debugLensType) return vec4(0.0, 0.1, 0.1, 0.01); // Dark cyan = NDC Z reject
-                        return vec4(0.0);
-                    }
+                    if (lensUV.x < 0.0 || lensUV.x > 1.0 || lensUV.y < 0.0 || lensUV.y > 1.0) return vec4(0.0);
+                    if (ndc.z < -1.0 || ndc.z > 1.0) return vec4(0.0);
                     
-                    // Shadow UV is same as lens UV for rectilinear (same projection)
-                    shadowUV = lensUV;
-                }
-                // === FISHEYE LENSES (types 1-4) ===
-                else {
-                    // Transform direction to projector-local space
-                    vec3 localDir = projRotInv * worldDirNorm;
-                    
-                    // Check if point is behind the projector (localDir.z should be positive for forward)
-                    if (localDir.z <= 0.0) {
-                        if (debugLensType) return vec4(0.1, 0.0, 0.1, 0.01); // Dark magenta = behind projector
-                        return vec4(0.0);
-                    }
-                    
-                    // Calculate fisheye UV from 3D angle
-                    lensUV = calculateFisheyeUV(localDir, lensType, cx, cy);
-                    
-                    // CIRCULAR bounds check for fisheye based on FOV
-                    // calculateFisheyeUV maps: 90° from axis -> radius 1.0 -> UV distance 0.5 from center
-                    // So for 180° FOV (±90°), maxRadius in UV space = 0.5
-                    vec2 principalPoint = vec2(0.5 + cx * 0.5, 0.5 + cy * 0.5);
-                    float distFromCenter = length(lensUV - principalPoint);
-                    float maxRadius = fisheyeFov / 360.0;
-                    
-                    if (distFromCenter > maxRadius) {
-                        if (debugLensType) return vec4(0.0, 0.0, 0.1, 0.01); // Dark blue = FOV bounds reject
-                        return vec4(0.0);
-                    }
-                    
-                    // Calculate shadow UV from shadow camera matrix (has wider FOV for fisheye)
-                    vec4 shadowCoord = shadowMat * vWorldPosition;
-                    if (shadowCoord.w > 0.0) {
-                        vec3 shadowNdc = shadowCoord.xyz / shadowCoord.w;
+                    // Shadow UV from shadow matrix (must check w > 0 before division)
+                    if (shadowProjCoord.w > 0.0) {
+                        vec3 shadowNdc = shadowProjCoord.xyz / shadowProjCoord.w;
                         shadowUV = shadowNdc.xy * 0.5 + 0.5;
                     } else {
-                        shadowUV = vec2(-1.0); // Outside shadow frustum
+                        shadowUV = vec2(-1.0);  // Invalid
+                    }
+                } else {
+                    vec3 localDir = pRotInv * worldDirNorm;
+                    if (localDir.z <= 0.0) return vec4(0.0);
+                    
+                    float theta = acos(clamp(localDir.z, 0.0, 1.0));
+                    float maxTheta = radians(fovDeg * 0.5);
+                    if (theta > maxTheta) return vec4(0.0);
+                    
+                    lensUV = calculateFisheyeUV(localDir, lensType, cx, cy);
+                    
+                    float maxRadius = fovDeg / 360.0;
+                    vec2 principalPoint = vec2(0.5 + cx * 0.5, 0.5 + cy * 0.5);
+                    float radialDist = length(lensUV - principalPoint);
+                    if (radialDist > maxRadius) return vec4(0.0);
+                    
+                    // Use shadow coordinates already computed from shadow matrix
+                    if (shadowProjCoord.w > 0.0) {
+                        vec3 shadowNdc = shadowProjCoord.xyz / shadowProjCoord.w;
+                        shadowUV = shadowNdc.xy * 0.5 + 0.5;
+                    } else {
+                        shadowUV = vec2(-1.0);  // Invalid - skip shadow test
+                        shadowViewZ = 0.0;  // Override to skip shadow test
                     }
                 }
                 
-                // Apply lens distortion (Brown-Conrady model) if any coefficients are non-zero
-                if (abs(k1) > 0.0001 || abs(k2) > 0.0001 || abs(k3) > 0.0001 || abs(p1) > 0.0001 || abs(p2) > 0.0001) {
-                    lensUV = applyDistortion(lensUV, k1, k2, k3, p1, p2, cx, cy);
-                }
-                
-                // Shadow occlusion check
-                // CRITICAL: Shadow map stores VIEW-SPACE Z depth (along optical axis), not 3D Euclidean distance
-                // We must use the shadow camera's view-space depth for comparison
-                bool inShadow = false;
-                if (shadowUV.x >= 0.0 && shadowUV.x <= 1.0 && shadowUV.y >= 0.0 && shadowUV.y <= 1.0) {
-                    // Get the view-space depth from the shadow projection
-                    // shadowCoord.w contains the view-space Z (for perspective cameras)
-                    // For rectilinear, we calculated projCoord earlier; for fisheye, we have shadowCoord
-                    vec4 shadowProjCoord = shadowMat * vWorldPosition;
-                    float viewSpaceZ = shadowProjCoord.w; // Distance along shadow camera's optical axis
-                    
-                    // Normalize to 0-1 range using near/far planes
-                    float fragDepthNormalized = (viewSpaceZ - nearPlane) / (farPlane - nearPlane);
-                    
-                    vec4 shadowSample = texture2D(shadowMap, shadowUV);
-                    float shadowDepth = unpackLinearDepth(shadowSample);
-                    
-                    // Bias to prevent shadow acne
-                    float distanceBias = 0.001 + (viewSpaceZ * 0.0005);
+                // Shadow test - CRITICAL: Use view-space Z depth, NOT Euclidean distance
+                // Using Euclidean distance causes circular clipping because:
+                // At center: 3D dist ≈ Z depth
+                // At 45° angle: 3D dist = Z depth / cos(45°) = 1.41× larger
+                // This causes false shadow rejection at edges in a circular pattern!
+                // 
+                // shadowViewZ is from shadowProjCoord.w which is view-space Z from shadow camera
+                // Shadow map stores: (linearDepth - near) / (far - near)
+                // So we must normalize the same way
+                if (shadowUV.x >= 0.0 && shadowUV.x <= 1.0 && shadowUV.y >= 0.0 && shadowUV.y <= 1.0 && shadowViewZ > 0.0) {
+                    vec4 shadowSample = texture2D(sTex, shadowUV);
+                    float storedDepth = unpackLinearDepth(shadowSample);
+                    // Normalize view-space Z to [0,1] range matching shadow map encoding
+                    float currentDepth = (shadowViewZ - nearPlane) / (farPlane - nearPlane);
+                    // Bias: distance-based + angle-based to prevent shadow acne
+                    float distanceBias = 0.001 + (shadowViewZ * 0.0005);
                     float angleBias = 0.002 * (1.0 - facing);
                     float bias = distanceBias + angleBias;
-                    
-                    if (fragDepthNormalized > shadowDepth + bias) {
-                        inShadow = true;
-                    }
-                }
-                
-                if (inShadow) {
-                    if (debugLensType) return vec4(0.2, 0.0, 0.2, 0.01); // Purple = shadow reject
-                    return vec4(0.0);
-                }
-                
-                // Debug mode: show lens type as bright color
-                if (debugLensType) {
-                    if (lensType == LENS_RECTILINEAR) {
-                        return vec4(0.0, 1.0, 0.0, 1.0); // Bright green = rectilinear
-                    } else {
-                        return vec4(0.0, 0.5, 1.0, 1.0); // Bright blue = fisheye
+                    if (storedDepth > 0.001 && currentDepth > storedDepth + bias) {
+                        return vec4(0.0);
                     }
                 }
                 
@@ -3366,91 +3296,436 @@
                 float projWidth = dist / throwRatio;
                 float projHeight = projWidth / (16.0/9.0);
                 float projArea = projWidth * projHeight;
-                
                 float lux = lumens / projArea;
                 float cdm2 = (lux * surfaceGain / 3.14159) * facing;
                 
-                // Edge falloff for soft blending
+                // Edge falloff
                 float edgeFalloff;
                 if (lensType == LENS_RECTILINEAR) {
-                    // Rectangular falloff for rectilinear
                     float edgeDist = max(abs(lensUV.x - 0.5), abs(lensUV.y - 0.5)) * 2.0;
                     edgeFalloff = 1.0 - smoothstep(0.85, 1.0, edgeDist);
                 } else {
-                    // Circular falloff for fisheye
                     vec2 principalPoint = vec2(0.5 + cx * 0.5, 0.5 + cy * 0.5);
-                    float maxRadius = fisheyeFov / 360.0;
+                    float maxRadius = fovDeg / 360.0;
                     float radialDist = length(lensUV - principalPoint) / maxRadius;
                     edgeFalloff = 1.0 - smoothstep(0.85, 1.0, radialDist);
                 }
                 cdm2 *= edgeFalloff;
                 
                 // Sample texture
-                vec2 scrolledUV = fract(lensUV + texOffset);
-                vec4 texColor = texture2D(projTex, scrolledUV);
+                vec2 scrolledUV = fract(lensUV + tOffset);
+                vec4 texColor = texture2D(pTex, scrolledUV);
                 float displayIntensity = cdm2 / 1500.0;
                 
                 return vec4(texColor.rgb * displayIntensity * facing, cdm2);
             }
             
             void main() {
-                // Base ambient illumination - scales with ambient light setting
-                vec3 color = baseColor * (0.02 + ambientIntensity * 0.5);
+                // Only include ambient on first pass
+                vec3 color = includeAmbient ? baseColor * (0.02 + ambientIntensity * 0.5) : vec3(0.0);
                 float totalCdm2 = 0.0;
                 int hitCount = 0;
                 
+                // UNROLLED LOOP: Use explicit constant indices to avoid GLSL ES array indexing issues
+                // Each projector slot is sampled with constant array indices
                 if (numProjectors > 0) {
-                    vec4 result = sampleProjectorWithLens(projMat0, shadowMat0, projTex0, shadowMap0, projPos0, projRotInv0, projLumens0, projThrow0, projNear0, projFar0, texOffset0, lensParams0, lensParams2_0, fisheyeFov0);
+                    vec4 result = sampleProjectorDirect(
+                        projMat[0], shadowMat[0], projPos[0], projRotInv[0],
+                        projLumens[0], projThrow[0], projNear[0], projFar[0],
+                        texOffset[0], lensParams[0], lensParams2[0], fisheyeFov[0],
+                        projTex0, shadowMap0
+                    );
                     if (result.a > 0.0) { color += result.rgb; totalCdm2 += result.a; hitCount++; }
                 }
                 if (numProjectors > 1) {
-                    vec4 result = sampleProjectorWithLens(projMat1, shadowMat1, projTex1, shadowMap1, projPos1, projRotInv1, projLumens1, projThrow1, projNear1, projFar1, texOffset1, lensParams1, lensParams2_1, fisheyeFov1);
+                    vec4 result = sampleProjectorDirect(
+                        projMat[1], shadowMat[1], projPos[1], projRotInv[1],
+                        projLumens[1], projThrow[1], projNear[1], projFar[1],
+                        texOffset[1], lensParams[1], lensParams2[1], fisheyeFov[1],
+                        projTex1, shadowMap1
+                    );
                     if (result.a > 0.0) { color += result.rgb; totalCdm2 += result.a; hitCount++; }
                 }
                 if (numProjectors > 2) {
-                    vec4 result = sampleProjectorWithLens(projMat2, shadowMat2, projTex2, shadowMap2, projPos2, projRotInv2, projLumens2, projThrow2, projNear2, projFar2, texOffset2, lensParams2, lensParams2_2, fisheyeFov2);
+                    vec4 result = sampleProjectorDirect(
+                        projMat[2], shadowMat[2], projPos[2], projRotInv[2],
+                        projLumens[2], projThrow[2], projNear[2], projFar[2],
+                        texOffset[2], lensParams[2], lensParams2[2], fisheyeFov[2],
+                        projTex2, shadowMap2
+                    );
                     if (result.a > 0.0) { color += result.rgb; totalCdm2 += result.a; hitCount++; }
                 }
                 if (numProjectors > 3) {
-                    vec4 result = sampleProjectorWithLens(projMat3, shadowMat3, projTex3, shadowMap3, projPos3, projRotInv3, projLumens3, projThrow3, projNear3, projFar3, texOffset3, lensParams3, lensParams2_3, fisheyeFov3);
+                    vec4 result = sampleProjectorDirect(
+                        projMat[3], shadowMat[3], projPos[3], projRotInv[3],
+                        projLumens[3], projThrow[3], projNear[3], projFar[3],
+                        texOffset[3], lensParams[3], lensParams2[3], fisheyeFov[3],
+                        projTex3, shadowMap3
+                    );
                     if (result.a > 0.0) { color += result.rgb; totalCdm2 += result.a; hitCount++; }
                 }
                 if (numProjectors > 4) {
-                    vec4 result = sampleProjectorWithLens(projMat4, shadowMat4, projTex4, shadowMap4, projPos4, projRotInv4, projLumens4, projThrow4, projNear4, projFar4, texOffset4, lensParams4, lensParams2_4, fisheyeFov4);
+                    vec4 result = sampleProjectorDirect(
+                        projMat[4], shadowMat[4], projPos[4], projRotInv[4],
+                        projLumens[4], projThrow[4], projNear[4], projFar[4],
+                        texOffset[4], lensParams[4], lensParams2[4], fisheyeFov[4],
+                        projTex4, shadowMap4
+                    );
                     if (result.a > 0.0) { color += result.rgb; totalCdm2 += result.a; hitCount++; }
                 }
                 if (numProjectors > 5) {
-                    vec4 result = sampleProjectorWithLens(projMat5, shadowMat5, projTex5, shadowMap5, projPos5, projRotInv5, projLumens5, projThrow5, projNear5, projFar5, texOffset5, lensParams5, lensParams2_5, fisheyeFov5);
+                    vec4 result = sampleProjectorDirect(
+                        projMat[5], shadowMat[5], projPos[5], projRotInv[5],
+                        projLumens[5], projThrow[5], projNear[5], projFar[5],
+                        texOffset[5], lensParams[5], lensParams2[5], fisheyeFov[5],
+                        projTex5, shadowMap5
+                    );
                     if (result.a > 0.0) { color += result.rgb; totalCdm2 += result.a; hitCount++; }
                 }
                 if (numProjectors > 6) {
-                    vec4 result = sampleProjectorWithLens(projMat6, shadowMat6, projTex6, shadowMap6, projPos6, projRotInv6, projLumens6, projThrow6, projNear6, projFar6, texOffset6, lensParams6, lensParams2_6, fisheyeFov6);
+                    vec4 result = sampleProjectorDirect(
+                        projMat[6], shadowMat[6], projPos[6], projRotInv[6],
+                        projLumens[6], projThrow[6], projNear[6], projFar[6],
+                        texOffset[6], lensParams[6], lensParams2[6], fisheyeFov[6],
+                        projTex6, shadowMap6
+                    );
                     if (result.a > 0.0) { color += result.rgb; totalCdm2 += result.a; hitCount++; }
                 }
                 if (numProjectors > 7) {
-                    vec4 result = sampleProjectorWithLens(projMat7, shadowMat7, projTex7, shadowMap7, projPos7, projRotInv7, projLumens7, projThrow7, projNear7, projFar7, texOffset7, lensParams7, lensParams2_7, fisheyeFov7);
+                    vec4 result = sampleProjectorDirect(
+                        projMat[7], shadowMat[7], projPos[7], projRotInv[7],
+                        projLumens[7], projThrow[7], projNear[7], projFar[7],
+                        texOffset[7], lensParams[7], lensParams2[7], fisheyeFov[7],
+                        projTex7, shadowMap7
+                    );
                     if (result.a > 0.0) { color += result.rgb; totalCdm2 += result.a; hitCount++; }
                 }
                 
-                if (showHeatmap) {
-                    if (hitCount == 0) {
-                        color = vec3(0.0, 0.0, 0.1);
+                // Visualization modes only apply when includeAmbient is true (first pass)
+                if (includeAmbient) {
+                    // Debug mode: show lens type as color
+                    if (debugLensType && numProjectors > 0) {
+                        int lensType = int(lensParams[0].x + 0.5);
+                        if (lensType == LENS_RECTILINEAR) {
+                            color = mix(color, vec3(0.0, 1.0, 0.0), 0.5); // Green = rectilinear
+                        } else {
+                            color = mix(color, vec3(0.0, 0.5, 1.0), 0.5); // Blue = fisheye
+                        }
+                        if (hitCount == 0) {
+                            color = vec3(0.2, 0.0, 0.0); // Dark red = no projection hit
+                        }
+                    } else if (showHeatmap) {
+                        if (hitCount == 0) {
+                            color = vec3(0.0, 0.0, 0.1);
+                        } else {
+                            float normalizedLuminance = totalCdm2 / heatmapMax;
+                            color = heatmapColor(normalizedLuminance);
+                        }
                     } else {
-                        float normalizedLuminance = totalCdm2 / heatmapMax;
-                        color = heatmapColor(normalizedLuminance);
-                    }
-                } else {
-                    if (showCoverage && hitCount == 0) {
-                        color = vec3(0.25, 0.02, 0.02);
-                    }
-                    
-                    if (showOverlap && hitCount > 1) {
-                        float overlapIntensity = float(hitCount - 1) / 3.0;
-                        color = mix(color, vec3(1.0, 0.5, 0.0), min(overlapIntensity, 0.7));
+                        if (showCoverage && hitCount == 0) {
+                            color = vec3(0.25, 0.02, 0.02);
+                        }
+                        if (showOverlap && hitCount > 1) {
+                            float overlapIntensity = float(hitCount - 1) / 3.0;
+                            color = mix(color, vec3(1.0, 0.5, 0.0), min(overlapIntensity, 0.7));
+                        }
                     }
                 }
                 
                 gl_FragColor = vec4(color, 1.0);
+            }
+        `;
+        
+        // ==========================================
+        // ACCUMULATION SHADER - Outputs (hitCount, totalCdm2) for visualization
+        // ==========================================
+        const accumulationFragmentShader = `
+            precision highp float;
+            
+            // Same uniforms as projection shader
+            uniform mat4 projMat[8];
+            uniform mat4 shadowMat[8];
+            uniform vec3 projPos[8];
+            uniform mat3 projRotInv[8];
+            uniform float projLumens[8];
+            uniform float projThrow[8];
+            uniform float projNear[8];
+            uniform float projFar[8];
+            uniform vec2 texOffset[8];
+            uniform vec4 lensParams[8];
+            uniform vec4 lensParams2[8];
+            uniform float fisheyeFov[8];
+            uniform sampler2D projTex0, projTex1, projTex2, projTex3;
+            uniform sampler2D projTex4, projTex5, projTex6, projTex7;
+            uniform sampler2D shadowMap0, shadowMap1, shadowMap2, shadowMap3;
+            uniform sampler2D shadowMap4, shadowMap5, shadowMap6, shadowMap7;
+            uniform int numProjectors;
+            uniform float surfaceGain;
+            
+            varying vec4 vWorldPosition;
+            varying vec3 vWorldNormal;
+            
+            const int LENS_RECTILINEAR = 0;
+            const int LENS_FISHEYE_EQUIDISTANT = 1;
+            const int LENS_FISHEYE_EQUISOLID = 2;
+            const int LENS_FISHEYE_STEREOGRAPHIC = 3;
+            const int LENS_FISHEYE_ORTHOGRAPHIC = 4;
+            
+            float unpackLinearDepth(vec4 rgba) {
+                const vec4 bitShift = vec4(1.0/(256.0*256.0*256.0), 1.0/(256.0*256.0), 1.0/256.0, 1.0);
+                return dot(rgba, bitShift);
+            }
+            
+            vec2 calculateFisheyeUV(vec3 localDir, int fisheyeType, float cx, float cy) {
+                float theta = acos(clamp(localDir.z, 0.0, 1.0));
+                float phi = atan(localDir.y, localDir.x);
+                float r;
+                if (fisheyeType == LENS_FISHEYE_EQUIDISTANT) {
+                    r = theta / 3.14159;
+                } else if (fisheyeType == LENS_FISHEYE_EQUISOLID) {
+                    r = 2.0 * sin(theta / 2.0) / 3.14159;
+                } else if (fisheyeType == LENS_FISHEYE_STEREOGRAPHIC) {
+                    r = 2.0 * tan(theta / 2.0) / 3.14159;
+                } else {
+                    r = sin(theta) / 3.14159;
+                }
+                vec2 principalPoint = vec2(0.5 + cx * 0.5, 0.5 + cy * 0.5);
+                return principalPoint + r * vec2(cos(phi), sin(phi));
+            }
+            
+            // Returns cdm2 if hit, 0 if no hit
+            float sampleProjectorAccum(
+                mat4 pMat, mat4 sMat, vec3 pPos, mat3 pRotInv,
+                float lumens, float throwRatio, float nearPlane, float farPlane,
+                vec4 lParams, vec4 lParams2, float fovDeg,
+                sampler2D sTex
+            ) {
+                int lensType = int(lParams.x + 0.5);
+                if (lensType < 0 || lensType > 4) lensType = 0;
+                
+                float cx = lParams2.z;
+                float cy = lParams2.w;
+                
+                vec3 worldDir = vWorldPosition.xyz - pPos;
+                float dist = length(worldDir);
+                vec3 worldDirNorm = worldDir / dist;
+                
+                if (dist < nearPlane || dist > farPlane) return 0.0;
+                
+                vec3 toProj = -worldDirNorm;
+                float facing = dot(vWorldNormal, toProj);
+                if (facing <= 0.0) return 0.0;
+                
+                vec2 lensUV;
+                vec2 shadowUV;
+                float shadowViewZ = 0.0;
+                
+                vec4 shadowProjCoord = sMat * vWorldPosition;
+                if (shadowProjCoord.w > 0.0) {
+                    shadowViewZ = shadowProjCoord.w;
+                }
+                
+                if (lensType == LENS_RECTILINEAR) {
+                    vec4 projCoord = pMat * vWorldPosition;
+                    if (projCoord.w <= 0.0) return 0.0;
+                    
+                    vec3 ndc = projCoord.xyz / projCoord.w;
+                    lensUV = ndc.xy * 0.5 + 0.5;
+                    
+                    if (lensUV.x < 0.0 || lensUV.x > 1.0 || lensUV.y < 0.0 || lensUV.y > 1.0) return 0.0;
+                    if (ndc.z < -1.0 || ndc.z > 1.0) return 0.0;
+                    
+                    if (shadowProjCoord.w > 0.0) {
+                        vec3 shadowNdc = shadowProjCoord.xyz / shadowProjCoord.w;
+                        shadowUV = shadowNdc.xy * 0.5 + 0.5;
+                    } else {
+                        shadowUV = vec2(-1.0);
+                    }
+                } else {
+                    vec3 localDir = pRotInv * worldDirNorm;
+                    if (localDir.z <= 0.0) return 0.0;
+                    
+                    float theta = acos(clamp(localDir.z, 0.0, 1.0));
+                    float maxTheta = radians(fovDeg * 0.5);
+                    if (theta > maxTheta) return 0.0;
+                    
+                    lensUV = calculateFisheyeUV(localDir, lensType, cx, cy);
+                    
+                    float maxRadius = fovDeg / 360.0;
+                    vec2 principalPoint = vec2(0.5 + cx * 0.5, 0.5 + cy * 0.5);
+                    float radialDist = length(lensUV - principalPoint);
+                    if (radialDist > maxRadius) return 0.0;
+                    
+                    if (shadowProjCoord.w > 0.0) {
+                        vec3 shadowNdc = shadowProjCoord.xyz / shadowProjCoord.w;
+                        shadowUV = shadowNdc.xy * 0.5 + 0.5;
+                    } else {
+                        shadowUV = vec2(-1.0);
+                        shadowViewZ = 0.0;
+                    }
+                }
+                
+                // Shadow test
+                if (shadowUV.x >= 0.0 && shadowUV.x <= 1.0 && shadowUV.y >= 0.0 && shadowUV.y <= 1.0 && shadowViewZ > 0.0) {
+                    vec4 shadowSample = texture2D(sTex, shadowUV);
+                    float storedDepth = unpackLinearDepth(shadowSample);
+                    float currentDepth = (shadowViewZ - nearPlane) / (farPlane - nearPlane);
+                    float distanceBias = 0.001 + (shadowViewZ * 0.0005);
+                    float angleBias = 0.002 * (1.0 - facing);
+                    float bias = distanceBias + angleBias;
+                    if (storedDepth > 0.001 && currentDepth > storedDepth + bias) {
+                        return 0.0;
+                    }
+                }
+                
+                // Calculate luminance
+                float projWidth = dist / throwRatio;
+                float projHeight = projWidth / (16.0/9.0);
+                float projArea = projWidth * projHeight;
+                float lux = lumens / projArea;
+                float cdm2 = (lux * surfaceGain / 3.14159) * facing;
+                
+                // Edge falloff
+                float edgeFalloff;
+                if (lensType == LENS_RECTILINEAR) {
+                    float edgeDist = max(abs(lensUV.x - 0.5), abs(lensUV.y - 0.5)) * 2.0;
+                    edgeFalloff = 1.0 - smoothstep(0.85, 1.0, edgeDist);
+                } else {
+                    vec2 principalPoint = vec2(0.5 + cx * 0.5, 0.5 + cy * 0.5);
+                    float maxRadius = fovDeg / 360.0;
+                    float radialDist = length(lensUV - principalPoint) / maxRadius;
+                    edgeFalloff = 1.0 - smoothstep(0.85, 1.0, radialDist);
+                }
+                
+                return cdm2 * edgeFalloff;
+            }
+            
+            void main() {
+                float hitCount = 0.0;
+                float totalCdm2 = 0.0;
+                
+                // Unrolled loop for each projector slot
+                if (numProjectors > 0) {
+                    float cdm2 = sampleProjectorAccum(projMat[0], shadowMat[0], projPos[0], projRotInv[0],
+                        projLumens[0], projThrow[0], projNear[0], projFar[0],
+                        lensParams[0], lensParams2[0], fisheyeFov[0], shadowMap0);
+                    if (cdm2 > 0.0) { hitCount += 1.0; totalCdm2 += cdm2; }
+                }
+                if (numProjectors > 1) {
+                    float cdm2 = sampleProjectorAccum(projMat[1], shadowMat[1], projPos[1], projRotInv[1],
+                        projLumens[1], projThrow[1], projNear[1], projFar[1],
+                        lensParams[1], lensParams2[1], fisheyeFov[1], shadowMap1);
+                    if (cdm2 > 0.0) { hitCount += 1.0; totalCdm2 += cdm2; }
+                }
+                if (numProjectors > 2) {
+                    float cdm2 = sampleProjectorAccum(projMat[2], shadowMat[2], projPos[2], projRotInv[2],
+                        projLumens[2], projThrow[2], projNear[2], projFar[2],
+                        lensParams[2], lensParams2[2], fisheyeFov[2], shadowMap2);
+                    if (cdm2 > 0.0) { hitCount += 1.0; totalCdm2 += cdm2; }
+                }
+                if (numProjectors > 3) {
+                    float cdm2 = sampleProjectorAccum(projMat[3], shadowMat[3], projPos[3], projRotInv[3],
+                        projLumens[3], projThrow[3], projNear[3], projFar[3],
+                        lensParams[3], lensParams2[3], fisheyeFov[3], shadowMap3);
+                    if (cdm2 > 0.0) { hitCount += 1.0; totalCdm2 += cdm2; }
+                }
+                if (numProjectors > 4) {
+                    float cdm2 = sampleProjectorAccum(projMat[4], shadowMat[4], projPos[4], projRotInv[4],
+                        projLumens[4], projThrow[4], projNear[4], projFar[4],
+                        lensParams[4], lensParams2[4], fisheyeFov[4], shadowMap4);
+                    if (cdm2 > 0.0) { hitCount += 1.0; totalCdm2 += cdm2; }
+                }
+                if (numProjectors > 5) {
+                    float cdm2 = sampleProjectorAccum(projMat[5], shadowMat[5], projPos[5], projRotInv[5],
+                        projLumens[5], projThrow[5], projNear[5], projFar[5],
+                        lensParams[5], lensParams2[5], fisheyeFov[5], shadowMap5);
+                    if (cdm2 > 0.0) { hitCount += 1.0; totalCdm2 += cdm2; }
+                }
+                if (numProjectors > 6) {
+                    float cdm2 = sampleProjectorAccum(projMat[6], shadowMat[6], projPos[6], projRotInv[6],
+                        projLumens[6], projThrow[6], projNear[6], projFar[6],
+                        lensParams[6], lensParams2[6], fisheyeFov[6], shadowMap6);
+                    if (cdm2 > 0.0) { hitCount += 1.0; totalCdm2 += cdm2; }
+                }
+                if (numProjectors > 7) {
+                    float cdm2 = sampleProjectorAccum(projMat[7], shadowMat[7], projPos[7], projRotInv[7],
+                        projLumens[7], projThrow[7], projNear[7], projFar[7],
+                        lensParams[7], lensParams2[7], fisheyeFov[7], shadowMap7);
+                    if (cdm2 > 0.0) { hitCount += 1.0; totalCdm2 += cdm2; }
+                }
+                
+                // Output: R = hit count, G = total cdm2 (scaled for precision)
+                gl_FragColor = vec4(hitCount, totalCdm2 / 10000.0, 0.0, 1.0);
+            }
+        `;
+        
+        // ==========================================
+        // VISUALIZATION COMPOSITE SHADER
+        // ==========================================
+        const compositeVertexShader = `
+            varying vec2 vUv;
+            void main() {
+                vUv = uv;
+                gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+            }
+        `;
+        
+        const compositeFragmentShader = `
+            precision highp float;
+            
+            uniform sampler2D colorTexture;
+            uniform sampler2D accumTexture;
+            uniform bool showCoverage;
+            uniform bool showOverlap;
+            uniform bool showHeatmap;
+            uniform float heatmapMax;
+            
+            varying vec2 vUv;
+            
+            vec3 heatmapColor(float t) {
+                t = clamp(t, 0.0, 1.0);
+                if (t < 0.25) {
+                    return mix(vec3(0.0, 0.0, 0.5), vec3(0.0, 0.5, 1.0), t * 4.0);
+                } else if (t < 0.5) {
+                    return mix(vec3(0.0, 0.5, 1.0), vec3(0.0, 1.0, 0.5), (t - 0.25) * 4.0);
+                } else if (t < 0.75) {
+                    return mix(vec3(0.0, 1.0, 0.5), vec3(1.0, 1.0, 0.0), (t - 0.5) * 4.0);
+                } else {
+                    return mix(vec3(1.0, 1.0, 0.0), vec3(1.0, 0.0, 0.0), (t - 0.75) * 4.0);
+                }
+            }
+            
+            void main() {
+                vec4 color = texture2D(colorTexture, vUv);
+                vec4 accum = texture2D(accumTexture, vUv);
+                
+                float hitCount = accum.r;
+                float totalCdm2 = accum.g * 10000.0; // Unscale
+                float isSurface = accum.a; // Alpha > 0 means this pixel is a surface
+                
+                vec3 result = color.rgb;
+                
+                // Only apply visualization to surface pixels (alpha > 0.5)
+                if (isSurface > 0.5) {
+                    if (showHeatmap) {
+                        if (hitCount < 0.5) {
+                            result = vec3(0.0, 0.0, 0.1); // No coverage = dark blue
+                        } else {
+                            float normalizedLuminance = totalCdm2 / heatmapMax;
+                            result = heatmapColor(normalizedLuminance);
+                        }
+                    } else {
+                        if (showCoverage && hitCount < 0.5) {
+                            result = vec3(0.25, 0.02, 0.02); // No coverage = dark red
+                        }
+                        if (showOverlap && hitCount > 1.5) {
+                            float overlapIntensity = (hitCount - 1.0) / 3.0;
+                            result = mix(result, vec3(1.0, 0.5, 0.0), min(overlapIntensity, 0.7));
+                        }
+                    }
+                }
+                
+                gl_FragColor = vec4(result, 1.0);
             }
         `;
         
@@ -3539,6 +3814,9 @@
                 }
             });
             
+            // Initialize accumulation system for visualization modes
+            initAccumulationSystem(container.clientWidth, container.clientHeight);
+            
             // Create transform gizmos
             createGizmos();
             
@@ -3546,11 +3824,113 @@
                 camera.aspect = container.clientWidth / container.clientHeight;
                 camera.updateProjectionMatrix();
                 renderer.setSize(container.clientWidth, container.clientHeight);
+                // Resize accumulation targets
+                resizeAccumulationTargets(container.clientWidth, container.clientHeight);
             });
+        }
+        
+        // Initialize accumulation system for visualization modes
+        function initAccumulationSystem(width, height) {
+            // Float texture for accumulation (hitCount in R, cdm2 in G)
+            accumulationTarget = new THREE.WebGLRenderTarget(width, height, {
+                minFilter: THREE.NearestFilter,
+                magFilter: THREE.NearestFilter,
+                format: THREE.RGBAFormat,
+                type: THREE.FloatType
+            });
+            
+            // Color render target
+            colorTarget = new THREE.WebGLRenderTarget(width, height, {
+                minFilter: THREE.LinearFilter,
+                magFilter: THREE.LinearFilter,
+                format: THREE.RGBAFormat
+            });
+            
+            // Composite scene with full-screen quad
+            compositeScene = new THREE.Scene();
+            compositeCamera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
+            
+            const quadGeometry = new THREE.PlaneGeometry(2, 2);
+            compositeMaterial = new THREE.ShaderMaterial({
+                vertexShader: compositeVertexShader,
+                fragmentShader: compositeFragmentShader,
+                uniforms: {
+                    colorTexture: { value: null },
+                    accumTexture: { value: null },
+                    showCoverage: { value: false },
+                    showOverlap: { value: false },
+                    showHeatmap: { value: false },
+                    heatmapMax: { value: 1000.0 }
+                }
+            });
+            
+            const quad = new THREE.Mesh(quadGeometry, compositeMaterial);
+            compositeScene.add(quad);
+        }
+        
+        // Resize accumulation targets when window resizes
+        function resizeAccumulationTargets(width, height) {
+            if (accumulationTarget) {
+                accumulationTarget.setSize(width, height);
+            }
+            if (colorTarget) {
+                colorTarget.setSize(width, height);
+            }
+        }
+        
+        // Create accumulation material for a surface
+        function createAccumulationMaterial(surfaceMaterial) {
+            // Clone uniforms from surface material
+            const uniforms = {};
+            for (const key in surfaceMaterial.uniforms) {
+                if (surfaceMaterial.uniforms[key].value !== undefined) {
+                    uniforms[key] = { value: surfaceMaterial.uniforms[key].value };
+                }
+            }
+            
+            return new THREE.ShaderMaterial({
+                vertexShader: surfaceMaterial.vertexShader,
+                fragmentShader: accumulationFragmentShader,
+                uniforms: uniforms,
+                transparent: true,
+                blending: THREE.AdditiveBlending,
+                depthWrite: false,
+                depthTest: true,
+                depthFunc: THREE.LessEqualDepth,
+                side: THREE.DoubleSide  // Render both sides for proper visualization
+            });
+        }
+        
+        // Get or create accumulation material for a mesh
+        function getAccumulationMaterial(mesh) {
+            const surfaceId = mesh.userData.surfaceId;
+            
+            if (!accumulationMaterials.has(surfaceId)) {
+                const accumMat = createAccumulationMaterial(mesh.material);
+                accumulationMaterials.set(surfaceId, accumMat);
+            }
+            
+            return accumulationMaterials.get(surfaceId);
+        }
+        
+        // Update accumulation material uniforms to match surface material
+        function syncAccumulationMaterial(surfaceMaterial, accumMaterial) {
+            for (const key in surfaceMaterial.uniforms) {
+                if (accumMaterial.uniforms[key]) {
+                    accumMaterial.uniforms[key].value = surfaceMaterial.uniforms[key].value;
+                }
+            }
         }
         
         // Create or update shadow map for a projector
         function updateShadowMap(projector) {
+            // For non-array projectors, create shadow map at projector's position
+            const worldTransform = getWorldTransform(projector);
+            return updateShadowMapForTransform(projector, worldTransform, projector.id);
+        }
+        
+        // Update shadow map for a specific world transform (supports array instances)
+        function updateShadowMapForTransform(projector, worldTransform, shadowKey) {
             // Determine FOV based on lens type
             // Fisheye lenses need a much wider shadow map to cover their FOV
             const lens = projector.lens || { type: 'rectilinear' };
@@ -3572,7 +3952,7 @@
             const nearPlane = projector.nearPlane || 0.1;
             const farPlane = projector.farPlane || 100;
             
-            let shadowData = shadowMaps.get(projector.id);
+            let shadowData = shadowMaps.get(shadowKey);
             
             if (!shadowData) {
                 // Create new render target and camera
@@ -3585,7 +3965,7 @@
                 const shadowCamera = new THREE.PerspectiveCamera(verticalFov, aspectRatio, nearPlane, farPlane);
                 
                 shadowData = { renderTarget, camera: shadowCamera, isFisheye };
-                shadowMaps.set(projector.id, shadowData);
+                shadowMaps.set(shadowKey, shadowData);
             }
             
             // Update shadow camera
@@ -3595,14 +3975,16 @@
             shadowCamera.near = nearPlane;
             shadowCamera.far = farPlane;
             shadowData.isFisheye = isFisheye;
-            shadowCamera.position.set(projector.position.x, projector.position.y, projector.position.z);
+            
+            // Use provided world transform
+            shadowCamera.position.set(worldTransform.position.x, worldTransform.position.y, worldTransform.position.z);
             
             // Use same quaternion composition as projection matrix
             const flipQuat = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI);
             const userEuler = new THREE.Euler(
-                THREE.MathUtils.degToRad(projector.rotation.x),
-                THREE.MathUtils.degToRad(projector.rotation.y),
-                THREE.MathUtils.degToRad(projector.rotation.z),
+                THREE.MathUtils.degToRad(worldTransform.rotation.x),
+                THREE.MathUtils.degToRad(worldTransform.rotation.y),
+                THREE.MathUtils.degToRad(worldTransform.rotation.z),
                 'YXZ'
             );
             const userQuat = new THREE.Quaternion().setFromEuler(userEuler);
@@ -3613,7 +3995,7 @@
             shadowCamera.updateProjectionMatrix();
             
             // Render shadow map
-            renderShadowMap(projector.id);
+            renderShadowMap(shadowKey);
             
             return shadowData;
         }
@@ -4547,7 +4929,7 @@
             
             const color = isGhost ? 0x4488aa : 0x00aaff;
             const opacity = isGhost ? 0.25 : 0.5;
-            const mat = new THREE.LineBasicMaterial({ color, transparent: true, opacity });
+            const mat = new THREE.LineBasicMaterial({ color, transparent: true, opacity, depthTest: true, depthWrite: false });
             
             // Frustum edge lines from projector to far plane
             const pts = [
@@ -5022,8 +5404,7 @@
                         <div class="object-type">${(effectiveLm/1000).toFixed(0)}K lm${textureInfo}</div>
                     </div>
                     <div class="object-actions">
-                        <!--<button class="icon-btn" onclick="event.stopPropagation(); duplicateProjector(${p.id})"><svg viewBox="0 0 24 24"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg></button>
-                        -->
+                        <button class="icon-btn" onclick="event.stopPropagation(); duplicateProjector(${p.id})"><svg viewBox="0 0 24 24"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg></button>
                         <button class="icon-btn danger" onclick="event.stopPropagation(); removeProjector(${p.id})"><svg viewBox="0 0 24 24"><path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"/></svg></button>
                     </div>
                 </div>
@@ -5232,124 +5613,249 @@
             const defaultShadowTex = new THREE.DataTexture(new Uint8Array([255, 255, 255, 255]), 1, 1, THREE.RGBAFormat);
             defaultShadowTex.needsUpdate = true;
             
-            // Build uniforms for 20 projector slots
-            const uniforms = {};
+            // Initialize array uniform values for 8 projection slots (per pass)
+            const projMatArr = [];
+            const shadowMatArr = [];
+            const projPosArr = [];
+            const projRotInvArr = [];
+            const projLumensArr = [];
+            const projThrowArr = [];
+            const projNearArr = [];
+            const projFarArr = [];
+            const texOffsetArr = [];
+            const lensParamsArr = [];
+            const lensParams2Arr = [];
+            const fisheyeFovArr = [];
+            
             for (let i = 0; i < 8; i++) {
-                uniforms[`projTex${i}`] = { value: defaultTex };
-                uniforms[`shadowMap${i}`] = { value: defaultShadowTex };
-                uniforms[`projMat${i}`] = { value: new THREE.Matrix4() };
-                uniforms[`shadowMat${i}`] = { value: new THREE.Matrix4() };
-                uniforms[`projPos${i}`] = { value: new THREE.Vector3() };
-                uniforms[`projRotInv${i}`] = { value: new THREE.Matrix3() };
-                uniforms[`projLumens${i}`] = { value: 0 };
-                uniforms[`projThrow${i}`] = { value: 1.5 };
-                uniforms[`projNear${i}`] = { value: 0.1 };
-                uniforms[`projFar${i}`] = { value: 100 };
-                uniforms[`texOffset${i}`] = { value: new THREE.Vector2(0, 0) };
-                uniforms[`lensParams${i}`] = { value: new THREE.Vector4(0, 0, 0, 0) };
-                uniforms[`lensParams2_${i}`] = { value: new THREE.Vector4(0, 0, 0, 0) };
-                uniforms[`fisheyeFov${i}`] = { value: 180 };
+                projMatArr.push(new THREE.Matrix4());
+                shadowMatArr.push(new THREE.Matrix4());
+                projPosArr.push(new THREE.Vector3());
+                projRotInvArr.push(new THREE.Matrix3());
+                projLumensArr.push(0);
+                projThrowArr.push(1.5);
+                projNearArr.push(0.1);
+                projFarArr.push(100);
+                texOffsetArr.push(new THREE.Vector2(0, 0));
+                lensParamsArr.push(new THREE.Vector4(0, 0, 0, 0));
+                lensParams2Arr.push(new THREE.Vector4(0, 0, 0, 0));
+                fisheyeFovArr.push(180);
             }
             
-            uniforms.numProjectors = { value: 0 };
-            uniforms.showCoverage = { value: state.displayOptions.coverage };
-            uniforms.showOverlap = { value: state.displayOptions.overlap };
-            uniforms.showHeatmap = { value: state.displayOptions.heatmap };
-            uniforms.debugLensType = { value: false };
-            uniforms.surfaceGain = { value: surface.gain };
-            uniforms.baseColor = { value: new THREE.Color(surface.color) };
-            uniforms.heatmapMax = { value: state.heatmapMax };
-            uniforms.ambientIntensity = { value: state.sceneSettings.ambientLight / 100 };
-            
-            // Get all virtual projector slots (includes array instances)
-            const slots = getAllProjectorSlots();
-            uniforms.numProjectors.value = Math.min(slots.length, 20);
-            
-            slots.slice(0, 20).forEach((slot, i) => {
-                const proj = slot.projector;
-                const worldTransform = slot.worldTransform;
-                
-                // Calculate projection matrix for this slot
-                const verticalFov = 2 * Math.atan(1 / (2 * proj.throwRatio * proj.zoom * proj.aspectRatio)) * (180 / Math.PI);
-                const nearPlane = proj.nearPlane || 0.1;
-                const farPlane = proj.farPlane || 100;
-                
-                const projCam = new THREE.PerspectiveCamera(verticalFov, proj.aspectRatio, nearPlane, farPlane);
-                projCam.position.set(worldTransform.position.x, worldTransform.position.y, worldTransform.position.z);
-                
-                const userEuler = new THREE.Euler(
-                    THREE.MathUtils.degToRad(worldTransform.rotation.x),
-                    THREE.MathUtils.degToRad(worldTransform.rotation.y),
-                    THREE.MathUtils.degToRad(worldTransform.rotation.z),
-                    'YXZ'
-                );
-                const userQuat = new THREE.Quaternion().setFromEuler(userEuler);
-                const flipQuat = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI);
-                const finalQuat = new THREE.Quaternion().multiplyQuaternions(userQuat, flipQuat);
-                projCam.quaternion.copy(finalQuat);
-                projCam.updateMatrixWorld(true);
-                projCam.updateProjectionMatrix();
-                
-                const vpMatrix = new THREE.Matrix4();
-                vpMatrix.multiplyMatrices(projCam.projectionMatrix, projCam.matrixWorldInverse);
-                
-                const rotMatrix = new THREE.Matrix4().makeRotationFromQuaternion(userQuat);
-                const rotMatrix3 = new THREE.Matrix3().setFromMatrix4(rotMatrix);
-                const rotMatrixInverse = rotMatrix3.clone().transpose();
-                
-                const effectiveLumens = proj.lumens * ((proj.brightness || 100) / 100) * (proj.stack || 1);
-                
-                uniforms[`projMat${i}`].value.copy(vpMatrix);
-                uniforms[`projPos${i}`].value.set(worldTransform.position.x, worldTransform.position.y, worldTransform.position.z);
-                uniforms[`projRotInv${i}`].value.copy(rotMatrixInverse);
-                uniforms[`projLumens${i}`].value = effectiveLumens;
-                uniforms[`projThrow${i}`].value = proj.throwRatio * proj.zoom;
-                uniforms[`projNear${i}`].value = nearPlane;
-                uniforms[`projFar${i}`].value = farPlane;
-                
-                // Texture - use parent projector's texture
-                const tex = projectionTextures.get(proj.id);
-                if (tex) uniforms[`projTex${i}`].value = tex;
-                
-                // Shadow map - use parent projector's shadow (array instances share shadows)
-                const shadow = shadowMaps.get(proj.id);
-                if (shadow) {
-                    uniforms[`shadowMap${i}`].value = shadow.renderTarget.texture;
-                    if (shadow.camera) {
-                        const shadowVPMatrix = new THREE.Matrix4();
-                        shadowVPMatrix.multiplyMatrices(shadow.camera.projectionMatrix, shadow.camera.matrixWorldInverse);
-                        uniforms[`shadowMat${i}`].value.copy(shadowVPMatrix);
-                    }
-                }
-                
-                // Lens parameters
-                const lens = proj.lens || { type: 'rectilinear', k1: 0, k2: 0, k3: 0, p1: 0, p2: 0, cx: 0, cy: 0 };
-                const lensTypeMap = {
-                    'rectilinear': 0,
-                    'fisheye_equidistant': 1,
-                    'fisheye_equisolid': 2,
-                    'fisheye_stereographic': 3,
-                    'fisheye_orthographic': 4
-                };
-                const lensTypeValue = lensTypeMap[lens.type] !== undefined ? lensTypeMap[lens.type] : 0;
-                uniforms[`lensParams${i}`].value.set(lensTypeValue, lens.k1 || 0, lens.k2 || 0, lens.k3 || 0);
-                uniforms[`lensParams2_${i}`].value.set(lens.p1 || 0, lens.p2 || 0, lens.cx || 0, lens.cy || 0);
-                uniforms[`fisheyeFov${i}`].value = lens.fisheyeFov || 180;
-                
-                // Texture offset
-                if (!proj.customTextureUrl && patternScrollState.enabled) {
-                    uniforms[`texOffset${i}`].value.set(patternScrollState.offset.x, patternScrollState.offset.y);
-                } else {
-                    uniforms[`texOffset${i}`].value.set(0, 0);
-                }
-            });
+            // Build uniforms object with 8 texture slots
+            const uniforms = {
+                // 8 individual texture uniforms
+                projTex0: { value: defaultTex },
+                projTex1: { value: defaultTex },
+                projTex2: { value: defaultTex },
+                projTex3: { value: defaultTex },
+                projTex4: { value: defaultTex },
+                projTex5: { value: defaultTex },
+                projTex6: { value: defaultTex },
+                projTex7: { value: defaultTex },
+                shadowMap0: { value: defaultShadowTex },
+                shadowMap1: { value: defaultShadowTex },
+                shadowMap2: { value: defaultShadowTex },
+                shadowMap3: { value: defaultShadowTex },
+                shadowMap4: { value: defaultShadowTex },
+                shadowMap5: { value: defaultShadowTex },
+                shadowMap6: { value: defaultShadowTex },
+                shadowMap7: { value: defaultShadowTex },
+                // Array uniforms for 8 slots per pass
+                projMat: { value: projMatArr },
+                shadowMat: { value: shadowMatArr },
+                projPos: { value: projPosArr },
+                projRotInv: { value: projRotInvArr },
+                projLumens: { value: projLumensArr },
+                projThrow: { value: projThrowArr },
+                projNear: { value: projNearArr },
+                projFar: { value: projFarArr },
+                texOffset: { value: texOffsetArr },
+                lensParams: { value: lensParamsArr },
+                lensParams2: { value: lensParams2Arr },
+                fisheyeFov: { value: fisheyeFovArr },
+                // Global uniforms
+                numProjectors: { value: 0 },
+                includeAmbient: { value: true },
+                showCoverage: { value: state.displayOptions.coverage },
+                showOverlap: { value: state.displayOptions.overlap },
+                showHeatmap: { value: state.displayOptions.heatmap },
+                debugLensType: { value: false },
+                surfaceGain: { value: surface.gain },
+                baseColor: { value: new THREE.Color(surface.color) },
+                heatmapMax: { value: state.heatmapMax },
+                ambientIntensity: { value: state.sceneSettings.ambientLight / 100 }
+            };
             
             return new THREE.ShaderMaterial({
                 uniforms,
                 vertexShader: projectionVertexShader,
                 fragmentShader: projectionFragmentShader,
-                side: THREE.DoubleSide
+                side: THREE.DoubleSide,
+                transparent: false  // Set to true dynamically during additive passes
             });
+        }
+        
+        // Calculate projection data for a slot given a projector and world transform
+        function calculateProjectorSlotData(proj, worldTransform, slotData, shadowKey) {
+            const verticalFov = 2 * Math.atan(1 / (2 * proj.throwRatio * proj.zoom * proj.aspectRatio)) * (180 / Math.PI);
+            const nearPlane = proj.nearPlane || 0.1;
+            const farPlane = proj.farPlane || 100;
+            
+            const projCam = new THREE.PerspectiveCamera(verticalFov, proj.aspectRatio, nearPlane, farPlane);
+            projCam.position.set(worldTransform.position.x, worldTransform.position.y, worldTransform.position.z);
+            
+            const userEuler = new THREE.Euler(
+                THREE.MathUtils.degToRad(worldTransform.rotation.x),
+                THREE.MathUtils.degToRad(worldTransform.rotation.y),
+                THREE.MathUtils.degToRad(worldTransform.rotation.z),
+                'YXZ'
+            );
+            const userQuat = new THREE.Quaternion().setFromEuler(userEuler);
+            const flipQuat = new THREE.Quaternion().setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.PI);
+            const finalQuat = new THREE.Quaternion().multiplyQuaternions(userQuat, flipQuat);
+            projCam.quaternion.copy(finalQuat);
+            projCam.updateMatrixWorld(true);
+            projCam.updateProjectionMatrix();
+            
+            const vpMatrix = new THREE.Matrix4();
+            vpMatrix.multiplyMatrices(projCam.projectionMatrix, projCam.matrixWorldInverse);
+            
+            const rotMatrix = new THREE.Matrix4().makeRotationFromQuaternion(userQuat);
+            const rotMatrix3 = new THREE.Matrix3().setFromMatrix4(rotMatrix);
+            const rotMatrixInverse = rotMatrix3.clone().transpose();
+            
+            const effectiveLumens = proj.lumens * ((proj.brightness || 100) / 100) * (proj.stack || 1);
+            
+            slotData.projMat.copy(vpMatrix);
+            slotData.projPos.set(worldTransform.position.x, worldTransform.position.y, worldTransform.position.z);
+            slotData.projRotInv.copy(rotMatrixInverse);
+            slotData.projLumens = effectiveLumens;
+            slotData.projThrow = proj.throwRatio * proj.zoom;
+            slotData.projNear = nearPlane;
+            slotData.projFar = farPlane;
+            
+            // Shadow matrix - use shadowKey to get instance-specific shadow map
+            const useShadowKey = shadowKey || proj.id;
+            const shadow = shadowMaps.get(useShadowKey);
+            if (shadow && shadow.camera) {
+                const shadowVPMatrix = new THREE.Matrix4();
+                shadowVPMatrix.multiplyMatrices(shadow.camera.projectionMatrix, shadow.camera.matrixWorldInverse);
+                slotData.shadowMat.copy(shadowVPMatrix);
+            }
+            
+            // Lens parameters
+            const lens = proj.lens || { type: 'rectilinear', k1: 0, k2: 0, k3: 0, p1: 0, p2: 0, cx: 0, cy: 0 };
+            const lensTypeMap = {
+                'rectilinear': 0,
+                'fisheye_equidistant': 1,
+                'fisheye_equisolid': 2,
+                'fisheye_stereographic': 3,
+                'fisheye_orthographic': 4
+            };
+            const lensTypeValue = lensTypeMap[lens.type] !== undefined ? lensTypeMap[lens.type] : 0;
+            slotData.lensParams.set(lensTypeValue, lens.k1 || 0, lens.k2 || 0, lens.k3 || 0);
+            slotData.lensParams2.set(lens.p1 || 0, lens.p2 || 0, lens.cx || 0, lens.cy || 0);
+            slotData.fisheyeFov = lens.fisheyeFov || 180;
+            
+            // Texture offset
+            if (!proj.customTextureUrl && patternScrollState.enabled) {
+                slotData.texOffset.set(patternScrollState.offset.x, patternScrollState.offset.y);
+            } else {
+                slotData.texOffset.set(0, 0);
+            }
+            
+            // Texture and shadow map
+            slotData.projTex = projectionTextures.get(proj.id) || createPatternTexture('none');
+            const shadowData = shadowMaps.get(useShadowKey);
+            if (shadowData && shadowData.renderTarget) {
+                slotData.shadowTex = shadowData.renderTarget.texture;
+            } else {
+                slotData.shadowTex = null;
+            }
+        }
+        
+        // Update material uniforms for a specific render pass
+        function updateMaterialForPass(material, passSlots, isFirstPass, surface) {
+            const { defaultTex, defaultShadowTex } = getDefaultTextures();
+            
+            const u = material.uniforms;
+            
+            // Set pass-specific flags
+            u.includeAmbient.value = isFirstPass;
+            u.numProjectors.value = passSlots.length;
+            
+            // Update display options
+            u.showCoverage.value = state.displayOptions.coverage;
+            u.showOverlap.value = state.displayOptions.overlap;
+            u.showHeatmap.value = state.displayOptions.heatmap;
+            u.surfaceGain.value = surface.gain;
+            u.baseColor.value.set(surface.color);
+            u.heatmapMax.value = state.heatmapMax;
+            u.ambientIntensity.value = state.sceneSettings.ambientLight / 100;
+            
+            // Fill slots 0-7 with this pass's projectors
+            for (let i = 0; i < 8; i++) {
+                if (i < passSlots.length) {
+                    const slotData = passSlots[i];
+                    
+                    // Set textures
+                    u[`projTex${i}`].value = slotData.projTex || defaultTex;
+                    u[`shadowMap${i}`].value = slotData.shadowTex || defaultShadowTex;
+                    
+                    // Set array uniforms - use explicit value setting for reliable updates
+                    u.projMat.value[i].copy(slotData.projMat);
+                    u.shadowMat.value[i].copy(slotData.shadowMat);
+                    u.projPos.value[i].copy(slotData.projPos);
+                    u.projRotInv.value[i].copy(slotData.projRotInv);
+                    u.projLumens.value[i] = slotData.projLumens;
+                    u.projThrow.value[i] = slotData.projThrow;
+                    u.projNear.value[i] = slotData.projNear;
+                    u.projFar.value[i] = slotData.projFar;
+                    u.texOffset.value[i].set(slotData.texOffset.x, slotData.texOffset.y);
+                    // Set lens params explicitly to ensure values are correct
+                    u.lensParams.value[i].set(
+                        slotData.lensParams.x,
+                        slotData.lensParams.y,
+                        slotData.lensParams.z,
+                        slotData.lensParams.w
+                    );
+                    u.lensParams2.value[i].set(
+                        slotData.lensParams2.x,
+                        slotData.lensParams2.y,
+                        slotData.lensParams2.z,
+                        slotData.lensParams2.w
+                    );
+                    u.fisheyeFov.value[i] = slotData.fisheyeFov;
+                } else {
+                    // Clear unused slots - reset ALL parameters to defaults
+                    u[`projTex${i}`].value = defaultTex;
+                    u[`shadowMap${i}`].value = defaultShadowTex;
+                    u.projLumens.value[i] = 0;
+                    // IMPORTANT: Reset lens type to rectilinear (0) to prevent stale fisheye data
+                    u.lensParams.value[i].set(0, 0, 0, 0);  // x=0 means rectilinear
+                    u.lensParams2.value[i].set(0, 0, 0, 0);
+                    u.fisheyeFov.value[i] = 180;
+                }
+            }
+            
+            // Configure blending for this pass
+            if (isFirstPass) {
+                material.transparent = false;
+                material.blending = THREE.NormalBlending;
+                material.depthWrite = true;
+                material.depthTest = true;
+                material.depthFunc = THREE.LessEqualDepth;
+            } else {
+                // Additive pass - blend on top without writing depth
+                material.transparent = true;  // Required for additive blending
+                material.blending = THREE.AdditiveBlending;
+                material.depthWrite = false;
+                material.depthTest = true;
+                material.depthFunc = THREE.LessEqualDepth;  // LessEqual works better than Equal
+            }
+            
+            material.needsUpdate = true;
         }
         
         // Get all projector slots including array instances for shader
@@ -5359,12 +5865,17 @@
             
             enabled.forEach(proj => {
                 const instances = getProjectorArrayInstances(proj);
-                instances.forEach(instance => {
+                instances.forEach((instance, index) => {
                     const worldTransform = getArrayInstanceWorldTransform(proj, instance);
+                    // Create unique shadow key for each instance
+                    // For single projectors (index 0), use projector ID
+                    // For array instances, append instance index
+                    const shadowKey = instances.length > 1 ? `${proj.id}_inst_${index}` : proj.id;
                     slots.push({
                         projector: proj,
                         instance: instance,
-                        worldTransform: worldTransform
+                        worldTransform: worldTransform,
+                        shadowKey: shadowKey
                     });
                 });
             });
@@ -6102,6 +6613,7 @@
                 saveStateForUndo(`Move ${p.name} (panel)`);
                 p.position[axis] = val;
                 updateProjectorMesh(p);
+                updateGizmoPosition();  // Update gizmo to follow moved object
             }
         }
         
@@ -6111,6 +6623,7 @@
                 saveStateForUndo(`Rotate ${p.name} (panel)`);
                 p.rotation[axis] = val;
                 updateProjectorMesh(p);
+                updateGizmoPosition();  // Update gizmo to follow rotated object
             }
         }
         
@@ -6436,6 +6949,7 @@
                 saveStateForUndo(`Move ${s.name} (panel)`);
                 s.position[axis] = val;
                 updateSurfaceMesh(s);
+                updateGizmoPosition();  // Update gizmo to follow moved object
             }
         }
         
@@ -6445,6 +6959,7 @@
                 saveStateForUndo(`Rotate ${s.name} (panel)`);
                 s.rotation[axis] = val;
                 updateSurfaceMesh(s);
+                updateGizmoPosition();  // Update gizmo to follow rotated object
             }
         }
         
@@ -6812,13 +7327,19 @@
         
         function updateStatus() {
             const enabledCount = state.projectors.filter(p => p.enabled).length;
-            const activeCount = Math.min(enabledCount, 8);
+            
+            // Count total projection slots including array instances
+            const allSlots = getAllProjectorSlots();
+            const totalSlots = allSlots.length;
+            const numPasses = Math.max(1, Math.ceil(totalSlots / 8));
+            
             let projText = state.projectors.length + ' Projector' + (state.projectors.length !== 1 ? 's' : '');
-            if (enabledCount > 0) {
-                projText += ` (${activeCount}/${enabledCount} active)`;
-            }
-            if (enabledCount > 8) {
-                projText += ' ⚠️';
+            if (totalSlots > 0) {
+                projText += ` (${totalSlots} slots`;
+                if (numPasses > 1) {
+                    projText += `, ${numPasses} passes`;
+                }
+                projText += ')';
             }
             document.getElementById('projector-status').textContent = projText;
             document.getElementById('surface-status').textContent = state.surfaces.length + ' Surface' + (state.surfaces.length !== 1 ? 's' : '');
@@ -7740,10 +8261,14 @@
                 
                 if (data.settings.heatmapMax) {
                     state.heatmapMax = data.settings.heatmapMax;
-                    document.getElementById('heatmap-max-slider').value = data.settings.heatmapMax;
-                    document.getElementById('heatmap-max-value').textContent = data.settings.heatmapMax;
-                    document.getElementById('legend-mid').textContent = Math.round(data.settings.heatmapMax / 2);
-                    document.getElementById('legend-max').textContent = data.settings.heatmapMax + '+';
+                    const heatmapSlider = document.getElementById('heatmap-max-slider');
+                    const heatmapInput = document.getElementById('heatmap-max-input');
+                    const legendMid = document.getElementById('legend-mid');
+                    const legendMax = document.getElementById('legend-max');
+                    if (heatmapSlider) heatmapSlider.value = data.settings.heatmapMax;
+                    if (heatmapInput) heatmapInput.value = data.settings.heatmapMax;
+                    if (legendMid) legendMid.textContent = Math.round(data.settings.heatmapMax / 2);
+                    if (legendMax) legendMax.textContent = data.settings.heatmapMax + '+';
                 }
                 
                 // Import scene settings
@@ -7893,40 +8418,10 @@
                 // Wrap offsets
                 patternScrollState.offset.x %= 1;
                 patternScrollState.offset.y %= 1;
-                
-                // Update shader uniforms on all surface materials
-                const enabled = state.projectors.filter(p => p.enabled);
-                surfaceGroup.children.forEach(mesh => {
-                    if (mesh.material && mesh.material.uniforms) {
-                        // Update all 4 possible projector texture offsets
-                        for (let i = 0; i < Math.min(enabled.length, 4); i++) {
-                            const proj = enabled[i];
-                            // Only scroll patterns, not custom textures/videos
-                            if (!proj.customTextureUrl) {
-                                mesh.material.uniforms[`texOffset${i}`].value.set(
-                                    patternScrollState.offset.x, 
-                                    patternScrollState.offset.y
-                                );
-                            } else {
-                                // Reset offset for custom textures
-                                mesh.material.uniforms[`texOffset${i}`].value.set(0, 0);
-                            }
-                        }
-                    }
-                });
             } else if (patternScrollState.offset.x !== 0 || patternScrollState.offset.y !== 0) {
                 // Reset offsets when disabled
                 patternScrollState.offset.x = 0;
                 patternScrollState.offset.y = 0;
-                surfaceGroup.children.forEach(mesh => {
-                    if (mesh.material && mesh.material.uniforms) {
-                        for (let i = 0; i < 4; i++) {
-                            if (mesh.material.uniforms[`texOffset${i}`]) {
-                                mesh.material.uniforms[`texOffset${i}`].value.set(0, 0);
-                            }
-                        }
-                    }
-                });
             }
             
             // Update gizmo scale based on camera distance (only if not dragging)
@@ -7966,7 +8461,360 @@
                 document.getElementById('fps-counter').textContent = frames + ' FPS';
                 frames = 0; lastTime = performance.now();
             }
+            
+            // Multi-pass rendering for unlimited projectors
+            renderMultiPass();
+        }
+        
+        // Cached default textures for multi-pass rendering
+        let cachedDefaultTex = null;
+        let cachedDefaultShadowTex = null;
+        
+        function getDefaultTextures() {
+            if (!cachedDefaultTex) {
+                cachedDefaultTex = createPatternTexture('none');
+            }
+            if (!cachedDefaultShadowTex) {
+                cachedDefaultShadowTex = new THREE.DataTexture(new Uint8Array([255, 255, 255, 255]), 1, 1, THREE.RGBAFormat);
+                cachedDefaultShadowTex.needsUpdate = true;
+            }
+            return { defaultTex: cachedDefaultTex, defaultShadowTex: cachedDefaultShadowTex };
+        }
+        
+        // Multi-pass rendering to overcome 16 texture unit limit
+        function renderMultiPass() {
+            // Get all projector slots (including array instances)
+            const allSlots = getAllProjectorSlots();
+            
+            // First pass: Update shadow maps for ALL slots (including array instances)
+            allSlots.forEach(slot => {
+                updateShadowMapForTransform(slot.projector, slot.worldTransform, slot.shadowKey);
+            });
+            
+            // Pre-calculate all slot data
+            const slotDataArray = allSlots.map(slot => {
+                const slotData = {
+                    projMat: new THREE.Matrix4(),
+                    shadowMat: new THREE.Matrix4(),
+                    projPos: new THREE.Vector3(),
+                    projRotInv: new THREE.Matrix3(),
+                    projLumens: 0,
+                    projThrow: 1.5,
+                    projNear: 0.1,
+                    projFar: 100,
+                    texOffset: new THREE.Vector2(0, 0),
+                    lensParams: new THREE.Vector4(0, 0, 0, 0),
+                    lensParams2: new THREE.Vector4(0, 0, 0, 0),
+                    fisheyeFov: 180,
+                    projTex: null,
+                    shadowTex: null
+                };
+                calculateProjectorSlotData(slot.projector, slot.worldTransform, slotData, slot.shadowKey);
+                return slotData;
+            });
+            
+            // Determine number of passes (8 projectors per pass)
+            const numPasses = Math.max(1, Math.ceil(slotDataArray.length / 8));
+            
+            // Get list of surfaces with shader materials
+            const surfaceMeshes = [];
+            surfaceGroup.children.forEach(mesh => {
+                if (mesh.material && mesh.material.uniforms) {
+                    const surfaceId = mesh.userData.surfaceId;
+                    const surface = state.surfaces.find(s => s.id === surfaceId);
+                    if (surface) {
+                        surfaceMeshes.push({ mesh, surface });
+                    }
+                }
+            });
+            
+            // Check if any visualization mode is enabled
+            const visualizationEnabled = state.displayOptions.coverage || 
+                                         state.displayOptions.overlap || 
+                                         state.displayOptions.heatmap;
+            
+            // If no slots, just render scene normally with ambient
+            if (slotDataArray.length === 0) {
+                surfaceMeshes.forEach(({ mesh, surface }) => {
+                    updateMaterialForPass(mesh.material, [], true, surface);
+                });
+                renderer.render(scene, camera);
+                return;
+            }
+            
+            // If visualization is enabled AND we have more than 8 projectors, use accumulation system
+            if (visualizationEnabled && numPasses > 1 && accumulationTarget && colorTarget) {
+                renderWithAccumulation(slotDataArray, surfaceMeshes, numPasses);
+                return;
+            }
+            
+            // Standard rendering path (visualization works for first 8 projectors only)
+            // Pass 0: Full scene render with first 8 projectors
+            const pass0Slots = slotDataArray.slice(0, 8);
+            surfaceMeshes.forEach(({ mesh, surface }) => {
+                updateMaterialForPass(mesh.material, pass0Slots, true, surface);
+            });
             renderer.render(scene, camera);
+            
+            // Additional passes: Only render surfaces with additive blending
+            if (numPasses > 1) {
+                // Save visibility states
+                const gizmoVisible = gizmoGroup ? gizmoGroup.visible : false;
+                const projectorVisible = projectorGroup.visible;
+                const distanceVisible = distanceHelperGroup ? distanceHelperGroup.visible : false;
+                const gridVisible = gridHelper ? gridHelper.visible : false;
+                
+                // CRITICAL: Save and remove scene background to prevent it from overwriting
+                const savedBackground = scene.background;
+                scene.background = null;
+                
+                // Hide non-surface objects for additive passes
+                if (gizmoGroup) gizmoGroup.visible = false;
+                projectorGroup.visible = false;
+                if (distanceHelperGroup) distanceHelperGroup.visible = false;
+                if (gridHelper) gridHelper.visible = false;
+                
+                // Disable depth and color clear for additive passes
+                renderer.autoClear = false;
+                
+                for (let pass = 1; pass < numPasses; pass++) {
+                    const startIdx = pass * 8;
+                    const endIdx = Math.min(startIdx + 8, slotDataArray.length);
+                    const passSlots = slotDataArray.slice(startIdx, endIdx);
+                    
+                    // Update surface materials for this pass
+                    surfaceMeshes.forEach(({ mesh, surface }) => {
+                        updateMaterialForPass(mesh.material, passSlots, false, surface);
+                    });
+                    
+                    // Render just the surfaces (no background since scene.background = null)
+                    renderer.render(scene, camera);
+                }
+                
+                // Restore scene background first
+                scene.background = savedBackground;
+                
+                // Restore visibility and autoClear
+                renderer.autoClear = true;
+                if (gizmoGroup) gizmoGroup.visible = gizmoVisible;
+                projectorGroup.visible = projectorVisible;
+                if (distanceHelperGroup) distanceHelperGroup.visible = distanceVisible;
+                if (gridHelper) gridHelper.visible = gridVisible;
+                
+                // Reset materials to normal blending state for next frame's pass 0
+                surfaceMeshes.forEach(({ mesh, surface }) => {
+                    mesh.material.transparent = false;
+                    mesh.material.blending = THREE.NormalBlending;
+                    mesh.material.depthWrite = true;
+                    mesh.material.depthFunc = THREE.LessEqualDepth;
+                });
+            }
+        }
+        
+        // Render with accumulation system for proper visualization across all projectors
+        function renderWithAccumulation(slotDataArray, surfaceMeshes, numPasses) {
+            // Save visibility states
+            const gizmoVisible = gizmoGroup ? gizmoGroup.visible : false;
+            const projectorVisible = projectorGroup.visible;
+            const distanceVisible = distanceHelperGroup ? distanceHelperGroup.visible : false;
+            const gridVisible = gridHelper ? gridHelper.visible : false;
+            const savedBackground = scene.background;
+            
+            // ========================================
+            // PHASE 1: Render accumulation (hit count + luminance)
+            // ========================================
+            renderer.setRenderTarget(accumulationTarget);
+            renderer.setClearColor(0x000000, 0);
+            renderer.clear();
+            
+            // Hide non-surface objects
+            if (gizmoGroup) gizmoGroup.visible = false;
+            projectorGroup.visible = false;
+            if (distanceHelperGroup) distanceHelperGroup.visible = false;
+            if (gridHelper) gridHelper.visible = false;
+            scene.background = null;
+            
+            // Save original materials
+            const originalMaterials = new Map();
+            surfaceMeshes.forEach(({ mesh }) => {
+                originalMaterials.set(mesh, mesh.material);
+            });
+            
+            // Render all passes to accumulation buffer
+            for (let pass = 0; pass < numPasses; pass++) {
+                const startIdx = pass * 8;
+                const endIdx = Math.min(startIdx + 8, slotDataArray.length);
+                const passSlots = slotDataArray.slice(startIdx, endIdx);
+                
+                surfaceMeshes.forEach(({ mesh, surface }) => {
+                    // Get or create accumulation material
+                    let accumMat = accumulationMaterials.get(mesh.userData.surfaceId);
+                    if (!accumMat) {
+                        accumMat = createAccumulationMaterial(mesh.material);
+                        accumulationMaterials.set(mesh.userData.surfaceId, accumMat);
+                    }
+                    
+                    // Update uniforms for this pass
+                    updateMaterialForPass(mesh.material, passSlots, pass === 0, surface);
+                    syncAccumulationMaterial(mesh.material, accumMat);
+                    
+                    mesh.material = accumMat;
+                    
+                    // Set blending for additive accumulation
+                    if (pass > 0) {
+                        accumMat.transparent = true;
+                        accumMat.blending = THREE.AdditiveBlending;
+                        accumMat.depthWrite = false;
+                    } else {
+                        accumMat.transparent = false;
+                        accumMat.blending = THREE.NormalBlending;
+                        accumMat.depthWrite = true;
+                    }
+                });
+                
+                if (pass > 0) {
+                    renderer.autoClear = false;
+                }
+                renderer.render(scene, camera);
+            }
+            
+            // ========================================
+            // PHASE 2: Render color (surfaces + background only, without visualization)
+            // ========================================
+            renderer.setRenderTarget(colorTarget);
+            renderer.autoClear = true;
+            renderer.setClearColor(0x0a0a0c, 1);
+            renderer.clear();
+            
+            // Restore materials and disable visualization flags
+            surfaceMeshes.forEach(({ mesh, surface }) => {
+                mesh.material = originalMaterials.get(mesh);
+                mesh.material.uniforms.showCoverage.value = false;
+                mesh.material.uniforms.showOverlap.value = false;
+                mesh.material.uniforms.showHeatmap.value = false;
+            });
+            
+            // Include background but NOT grid, gizmos, or projectors
+            // Grid renders in Phase 4 to avoid being affected by visualization
+            scene.background = savedBackground;
+            if (gridHelper) gridHelper.visible = false;
+            if (gizmoGroup) gizmoGroup.visible = false;
+            projectorGroup.visible = false;
+            if (distanceHelperGroup) distanceHelperGroup.visible = false;
+            
+            const pass0Slots = slotDataArray.slice(0, 8);
+            surfaceMeshes.forEach(({ mesh, surface }) => {
+                updateMaterialForPass(mesh.material, pass0Slots, true, surface);
+                // Keep visualization flags off
+                mesh.material.uniforms.showCoverage.value = false;
+                mesh.material.uniforms.showOverlap.value = false;
+                mesh.material.uniforms.showHeatmap.value = false;
+            });
+            renderer.render(scene, camera);
+            
+            // Additional color passes (surfaces only)
+            if (numPasses > 1) {
+                scene.background = null;
+                renderer.autoClear = false;
+                
+                for (let pass = 1; pass < numPasses; pass++) {
+                    const startIdx = pass * 8;
+                    const endIdx = Math.min(startIdx + 8, slotDataArray.length);
+                    const passSlots = slotDataArray.slice(startIdx, endIdx);
+                    
+                    surfaceMeshes.forEach(({ mesh, surface }) => {
+                        updateMaterialForPass(mesh.material, passSlots, false, surface);
+                        mesh.material.uniforms.showCoverage.value = false;
+                        mesh.material.uniforms.showOverlap.value = false;
+                        mesh.material.uniforms.showHeatmap.value = false;
+                    });
+                    
+                    renderer.render(scene, camera);
+                }
+            }
+            
+            // ========================================
+            // PHASE 3: Composite with visualization
+            // ========================================
+            renderer.setRenderTarget(null);
+            renderer.autoClear = true;
+            
+            compositeMaterial.uniforms.colorTexture.value = colorTarget.texture;
+            compositeMaterial.uniforms.accumTexture.value = accumulationTarget.texture;
+            compositeMaterial.uniforms.showCoverage.value = state.displayOptions.coverage;
+            compositeMaterial.uniforms.showOverlap.value = state.displayOptions.overlap;
+            compositeMaterial.uniforms.showHeatmap.value = state.displayOptions.heatmap;
+            compositeMaterial.uniforms.heatmapMax.value = state.displayOptions.heatmapMax || 1000;
+            
+            renderer.render(compositeScene, compositeCamera);
+            
+            // ========================================
+            // PHASE 4: Render overlays with proper depth occlusion
+            // ========================================
+            // Render grid, gizmos, projectors, and distance helpers AFTER composite
+            // but still respecting surface occlusion
+            renderer.autoClear = false;  // Don't clear the composite result
+            
+            // Clear only the depth buffer
+            renderer.clearDepth();
+            
+            // First, render surfaces to DEPTH BUFFER ONLY (no color output)
+            // This restores depth information so overlays are properly occluded by surfaces
+            surfaceMeshes.forEach(({ mesh }) => {
+                mesh.visible = true;
+                mesh.material.colorWrite = false;  // Write depth only, not color
+                mesh.material.depthWrite = true;   // Ensure depth writing is enabled
+                mesh.material.side = THREE.DoubleSide;  // Render both sides for proper occlusion
+            });
+            
+            scene.background = null;
+            if (gridHelper) gridHelper.visible = false;
+            if (gizmoGroup) gizmoGroup.visible = false;
+            projectorGroup.visible = false;
+            if (distanceHelperGroup) distanceHelperGroup.visible = false;
+            
+            renderer.render(scene, camera);
+            
+            // Restore color write and hide surfaces for overlay render
+            surfaceMeshes.forEach(({ mesh }) => {
+                mesh.material.colorWrite = true;
+                mesh.visible = false;
+            });
+            
+            // Now render overlays - they will be depth-tested against surfaces
+            // Grid renders first (on the floor), then other overlays
+            if (gridHelper) gridHelper.visible = gridVisible;
+            if (gizmoGroup) gizmoGroup.visible = gizmoVisible;
+            projectorGroup.visible = projectorVisible;
+            if (distanceHelperGroup) distanceHelperGroup.visible = distanceVisible;
+            
+            // Render overlays to screen
+            renderer.render(scene, camera);
+            
+            // ========================================
+            // Restore state
+            // ========================================
+            renderer.autoClear = true;
+            scene.background = savedBackground;
+            
+            // Restore surface visibility
+            surfaceMeshes.forEach(({ mesh }) => {
+                mesh.visible = true;
+            });
+            
+            // Restore grid visibility
+            if (gridHelper) gridHelper.visible = gridVisible;
+            
+            // Restore visualization flags for UI consistency
+            surfaceMeshes.forEach(({ mesh }) => {
+                mesh.material.uniforms.showCoverage.value = state.displayOptions.coverage;
+                mesh.material.uniforms.showOverlap.value = state.displayOptions.overlap;
+                mesh.material.uniforms.showHeatmap.value = state.displayOptions.heatmap;
+                mesh.material.transparent = false;
+                mesh.material.blending = THREE.NormalBlending;
+                mesh.material.depthWrite = true;
+                mesh.material.depthFunc = THREE.LessEqualDepth;
+            });
         }
         
         init();
