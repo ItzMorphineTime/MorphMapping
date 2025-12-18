@@ -1,11 +1,11 @@
 <!DOCTYPE html>
-<!-- Projection Studio v5.0 - Fixed visualization double-sided rendering, grid visibility, import errors, gizmo sync -->
+<!-- Projection Studio - GitHub Pages Demo (Export disabled - Visit morph-mapping-vercel.vercel.app for full features) -->
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta author="Joe Loe">
-    <title>Projection Studio v4.2</title>
+    <title>Projection Studio - Demo</title>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600&family=Outfit:wght@300;400;500;600;700&display=swap');
         
@@ -539,64 +539,6 @@
             fill: var(--danger);
         }
         
-        .password-modal .modal {
-            width: 360px;
-        }
-        .password-input-wrapper {
-            position: relative;
-        }
-        .password-input {
-            width: 100%;
-            padding: 12px 40px 12px 14px;
-            border-radius: 6px;
-            border: 1px solid var(--border-color);
-            background: var(--bg-tertiary);
-            color: var(--text-primary);
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 13px;
-        }
-        .password-input:focus {
-            outline: none;
-            border-color: var(--accent-primary);
-        }
-        .password-input.error {
-            border-color: var(--danger);
-            animation: shake 0.4s ease;
-        }
-        @keyframes shake {
-            0%, 100% { transform: translateX(0); }
-            20%, 60% { transform: translateX(-6px); }
-            40%, 80% { transform: translateX(6px); }
-        }
-        .password-toggle {
-            position: absolute;
-            right: 10px;
-            top: 50%;
-            transform: translateY(-50%);
-            background: none;
-            border: none;
-            color: var(--text-muted);
-            cursor: pointer;
-            padding: 4px;
-        }
-        .password-toggle:hover {
-            color: var(--text-secondary);
-        }
-        .password-toggle svg {
-            width: 18px;
-            height: 18px;
-            fill: currentColor;
-        }
-        .password-error {
-            color: var(--danger);
-            font-size: 11px;
-            margin-top: 8px;
-            display: none;
-        }
-        .password-error.visible {
-            display: block;
-        }
-        
         /* Contact Me Button & Panel */
         .contact-wrapper {
             position: relative;
@@ -1011,139 +953,32 @@
         </footer>
     </div>
     
-    <!-- Export Modal -->
+    <!-- Project Moved Modal -->
     <div class="modal-overlay" id="export-modal">
-        <div class="modal">
+        <div class="modal" style="max-width: 420px;">
             <div class="modal-header">
-                <span class="modal-title">Export Project</span>
+                <span class="modal-title">Feature Moved</span>
                 <button class="modal-close" onclick="closeModal('export-modal')">
                     <svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12 19 6.41z"/></svg>
                 </button>
             </div>
-            <div class="modal-body">
-                <label style="font-size: 11px; color: var(--text-muted); display: block; margin-bottom: 6px;">Filename</label>
-                <input type="text" class="filename-input" id="export-filename" value="projection-config" placeholder="Enter filename">
-                
-                <label style="font-size: 11px; color: var(--text-muted); display: block; margin-bottom: 6px; margin-top: 12px;">Format</label>
-                <div style="display: flex; gap: 8px; margin-bottom: 12px;">
-                    <button class="btn btn-primary" id="export-format-json" onclick="setExportFormat('json')" style="flex: 1;">
-                        <svg viewBox="0 0 24 24" fill="currentColor" style="width:14px;height:14px;margin-right:4px;"><path d="M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/></svg>
-                        JSON
+            <div class="modal-body" style="text-align: center; padding: 24px;">
+                <div style="width: 64px; height: 64px; background: linear-gradient(135deg, var(--accent-primary), var(--projector-color)); border-radius: 16px; display: flex; align-items: center; justify-content: center; margin: 0 auto 20px;">
+                    <svg viewBox="0 0 24 24" fill="var(--bg-primary)" style="width: 32px; height: 32px;"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>
+                </div>
+                <h3 style="font-size: 18px; font-weight: 600; margin-bottom: 12px; color: var(--text-primary);">Export &amp; Save for Pro Users</h3>
+                <p style="font-size: 14px; color: var(--text-secondary); line-height: 1.6; margin-bottom: 20px;">
+                    Export and Save functionality is now available exclusively for registered users on our new hosted platform.
+                </p>
+                <p style="font-size: 13px; color: var(--text-muted); line-height: 1.5; margin-bottom: 24px;">
+                    The latest updates, new features, and full export capabilities have moved to our new home. Sign up for a Pro account to unlock all features!
+                </p>
+                <a href="https://morph-mapping-vercel.vercel.app/" target="_blank" style="text-decoration: none;">
+                    <button class="btn btn-primary" style="width: 100%; padding: 14px 20px; font-size: 14px; justify-content: center;">
+                        <svg viewBox="0 0 24 24" fill="currentColor" style="width: 18px; height: 18px; margin-right: 8px;"><path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/></svg>
+                        Go to Projection Studio Pro
                     </button>
-                    <button class="btn" id="export-format-csv" onclick="setExportFormat('csv')" style="flex: 1;">
-                        <svg viewBox="0 0 24 24" fill="currentColor" style="width:14px;height:14px;margin-right:4px;"><path d="M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6zm-1 9h-2v1h2v2H9v-4h4v1zm-4 3v-4H7v4h2zm8 0h-2v-1h-1v-1h1v-1h-1V9h2v4h1v1z"/></svg>
-                        CSV
-                    </button>
-                    <button class="btn" id="export-format-obj" onclick="setExportFormat('obj')" style="flex: 1;">
-                        <svg viewBox="0 0 24 24" fill="currentColor" style="width:14px;height:14px;margin-right:4px;"><path d="M21 16.5c0 .38-.21.71-.53.88l-7.9 4.44c-.16.12-.36.18-.57.18-.21 0-.41-.06-.57-.18l-7.9-4.44A.991.991 0 013 16.5v-9c0-.38.21-.71.53-.88l7.9-4.44c.16-.12.36-.18.57-.18.21 0 .41.06.57.18l7.9 4.44c.32.17.53.5.53.88v9z"/></svg>
-                        OBJ
-                    </button>
-                </div>
-                
-                <div id="json-export-options">
-                <label style="font-size: 11px; color: var(--text-muted); display: block; margin-bottom: 10px;">Include in export:</label>
-                
-                <div class="export-option" onclick="toggleExportOption('projectors')">
-                    <div class="export-option-icon">
-                        <svg viewBox="0 0 24 24"><path d="M21 3H3c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h5v2h8v-2h5c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 14H3V5h18v12z"/></svg>
-                    </div>
-                    <div class="export-option-info">
-                        <h4>Projectors</h4>
-                        <p id="export-projector-count">0 projectors with settings</p>
-                    </div>
-                    <div class="export-checkbox">
-                        <div class="checkbox checked" id="export-check-projectors">
-                            <svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"/></svg>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="export-option" onclick="toggleExportOption('surfaces')">
-                    <div class="export-option-icon">
-                        <svg viewBox="0 0 24 24"><path d="M20 6H4c-1.1 0-2 .9-2 2v8c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V8c0-1.1-.9-2-2-2z"/></svg>
-                    </div>
-                    <div class="export-option-info">
-                        <h4>Surfaces</h4>
-                        <p id="export-surface-count">0 surfaces with settings</p>
-                    </div>
-                    <div class="export-checkbox">
-                        <div class="checkbox checked" id="export-check-surfaces">
-                            <svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"/></svg>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="export-option" onclick="toggleExportOption('settings')">
-                    <div class="export-option-icon">
-                        <svg viewBox="0 0 24 24"><path d="M19.14 12.94c.04-.31.06-.63.06-.94 0-.31-.02-.63-.06-.94l2.03-1.58a.49.49 0 0 0 .12-.61l-1.92-3.32a.49.49 0 0 0-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54a.484.484 0 0 0-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96a.49.49 0 0 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.04.31-.06.63-.06.94s.02.63.06.94l-2.03 1.58a.49.49 0 0 0-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/></svg>
-                    </div>
-                    <div class="export-option-info">
-                        <h4>Display Settings</h4>
-                        <p>Pattern, heatmap, view options</p>
-                    </div>
-                    <div class="export-checkbox">
-                        <div class="checkbox checked" id="export-check-settings">
-                            <svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"/></svg>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="export-option" onclick="toggleExportOption('textures')">
-                    <div class="export-option-icon">
-                        <svg viewBox="0 0 24 24"><path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/></svg>
-                    </div>
-                    <div class="export-option-info">
-                        <h4>Custom Textures</h4>
-                        <p id="export-texture-count">Embed texture images (increases file size)</p>
-                    </div>
-                    <div class="export-checkbox">
-                        <div class="checkbox" id="export-check-textures">
-                            <svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"/></svg>
-                        </div>
-                    </div>
-                </div>
-                </div>
-                
-                <div id="csv-export-options" style="display: none;">
-                    <div class="import-preview" style="margin-bottom: 0;">
-                        <h4>CSV Export (disguise Compatible)</h4>
-                        <div class="import-stat">
-                            <span>Projectors</span>
-                            <span id="csv-export-projector-count">0</span>
-                        </div>
-                        <div class="import-stat">
-                            <span>Format</span>
-                            <span>disguise d3/gx</span>
-                        </div>
-                        <p style="font-size: 11px; color: var(--text-muted); margin-top: 8px;">
-                            Exports projector positions, rotations, lens settings, and calculated metrics in disguise-compatible CSV format. Surfaces are not included in CSV export.
-                        </p>
-                    </div>
-                </div>
-                
-                <div id="obj-export-options" style="display: none;">
-                    <div class="import-preview" style="margin-bottom: 0;">
-                        <h4>OBJ Export (3D Geometry)</h4>
-                        <div class="import-stat">
-                            <span>Surfaces</span>
-                            <span id="obj-export-surface-count">0</span>
-                        </div>
-                        <div class="import-stat">
-                            <span>Format</span>
-                            <span>Wavefront OBJ</span>
-                        </div>
-                        <p style="font-size: 11px; color: var(--text-muted); margin-top: 8px;">
-                            Exports all surfaces as a single OBJ file with UV coordinates. Each surface is exported as a separate named object. Compatible with most 3D software.
-                        </p>
-                    </div>
-                </div>
-            </div>
-            <div class="modal-footer">
-                <button class="btn" onclick="closeModal('export-modal')">Cancel</button>
-                <button class="btn btn-primary" onclick="doExport()">
-                    <svg viewBox="0 0 24 24" fill="currentColor" style="width:14px;height:14px;margin-right:4px;"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
-                    Export
-                </button>
+                </a>
             </div>
         </div>
     </div>
@@ -1233,36 +1068,6 @@
     <div class="toast" id="toast">
         <svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41L9 16.17z"/></svg>
         <span id="toast-message">Success!</span>
-    </div>
-    
-    <!-- Password Modal -->
-    <div class="modal-overlay password-modal" id="password-modal">
-        <div class="modal">
-            <div class="modal-header">
-                <span class="modal-title">Authentication Required</span>
-                <button class="modal-close" onclick="closeModal('password-modal')">
-                    <svg viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12 19 6.41z"/></svg>
-                </button>
-            </div>
-            <div class="modal-body">
-                <p style="font-size: 12px; color: var(--text-secondary); margin-bottom: 16px;">Enter the project password to export or save.</p>
-                <label style="font-size: 11px; color: var(--text-muted); display: block; margin-bottom: 6px;">Password</label>
-                <div class="password-input-wrapper">
-                    <input type="password" class="password-input" id="export-password" placeholder="Enter password" onkeydown="if(event.key==='Enter')verifyAndProceed()">
-                    <button class="password-toggle" onclick="togglePasswordVisibility()" type="button">
-                        <svg viewBox="0 0 24 24" id="password-eye"><path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/></svg>
-                    </button>
-                </div>
-                <p class="password-error" id="password-error">Incorrect password. Please try again.</p>
-            </div>
-            <div class="modal-footer">
-                <button class="btn" onclick="closeModal('password-modal')">Cancel</button>
-                <button class="btn btn-primary" onclick="verifyAndProceed()">
-                    <svg viewBox="0 0 24 24" fill="currentColor" style="width:14px;height:14px;margin-right:4px;"><path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/></svg>
-                    Verify
-                </button>
-            </div>
-        </div>
     </div>
     
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -1604,117 +1409,23 @@
         }
         
         // ==========================================
-        // SECURITY MODULE - DO NOT MODIFY
+        // LEGACY SECURITY STUBS
         // ==========================================
-        
-        // Session validation and integrity check routines
-        let _0x7f3a = null; // pending action callback
-        const _0x4e2d = [0x42,0x75,0x79,0x4a,0x6f,0x65,0x4c,0x6f,0x65,0x43,0x6f,0x66,0x66,0x65,0x65];
-        const _0x9c1b = { v: null, t: Date.now() };
-        
-        // Integrity verification matrix
-        const _0x3f8e = [
-            [0x1a, 0x2b, 0x3c], [0x4d, 0x5e, 0x6f], // decoy
-            [0x28, 0x33, 0x0d, 0x17], // offset markers
-        ];
-        
-        // Session token generator (obfuscated validation)
-        function _0x2a4f(input) {
-            const _0x8b7c = _0x4e2d.map((c, i) => c ^ (_0x3f8e[2][i % 4]));
-            const _0x6d9e = String.fromCharCode(..._0x4e2d);
-            
-            // Additional entropy mixing
-            const _0x1f5a = input.split('').reduce((a, c, i) => {
-                return a + (c.charCodeAt(0) * (i + 1));
-            }, 0);
-            
-            const _0x7e3b = _0x6d9e.split('').reduce((a, c, i) => {
-                return a + (c.charCodeAt(0) * (i + 1));
-            }, 0);
-            
-            return _0x1f5a === _0x7e3b && input.length === _0x4e2d.length;
-        }
-        
-        // Async hash verification with timing attack mitigation
-        async function _0xa3c7(str) {
-            const encoder = new TextEncoder();
-            const data = encoder.encode(str);
-            const hash = await crypto.subtle.digest('SHA-256', data);
-            const arr = Array.from(new Uint8Array(hash));
-            return arr.map(b => b.toString(16).padStart(2, '0')).join('');
-        }
-        
-        // Multi-layer verification
-        async function _0x5b2e(input) {
-            // Layer 1: Length and character validation
-            if (!input || typeof input !== 'string') return false;
-            
-            // Layer 2: Quick rejection for obvious mismatches
-            const quickCheck = _0x2a4f(input);
-            if (!quickCheck) return false;
-            
-            // Layer 3: Cryptographic verification
-            const inputHash = await _0xa3c7(input);
-            const _0xd4f1 = await _0xa3c7(String.fromCharCode(..._0x4e2d));
-            
-            // Constant-time comparison to prevent timing attacks
-            let match = inputHash.length === _0xd4f1.length;
-            for (let i = 0; i < inputHash.length; i++) {
-                match = match && (inputHash[i] === _0xd4f1[i]);
-            }
-            
-            return match;
-        }
+        // These functions are kept as stubs for compatibility
+        // Export functionality has moved to the hosted version
         
         function requestAuthentication(callback) {
-            _0x7f3a = callback;
-            document.getElementById('export-password').value = '';
-            document.getElementById('password-error').classList.remove('visible');
-            document.getElementById('export-password').classList.remove('error');
-            document.getElementById('password-modal').classList.add('active');
-            setTimeout(() => document.getElementById('export-password').focus(), 100);
+            // No longer used - show the "project moved" modal instead
+            showExportModal();
         }
         
-        async function verifyAndProceed() {
-            const input = document.getElementById('export-password').value;
-            const isValid = await _0x5b2e(input);
-            
-            if (isValid) {
-                _0x9c1b.v = true;
-                _0x9c1b.t = Date.now();
-                closeModal('password-modal');
-                if (_0x7f3a) {
-                    _0x7f3a();
-                    _0x7f3a = null;
-                }
-            } else {
-                document.getElementById('export-password').classList.add('error');
-                document.getElementById('password-error').classList.add('visible');
-                setTimeout(() => {
-                    document.getElementById('export-password').classList.remove('error');
-                }, 400);
-            }
-        }
-        
-        function togglePasswordVisibility() {
-            const input = document.getElementById('export-password');
-            const eye = document.getElementById('password-eye');
-            if (input.type === 'password') {
-                input.type = 'text';
-                eye.innerHTML = '<path d="M12 7c2.76 0 5 2.24 5 5 0 .65-.13 1.26-.36 1.83l2.92 2.92c1.51-1.26 2.7-2.89 3.43-4.75-1.73-4.39-6-7.5-11-7.5-1.4 0-2.74.25-3.98.7l2.16 2.16C10.74 7.13 11.35 7 12 7zM2 4.27l2.28 2.28.46.46C3.08 8.3 1.78 10.02 1 12c1.73 4.39 6 7.5 11 7.5 1.55 0 3.03-.3 4.38-.84l.42.42L19.73 22 21 20.73 3.27 3 2 4.27zM7.53 9.8l1.55 1.55c-.05.21-.08.43-.08.65 0 1.66 1.34 3 3 3 .22 0 .44-.03.65-.08l1.55 1.55c-.67.33-1.41.53-2.2.53-2.76 0-5-2.24-5-5 0-.79.2-1.53.53-2.2zm4.31-.78l3.15 3.15.02-.16c0-1.66-1.34-3-3-3l-.17.01z"/>';
-            } else {
-                input.type = 'password';
-                eye.innerHTML = '<path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/>';
-            }
-        }
-        
-        // Check if session is still valid (5 minute window)
         function isSessionValid() {
-            return _0x9c1b.v === true && (Date.now() - _0x9c1b.t) < 300000;
+            // Always return false to trigger the "project moved" modal
+            return false;
         }
         
         // ==========================================
-        // END SECURITY MODULE
+        // END LEGACY STUBS
         // ==========================================
         
         let scene, camera, renderer, gridHelper, projectorGroup, surfaceGroup, distanceHelperGroup, raycaster, mouse;
@@ -7393,27 +7104,7 @@
         let pendingImportFormat = 'json';  // 'json' or 'csv'
         
         function setExportFormat(format) {
-            exportOptions.format = format;
-            
-            // Update button states
-            document.getElementById('export-format-json').classList.toggle('btn-primary', format === 'json');
-            document.getElementById('export-format-json').classList.toggle('btn', format !== 'json');
-            document.getElementById('export-format-csv').classList.toggle('btn-primary', format === 'csv');
-            document.getElementById('export-format-csv').classList.toggle('btn', format !== 'csv');
-            document.getElementById('export-format-obj').classList.toggle('btn-primary', format === 'obj');
-            document.getElementById('export-format-obj').classList.toggle('btn', format !== 'obj');
-            
-            // Show/hide appropriate options
-            document.getElementById('json-export-options').style.display = format === 'json' ? 'block' : 'none';
-            document.getElementById('csv-export-options').style.display = format === 'csv' ? 'block' : 'none';
-            document.getElementById('obj-export-options').style.display = format === 'obj' ? 'block' : 'none';
-            
-            // Update counts
-            if (format === 'csv') {
-                document.getElementById('csv-export-projector-count').textContent = state.projectors.length;
-            } else if (format === 'obj') {
-                document.getElementById('obj-export-surface-count').textContent = state.surfaces.length;
-            }
+            // Legacy function - no longer used
         }
         
         // ==========================================
@@ -7808,53 +7499,17 @@
         }
         
         function showExportModal() {
-            // Check if session is valid, otherwise request authentication
-            if (!isSessionValid()) {
-                requestAuthentication(_showExportModalInternal);
-                return;
-            }
-            _showExportModalInternal();
-        }
-        
-        function _showExportModalInternal() {
-            // Update counts
-            document.getElementById('export-projector-count').textContent = 
-                `${state.projectors.length} projector${state.projectors.length !== 1 ? 's' : ''} with settings`;
-            
-            // Show surface count with custom OBJ info
-            const customObjCount = state.surfaces.filter(s => s.type === 'custom' && s.objData).length;
-            let surfaceText = `${state.surfaces.length} surface${state.surfaces.length !== 1 ? 's' : ''} with settings`;
-            if (customObjCount > 0) {
-                surfaceText += ` (${customObjCount} custom OBJ)`;
-            }
-            document.getElementById('export-surface-count').textContent = surfaceText;
-            
-            const imageCount = state.projectors.filter(p => p.customTextureUrl && p.customTextureType !== 'video').length;
-            const videoCount = state.projectors.filter(p => p.customTextureType === 'video').length;
-            let textureText = imageCount > 0 
-                ? `${imageCount} image${imageCount !== 1 ? 's' : ''} (increases file size)` 
-                : 'No image textures';
-            if (videoCount > 0) {
-                textureText += ` • ${videoCount} video${videoCount !== 1 ? 's' : ''} (not exportable)`;
-            }
-            document.getElementById('export-texture-count').textContent = textureText;
-            
-            // Set default filename with timestamp
-            const date = new Date();
-            const timestamp = `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}`;
-            document.getElementById('export-filename').value = `projection-config-${timestamp}`;
-            
-            // Reset format selection to JSON
-            exportOptions.format = 'json';
-            setExportFormat('json');
-            
+            // Show the "project moved" modal
             document.getElementById('export-modal').classList.add('active');
         }
         
+        function _showExportModalInternal() {
+            // Legacy function - no longer used
+            showExportModal();
+        }
+        
         function toggleExportOption(option) {
-            exportOptions[option] = !exportOptions[option];
-            const checkbox = document.getElementById(`export-check-${option}`);
-            checkbox.classList.toggle('checked', exportOptions[option]);
+            // Legacy function - no longer used
         }
         
         function toggleImportOption(option) {
@@ -7919,117 +7574,12 @@
             }, 3000);
         }
         
+
         function doExport() {
-            const filename = document.getElementById('export-filename').value.trim() || 'projection-config';
-            
-            // CSV Export
-            if (exportOptions.format === 'csv') {
-                const csvContent = exportToCSV();
-                const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-                const url = URL.createObjectURL(blob);
-                
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = `${filename}.csv`;
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
-                URL.revokeObjectURL(url);
-                
-                closeModal('export-modal');
-                showToast(`Exported "${filename}.csv" (disguise format) successfully`);
-                return;
-            }
-            
-            // OBJ Export
-            if (exportOptions.format === 'obj') {
-                const objContent = exportToOBJ();
-                const blob = new Blob([objContent], { type: 'text/plain;charset=utf-8;' });
-                const url = URL.createObjectURL(blob);
-                
-                const a = document.createElement('a');
-                a.href = url;
-                a.download = `${filename}.obj`;
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
-                URL.revokeObjectURL(url);
-                
-                closeModal('export-modal');
-                showToast(`Exported "${filename}.obj" (${state.surfaces.length} surfaces) successfully`);
-                return;
-            }
-            
-            // JSON Export
-            const config = {
-                version: '2.8',
-                exportDate: new Date().toISOString(),
-                metadata: {
-                    projectorCount: state.projectors.length,
-                    surfaceCount: state.surfaces.length
-                }
-            };
-            
-            if (exportOptions.projectors) {
-                config.projectors = state.projectors.map(p => {
-                    const proj = { ...p };
-                    // Ensure UUID exists
-                    if (!proj.uuid) proj.uuid = generateUUID();
-                    // Skip video textures (can't be embedded)
-                    if (p.customTextureType === 'video') {
-                        proj.customTextureUrl = null;
-                        proj.customTextureType = null;
-                        proj.videoResolution = null;
-                    } else if (!exportOptions.textures) {
-                        proj.customTextureUrl = null;
-                        proj.customTextureType = null;
-                    }
-                    return proj;
-                });
-            }
-            
-            if (exportOptions.surfaces) {
-                config.surfaces = state.surfaces.map(s => ({
-                    id: s.id,
-                    name: s.name,
-                    type: s.type,
-                    position: { ...s.position },
-                    rotation: { ...s.rotation },
-                    dimensions: { ...s.dimensions },
-                    curvature: s.curvature,
-                    segments: s.segments || 32,  // For sphere surfaces
-                    color: s.color,
-                    gain: s.gain,
-                    scale: s.scale || 1.0,
-                    parentId: s.parentId || null,  // Hierarchy parent
-                    objData: s.objData || null // Include custom OBJ data
-                }));
-            }
-            
-            if (exportOptions.settings) {
-                config.settings = {
-                    currentPattern: state.currentPattern,
-                    displayOptions: { ...state.displayOptions },
-                    heatmapMax: state.heatmapMax,
-                    currentView: state.currentView,
-                    sceneSettings: { ...state.sceneSettings }
-                };
-            }
-            
-            const blob = new Blob([JSON.stringify(config, null, 2)], { type: 'application/json' });
-            const url = URL.createObjectURL(blob);
-            
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `${filename}.json`;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
-            
-            closeModal('export-modal');
-            showToast(`Exported "${filename}.json" successfully`);
+            // Legacy function - no longer used
+            // Export functionality moved to hosted version
         }
+
         
         function importConfig(file) {
             if (!file) return;
@@ -8313,49 +7863,13 @@
         }
         
         function quickSave() {
-            // Check if session is valid, otherwise request authentication
-            if (!isSessionValid()) {
-                requestAuthentication(_quickSaveInternal);
-                return;
-            }
-            _quickSaveInternal();
+            // Show the "project moved" modal
+            document.getElementById('export-modal').classList.add('active');
         }
         
         function _quickSaveInternal() {
-            // Quick save with current timestamp
-            const date = new Date();
-            const timestamp = `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}_${String(date.getHours()).padStart(2,'0')}-${String(date.getMinutes()).padStart(2,'0')}`;
-            
-            const config = {
-                version: '2.8',
-                exportDate: date.toISOString(),
-                metadata: {
-                    projectorCount: state.projectors.length,
-                    surfaceCount: state.surfaces.length
-                },
-                projectors: state.projectors.map(p => ({ ...p })),
-                surfaces: [...state.surfaces],
-                settings: {
-                    currentPattern: state.currentPattern,
-                    displayOptions: { ...state.displayOptions },
-                    heatmapMax: state.heatmapMax,
-                    currentView: state.currentView,
-                    sceneSettings: { ...state.sceneSettings }
-                }
-            };
-            
-            const blob = new Blob([JSON.stringify(config, null, 2)], { type: 'application/json' });
-            const url = URL.createObjectURL(blob);
-            
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `projection-autosave-${timestamp}.json`;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
-            
-            showToast('Project saved successfully');
+            // Legacy function - no longer used
+            quickSave();
         }
         
         function confirmNewProject() {
